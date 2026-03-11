@@ -1,6 +1,11 @@
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/server';
+import AuthButton from './AuthButton';
 
-export default function Header() {
+export default async function Header() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <header className="header">
       <div className="header__inner">
@@ -23,6 +28,10 @@ export default function Header() {
             歌を登録
           </Link>
         </nav>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <AuthButton user={user} />
+        </div>
       </div>
     </header>
   );

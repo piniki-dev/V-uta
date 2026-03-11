@@ -57,6 +57,11 @@ export async function registerVideo(
 ): Promise<ActionResult<Video>> {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'ログインが必要です' };
+  }
+
   // 既存チェック
   const { data: existing } = await supabase
     .from('videos')
@@ -121,6 +126,11 @@ export async function registerSong(input: {
 
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'ログインが必要です' };
+  }
+
   const { data, error } = await supabase
     .from('songs')
     .insert({
@@ -129,6 +139,7 @@ export async function registerSong(input: {
       artist: input.artist.trim() || null,
       start_sec: startSec,
       end_sec: endSec,
+      created_by: user.id,
     })
     .select()
     .single();
