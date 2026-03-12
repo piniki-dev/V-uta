@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { fetchVideoPreview, registerVideo, registerSong } from './actions';
+import { useState, useTransition, useCallback, useEffect } from 'react';
+import { fetchVideoPreview, registerVideo, registerSong, searchSongAction } from './actions';
+import type { ITunesSearchResult } from './actions';
 import type { YouTubeVideoMetadata, Video, Song } from '@/types';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
+import { Search, X, Music } from 'lucide-react';
+
+/** 秒数を "mm:ss" に変換 */
+function secondsToMmSs(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 export default function NewSongClient() {
   // Step 1: URL 入力
@@ -12,11 +21,28 @@ export default function NewSongClient() {
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
   const [video, setVideo] = useState<Video | null>(null);
 
-  // Step 2: 曲情報入力
-  const [songTitle, setSongTitle] = useState('');
-  const [artist, setArtist] = useState('');
+  // Step 2: 曲検索・選択
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ITunesSearchResult[]>([]);
+  const [selectedSong, setSelectedSong] = useState<ITunesSearchResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Step 3: 区間入力
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+
+  // 開始時間変更時に曲の長さから終了時間を自動入力
+  useEffect(() => {
+    if (!selectedSong || !startTime) {
+      return;
+    }
+    const match = startTime.match(/^(\d{1,3}):(\d{2})$/);
+    if (!match) return;
+    const startSec = parseInt(match[1]) * 60 + parseInt(match[2]);
+    if (isNaN(startSec) || selectedSong.durationSec <= 0) return;
+    const endSec = startSec + selectedSong.durationSec;
+    setEndTime(secondsToMmSs(endSec));
+  }, [startTime, selectedSong]);
 
   // 登録済み曲リスト（このセッションで登録したもの）
   const [registeredSongs, setRegisteredSongs] = useState<Song[]>([]);
@@ -49,16 +75,46 @@ export default function NewSongClient() {
     });
   };
 
+  // iTunes 検索をデバウンスして呼び出す
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setError('');
+    try {
+      const result = await searchSongAction(searchQuery);
+      if (result.success) {
+        setSearchResults(result.data);
+      } else {
+        setError(result.error);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery]);
+
+  const handleSelectSong = (track: ITunesSearchResult) => {
+    setSelectedSong(track);
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  const handleClearSelection = () => {
+    setSelectedSong(null);
+  };
+
   const handleRegisterSong = () => {
     setError('');
     setSuccess('');
-    if (!video) return;
+    if (!video || !selectedSong) return;
 
     startTransition(async () => {
       const result = await registerSong({
         videoDbId: video.id,
-        title: songTitle,
-        artist,
+        songTitle: selectedSong.title,
+        songArtist: selectedSong.artist,
+        artworkUrl: selectedSong.artworkUrl,
+        itunesId: String(selectedSong.trackId),
+        durationSec: selectedSong.durationSec,
         startTime,
         endTime,
       });
@@ -68,10 +124,11 @@ export default function NewSongClient() {
       }
       // 登録済みリストに追加
       setRegisteredSongs((prev) => [...prev, result.data]);
-      setSuccess(`「${result.data.title}」を登録しました！ 続けて次の曲を入力できます。`);
+      const title = result.data.master_songs?.title || selectedSong.title;
+      setSuccess(`「${title}」を登録しました！ 続けて次の曲を入力できます。`);
       // 曲フォームだけリセット（動画はそのまま）
-      setSongTitle('');
-      setArtist('');
+      setSelectedSong(null);
+      setSearchQuery('');
       setStartTime('');
       setEndTime('');
     });
@@ -81,8 +138,9 @@ export default function NewSongClient() {
     setUrl('');
     setMetadata(null);
     setVideo(null);
-    setSongTitle('');
-    setArtist('');
+    setSelectedSong(null);
+    setSearchQuery('');
+    setSearchResults([]);
     setStartTime('');
     setEndTime('');
     setError('');
@@ -162,13 +220,13 @@ export default function NewSongClient() {
         )}
       </div>
 
-      {/* Step 2: 曲情報入力 */}
+      {/* Step 2: 曲検索 + 区間入力 */}
       {step === 2 && (
         <>
           <div className="card">
             <div className="card__header">
               <span className="card__step">2</span>
-              <h2 className="card__title">曲情報</h2>
+              <h2 className="card__title">曲を検索</h2>
               {registeredSongs.length > 0 && (
                 <span className="card__badge">
                   {registeredSongs.length} 曲登録済み
@@ -176,37 +234,87 @@ export default function NewSongClient() {
               )}
             </div>
             <div className="card__body">
-              <div className="form-group">
-                <label htmlFor="song-title" className="form-label">
-                  曲名 <span className="form-required">*</span>
-                </label>
-                <input
-                  id="song-title"
-                  type="text"
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value)}
-                  placeholder="例: 夜に駆ける"
-                  className="form-input"
-                  disabled={isPending}
-                />
-              </div>
+              {/* 選択済みの曲カード */}
+              {selectedSong ? (
+                <div className="selected-song">
+                  <img
+                    src={selectedSong.artworkUrl}
+                    alt={selectedSong.title}
+                    className="selected-song__artwork"
+                  />
+                  <div className="selected-song__info">
+                    <span className="selected-song__title">{selectedSong.title}</span>
+                    <span className="selected-song__artist">{selectedSong.artist}</span>
+                  </div>
+                  <button
+                    onClick={handleClearSelection}
+                    className="selected-song__clear"
+                    title="選択を解除"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* 検索バー */}
+                  <div className="form-group">
+                    <label htmlFor="song-search" className="form-label">
+                      曲名で検索 <span className="form-required">*</span>
+                    </label>
+                    <div className="form-input-group">
+                      <input
+                        id="song-search"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearch();
+                          }
+                        }}
+                        placeholder="例: 夜に駆ける"
+                        className="form-input"
+                        disabled={isSearching}
+                      />
+                      <button
+                        onClick={handleSearch}
+                        disabled={isSearching || !searchQuery.trim()}
+                        className="btn btn--primary"
+                      >
+                        {isSearching ? '検索中...' : <Search size={18} />}
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="artist" className="form-label">
-                  アーティスト名
-                </label>
-                <input
-                  id="artist"
-                  type="text"
-                  value={artist}
-                  onChange={(e) => setArtist(e.target.value)}
-                  placeholder="例: YOASOBI"
-                  className="form-input"
-                  disabled={isPending}
-                />
-              </div>
+                  {/* 検索結果一覧 */}
+                  {searchResults.length > 0 && (
+                    <div className="search-results">
+                      {searchResults.map((track) => (
+                        <button
+                          key={track.trackId}
+                          onClick={() => handleSelectSong(track)}
+                          className="search-results__item"
+                        >
+                          <img
+                            src={track.artworkUrl}
+                            alt={track.title}
+                            className="search-results__artwork"
+                          />
+                          <div className="search-results__info">
+                            <span className="search-results__title">{track.title}</span>
+                            <span className="search-results__artist">{track.artist}</span>
+                          </div>
+                          <Music size={16} className="search-results__icon" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
 
-              <div className="form-row">
+              {/* 区間入力 */}
+              <div className="form-row" style={{ marginTop: '1rem' }}>
                 <div className="form-group">
                   <label htmlFor="start-time" className="form-label">
                     開始時間 <span className="form-required">*</span>
@@ -240,7 +348,7 @@ export default function NewSongClient() {
 
               <button
                 onClick={handleRegisterSong}
-                disabled={isPending || !songTitle.trim() || !startTime || !endTime}
+                disabled={isPending || !selectedSong || !startTime || !endTime}
                 className="btn btn--primary btn--full"
               >
                 {isPending ? '登録中...' : '歌を登録'}
@@ -263,9 +371,11 @@ export default function NewSongClient() {
                     <div key={song.id} className="registered-songs__item">
                       <span className="registered-songs__num">{index + 1}</span>
                       <div className="registered-songs__info">
-                        <span className="registered-songs__title">{song.title}</span>
+                        <span className="registered-songs__title">
+                          {song.master_songs?.title || '(不明)'}
+                        </span>
                         <span className="registered-songs__artist">
-                          {song.artist || '-'}
+                          {song.master_songs?.artist || '-'}
                         </span>
                       </div>
                       <span className="registered-songs__time">
