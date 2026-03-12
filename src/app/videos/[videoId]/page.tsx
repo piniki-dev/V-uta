@@ -33,10 +33,10 @@ export default async function ArchivePage({ params }: Props) {
     );
   }
 
-  // 曲リスト取得
+  // 曲リスト取得 (master_songsをJOIN)
   const { data: songs } = await supabase
     .from('songs')
-    .select('*')
+    .select('*, master_songs(*)')
     .eq('video_id', video.id)
     .eq('is_active', true)
     .order('start_sec', { ascending: true });

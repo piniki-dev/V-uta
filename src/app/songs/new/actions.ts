@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { extractVideoId, fetchVideoMetadata } from '@/lib/youtube';
+import { searchTracks as itunesSearch, getHighResArtwork } from '@/lib/itunes';
 import type { Video, Song, YouTubeVideoMetadata } from '@/types';
 
 // ===== 時刻ユーティリティ =====
@@ -24,7 +25,45 @@ type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+// ===== iTunes 検索結果の型（クライアントに返す用） =====
+
+export interface ITunesSearchResult {
+  trackId: number;
+  title: string;
+  artist: string;
+  albumName: string;
+  artworkUrl: string; // 高解像度に変換済み
+  durationSec: number; // 曲の長さ（秒）
+}
+
 // ===== Server Actions =====
+
+/**
+ * iTunes Search API で曲を検索する
+ */
+export async function searchSongAction(
+  query: string
+): Promise<ActionResult<ITunesSearchResult[]>> {
+  if (!query.trim()) {
+    return { success: false, error: '検索キーワードを入力してください' };
+  }
+
+  try {
+    const tracks = await itunesSearch(query, 10);
+    const results: ITunesSearchResult[] = tracks.map((t) => ({
+      trackId: t.trackId,
+      title: t.trackName,
+      artist: t.artistName,
+      albumName: t.collectionName,
+      artworkUrl: getHighResArtwork(t.artworkUrl100, 300),
+      durationSec: Math.round((t.trackTimeMillis || 0) / 1000),
+    }));
+    return { success: true, data: results };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '曲の検索に失敗しました';
+    return { success: false, error: message };
+  }
+}
 
 /**
  * YouTube URL からメタデータを取得してプレビュー表示用に返す
@@ -95,17 +134,21 @@ export async function registerVideo(
 
 /**
  * 歌（曲の区間）を songs テーブルに登録
+ * master_songs テーブルに原曲情報を UPSERT し、その ID を songs に紐付ける
  */
 export async function registerSong(input: {
   videoDbId: number;
-  title: string;
-  artist: string;
+  songTitle: string;
+  songArtist: string;
+  artworkUrl: string;
+  itunesId: string;
+  durationSec: number;
   startTime: string;
   endTime: string;
 }): Promise<ActionResult<Song>> {
   // バリデーション
-  if (!input.title.trim()) {
-    return { success: false, error: '曲名を入力してください' };
+  if (!input.songTitle.trim()) {
+    return { success: false, error: '曲を選択してください' };
   }
 
   const startSec = parseTimeToSeconds(input.startTime);
@@ -131,17 +174,39 @@ export async function registerSong(input: {
     return { success: false, error: 'ログインが必要です' };
   }
 
+  // master_songs に UPSERT（曲名+アーティスト名で名寄せ）
+  const { data: masterSong, error: masterError } = await supabase
+    .from('master_songs')
+    .upsert(
+      {
+        title: input.songTitle.trim(),
+        artist: input.songArtist.trim() || 'Unknown',
+        artwork_url: input.artworkUrl || null,
+        itunes_id: input.itunesId ? String(input.itunesId) : null,
+        duration_sec: input.durationSec > 0 ? input.durationSec : null,
+      },
+      {
+        onConflict: 'title,artist',
+      }
+    )
+    .select()
+    .single();
+
+  if (masterError) {
+    return { success: false, error: `原曲情報の登録に失敗しました: ${masterError.message}` };
+  }
+
+  // songs テーブルに INSERT
   const { data, error } = await supabase
     .from('songs')
     .insert({
       video_id: input.videoDbId,
-      title: input.title.trim(),
-      artist: input.artist.trim() || null,
+      master_song_id: masterSong.id,
       start_sec: startSec,
       end_sec: endSec,
       created_by: user.id,
     })
-    .select()
+    .select('*, master_songs(*)')
     .single();
 
   if (error) {

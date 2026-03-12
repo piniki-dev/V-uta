@@ -13,8 +13,9 @@ interface Props {
 function toPlayerSong(song: Song, video: Video): PlayerSong {
   return {
     id: song.id,
-    title: song.title,
-    artist: song.artist,
+    title: song.master_songs?.title || '(不明)',
+    artist: song.master_songs?.artist || null,
+    artworkUrl: song.master_songs?.artwork_url || null,
     videoId: video.video_id,
     startSec: song.start_sec,
     endSec: song.end_sec,
@@ -123,8 +124,8 @@ export default function ArchiveClient({ video, songs }: Props) {
                     index + 1
                   )}
                 </span>
-                <span className="song-list__col-title">{song.title}</span>
-                <span className="song-list__col-artist">{song.artist || '-'}</span>
+                <span className="song-list__col-title">{song.master_songs?.title || '(不明)'}</span>
+                <span className="song-list__col-artist">{song.master_songs?.artist || '-'}</span>
                 <span className="song-list__col-time">
                   {formatTime(song.start_sec)} - {formatTime(song.end_sec)}
                 </span>

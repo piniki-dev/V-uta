@@ -11,16 +11,26 @@ export interface Video {
   created_at: string;
 }
 
+export interface MasterSong {
+  id: number;
+  title: string;
+  artist: string;
+  artwork_url: string | null;
+  itunes_id: string | null;
+  created_at: string;
+}
+
 export interface Song {
   id: number;
   video_id: number;
-  title: string;
-  artist: string | null;
+  master_song_id: number | null;
   start_sec: number;
   end_sec: number;
   created_by: string | null;
   is_active: boolean;
   created_at: string;
+  // JOINされた場合に含まれる
+  master_songs?: MasterSong;
 }
 
 /** Song + 親 Video 情報を含む結合型 */
@@ -34,6 +44,7 @@ export interface PlayerSong {
   id: number;
   title: string;
   artist: string | null;
+  artworkUrl: string | null;
   videoId: string;         // YouTube video ID
   startSec: number;
   endSec: number;
@@ -68,8 +79,6 @@ export interface YouTubeVideoMetadata {
 // ===== フォーム =====
 
 export interface SongFormData {
-  title: string;
-  artist: string;
   startTime: string;  // "mm:ss" 形式
   endTime: string;    // "mm:ss" 形式
 }
