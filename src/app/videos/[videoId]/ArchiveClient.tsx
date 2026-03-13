@@ -4,6 +4,7 @@ import type { Video, Song, PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 
 interface Props {
   video: Video;
@@ -83,8 +84,12 @@ export default function ArchiveClient({ video, songs }: Props) {
               YouTube で見る
             </a>
           </div>
-          <Link href="/songs/new" className="btn btn--secondary btn--sm">
-            + 曲を追加
+          <Link 
+            href={`/songs/new?url=https://www.youtube.com/watch?v=${video.video_id}`} 
+            className="btn btn--secondary btn--sm"
+          >
+            <Pencil size={14} />
+            曲を編集
           </Link>
         </div>
       </div>

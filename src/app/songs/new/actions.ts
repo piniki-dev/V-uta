@@ -67,10 +67,11 @@ export async function searchSongAction(
 
 /**
  * YouTube URL からメタデータを取得してプレビュー表示用に返す
+ * すでに登録済みの場合は、既存の曲リストもあわせて返す
  */
 export async function fetchVideoPreview(
   url: string
-): Promise<ActionResult<YouTubeVideoMetadata>> {
+): Promise<ActionResult<{ metadata: YouTubeVideoMetadata; existingSongs: Song[] }>> {
   const videoId = extractVideoId(url);
   if (!videoId) {
     return { success: false, error: '有効な YouTube URL を入力してください' };
@@ -81,9 +82,36 @@ export async function fetchVideoPreview(
     if (!metadata) {
       return { success: false, error: '動画が見つかりません' };
     }
-    return { success: true, data: metadata };
+
+    const supabase = await createClient();
+    
+    // DB に動画が登録済みかチェック
+    const { data: videoData } = await supabase
+      .from('videos')
+      .select('id')
+      .eq('video_id', videoId)
+      .single();
+
+    let existingSongs: Song[] = [];
+    if (videoData) {
+      // 登録済みの曲を取得
+      const { data: songsData } = await supabase
+        .from('songs')
+        .select('*, master_songs(*)')
+        .eq('video_id', videoData.id)
+        .order('start_sec', { ascending: true });
+      
+      if (songsData) {
+        existingSongs = songsData as Song[];
+      }
+    }
+
+    return { 
+      success: true, 
+      data: { metadata, existingSongs } 
+    };
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'メタデータの取得に失敗しました';
+    const message = e instanceof Error ? e.message : 'データの取得に失敗しました';
     return { success: false, error: message };
   }
 }
@@ -214,4 +242,104 @@ export async function registerSong(input: {
   }
 
   return { success: true, data: data as Song };
+}
+
+/**
+ * 動画情報と曲リストをまとめて一括登録・更新する
+ */
+export async function registerFullArchive(input: {
+  videoMetadata: YouTubeVideoMetadata;
+  songs: {
+    id?: number; // 既存曲の場合は ID がある
+    songTitle: string;
+    songArtist: string;
+    artworkUrl: string;
+    itunesId: string;
+    durationSec: number;
+    startSec: number;
+    endSec: number;
+    isDeleted?: boolean;
+  }[];
+}): Promise<ActionResult<{ video: Video; songs: Song[] }>> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'ログインが必要です' };
+  }
+
+  try {
+    // 1. 動画の登録/取得
+    const videoResult = await registerVideo(input.videoMetadata);
+    if (!videoResult.success) return { success: false, error: videoResult.error };
+    const video = videoResult.data;
+
+    const finalSongs: Song[] = [];
+
+    // 2. 曲の処理（ループで回すが、本来はストアドプロシージャなどで一気にやるのが理想）
+    for (const songInput of input.songs) {
+      if (songInput.isDeleted) {
+        if (songInput.id) {
+          // 既存曲かつ削除フラグなら削除
+          const { error } = await supabase.from('songs').delete().eq('id', songInput.id);
+          if (error) throw new Error(`曲の削除に失敗しました: ${error.message}`);
+        }
+        continue;
+      }
+
+      // master_songs の処理
+      const { data: masterSong, error: masterError } = await supabase
+        .from('master_songs')
+        .upsert(
+          {
+            title: songInput.songTitle.trim(),
+            artist: songInput.songArtist.trim() || 'Unknown',
+            artwork_url: songInput.artworkUrl || null,
+            itunes_id: songInput.itunesId ? String(songInput.itunesId) : null,
+            duration_sec: songInput.durationSec > 0 ? songInput.durationSec : null,
+          },
+          { onConflict: 'title,artist' }
+        )
+        .select()
+        .single();
+      
+      if (masterError) throw new Error(`原曲情報の登録に失敗しました: ${masterError.message}`);
+
+      if (songInput.id) {
+        // 更新
+        const { data, error } = await supabase
+          .from('songs')
+          .update({
+            master_song_id: masterSong.id,
+            start_sec: songInput.startSec,
+            end_sec: songInput.endSec,
+          })
+          .eq('id', songInput.id)
+          .select('*, master_songs(*)')
+          .single();
+        if (error) throw new Error(`曲の更新に失敗しました: ${error.message}`);
+        finalSongs.push(data as Song);
+      } else {
+        // 新規登録
+        const { data, error } = await supabase
+          .from('songs')
+          .insert({
+            video_id: video.id,
+            master_song_id: masterSong.id,
+            start_sec: songInput.startSec,
+            end_sec: songInput.endSec,
+            created_by: user.id,
+          })
+          .select('*, master_songs(*)')
+          .single();
+        if (error) throw new Error(`曲の登録に失敗しました: ${error.message}`);
+        finalSongs.push(data as Song);
+      }
+    }
+
+    return { success: true, data: { video, songs: finalSongs } };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '一括登録に失敗しました';
+    return { success: false, error: message };
+  }
 }

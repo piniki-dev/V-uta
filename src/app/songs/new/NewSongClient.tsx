@@ -1,12 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useTransition, useCallback, useEffect } from 'react';
-import { fetchVideoPreview, registerVideo, registerSong, searchSongAction } from './actions';
+import { useState, useTransition, useCallback, useEffect, useRef, useMemo } from 'react';
+import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive } from './actions';
 import type { ITunesSearchResult } from './actions';
 import type { YouTubeVideoMetadata, Video, Song } from '@/types';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
-import { Search, X, Music } from 'lucide-react';
+import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { updateSong, deleteSong, updateSongMaster, searchSongForEdit } from '@/app/videos/[videoId]/edit/actions';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 /** 秒数を "mm:ss" に変換 */
 function secondsToMmSs(sec: number): string {
@@ -15,7 +17,35 @@ function secondsToMmSs(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** "mm:ss" を秒数に変換 */
+function parseTimeToSeconds(time: string): number | null {
+  const match = time.match(/^(\d{1,3}):(\d{2})$/);
+  if (!match) return null;
+  const minutes = parseInt(match[1], 10);
+  const seconds = parseInt(match[2], 10);
+  if (seconds >= 60) return null;
+  return minutes * 60 + seconds;
+}
+
+interface EditableSong {
+  id?: number; // DB 登録済みの場合は ID がある
+  song: Partial<Song> & { master_songs?: any }; // プレビュー用
+  startTime: string;
+  endTime: string;
+  isEditing: boolean;
+  isChangingSong: boolean;
+  searchQuery: string;
+  searchResults: any[];
+  isSearching: boolean;
+  isPersisted: boolean; // DB 保存済みか
+  isDeleted?: boolean; // 削除フラグ（一括保存時に反映）
+}
+
 export default function NewSongClient() {
+  const searchParams = useSearchParams();
+  const initialUrl = searchParams.get('url');
+  const hasAutoFetched = useRef(false);
+
   // Step 1: URL 入力
   const [url, setUrl] = useState('');
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
@@ -31,6 +61,53 @@ export default function NewSongClient() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
+  // 統合された曲リスト（既存 + 新規）
+  const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
+
+  // UI 状態
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  // モーダル管理
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // 変更があるかどうか
+  const hasChanges = useMemo(() => {
+    // 1. リスト内に未保存、削除予定、または編集中のものがある場合
+    const hasUnsavedInList = allSongs.some(s => !s.isPersisted || s.isDeleted || s.isEditing);
+    // 2. 現在新規追加フォームに入力中のものがある場合
+    const hasActiveInput = !!selectedSong || !!startTime.trim() || !!endTime.trim() || !!searchQuery.trim();
+    
+    return hasUnsavedInList || hasActiveInput;
+  }, [allSongs, selectedSong, startTime, endTime, searchQuery]);
+
+  // ブラウザのナビゲーション（タブ閉じ、戻る等）に対しても警告
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // ほとんどのブラウザで必要
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasChanges]);
+
+  // 自動読み込み
+  useEffect(() => {
+    if (initialUrl && !hasAutoFetched.current) {
+      hasAutoFetched.current = true;
+      setUrl(initialUrl);
+      // Fetch video immediately
+      handleFetchVideo(initialUrl);
+    }
+  }, [initialUrl]);
+
   // 開始時間変更時に曲の長さから終了時間を自動入力
   useEffect(() => {
     if (!selectedSong || !startTime) {
@@ -44,38 +121,47 @@ export default function NewSongClient() {
     setEndTime(secondsToMmSs(endSec));
   }, [startTime, selectedSong]);
 
-  // 登録済み曲リスト（このセッションで登録したもの）
-  const [registeredSongs, setRegisteredSongs] = useState<Song[]>([]);
+  const handleFetchVideo = (manualUrl?: string) => {
+    const targetUrl = manualUrl || url;
+    if (!targetUrl.trim()) return;
 
-  // UI 状態
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isPending, startTransition] = useTransition();
-  const [step, setStep] = useState<1 | 2>(1);
-
-  const handleFetchVideo = () => {
     setError('');
     setSuccess('');
     startTransition(async () => {
-      const result = await fetchVideoPreview(url);
+      const result = await fetchVideoPreview(targetUrl);
       if (!result.success) {
         setError(result.error);
         return;
       }
-      setMetadata(result.data);
+      setMetadata(result.data.metadata);
+      
+      const convertedSongs: EditableSong[] = result.data.existingSongs.map(song => ({
+        id: song.id,
+        song,
+        startTime: secondsToMmSs(song.start_sec),
+        endTime: secondsToMmSs(song.end_sec),
+        isEditing: false,
+        isChangingSong: false,
+        searchQuery: '',
+        searchResults: [],
+        isSearching: false,
+        isPersisted: true,
+      }));
+      setAllSongs(convertedSongs);
 
-      // videos テーブルに登録
-      const videoResult = await registerVideo(result.data);
-      if (!videoResult.success) {
-        setError(videoResult.error);
-        return;
+      if (result.data.existingSongs.length > 0) {
+        setSuccess('登録済みのアーカイブを取得しました。変更を加えて「一括保存」できます。');
       }
-      setVideo(videoResult.data);
+
+      // videos テーブルに登録（冪等）
+      const videoResult = await registerVideo(result.data.metadata);
+      if (videoResult.success) {
+        setVideo(videoResult.data);
+      }
       setStep(2);
     });
   };
 
-  // iTunes 検索をデバウンスして呼び出す
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
@@ -104,52 +190,267 @@ export default function NewSongClient() {
 
   const handleRegisterSong = () => {
     setError('');
+    if (!selectedSong || !startTime || !endTime) return;
+
+    const startSec = parseTimeToSeconds(startTime);
+    const endSec = parseTimeToSeconds(endTime);
+    if (startSec === null || endSec === null || startSec >= endSec) {
+      setError('時間の形式が正しくないか、終了時間が開始時間以前です');
+      return;
+    }
+
+    const newSong: EditableSong = {
+      song: {
+        master_songs: {
+          title: selectedSong.title,
+          artist: selectedSong.artist,
+          artwork_url: selectedSong.artworkUrl,
+          itunes_id: String(selectedSong.trackId),
+          duration_sec: selectedSong.durationSec,
+        } as any,
+        start_sec: startSec,
+        end_sec: endSec,
+      },
+      startTime,
+      endTime,
+      isEditing: false,
+      isChangingSong: false,
+      searchQuery: '',
+      searchResults: [],
+      isSearching: false,
+      isPersisted: false,
+    };
+
+    setAllSongs((prev) => [...prev, newSong]);
+    setSuccess(`「${selectedSong.title}」をリストに追加しました。最後に一括保存してください。`);
+    
+    setSelectedSong(null);
+    setSearchQuery('');
+    setStartTime('');
+    setEndTime('');
+  };
+
+  const handleSaveBatch = () => {
+    if (!metadata) return;
+    setError('');
     setSuccess('');
-    if (!video || !selectedSong) return;
 
     startTransition(async () => {
-      const result = await registerSong({
-        videoDbId: video.id,
-        songTitle: selectedSong.title,
-        songArtist: selectedSong.artist,
-        artworkUrl: selectedSong.artworkUrl,
-        itunesId: String(selectedSong.trackId),
-        durationSec: selectedSong.durationSec,
-        startTime,
-        endTime,
+      const songsToRegister = allSongs.map(item => ({
+        id: item.id,
+        songTitle: item.song.master_songs?.title || '',
+        songArtist: item.song.master_songs?.artist || '',
+        artworkUrl: item.song.master_songs?.artwork_url || '',
+        itunesId: item.song.master_songs?.itunes_id || '',
+        durationSec: item.song.master_songs?.duration_sec || 0,
+        startSec: parseTimeToSeconds(item.startTime) || 0,
+        endSec: parseTimeToSeconds(item.endTime) || 0,
+        isDeleted: item.isDeleted,
+      }));
+
+      const result = await registerFullArchive({
+        videoMetadata: metadata,
+        songs: songsToRegister,
       });
+
       if (!result.success) {
         setError(result.error);
         return;
       }
-      // 登録済みリストに追加
-      setRegisteredSongs((prev) => [...prev, result.data]);
-      const title = result.data.master_songs?.title || selectedSong.title;
-      setSuccess(`「${title}」を登録しました！ 続けて次の曲を入力できます。`);
-      // 曲フォームだけリセット（動画はそのまま）
-      setSelectedSong(null);
-      setSearchQuery('');
-      setStartTime('');
-      setEndTime('');
+
+      setVideo(result.data.video);
+      const updatedSongs: EditableSong[] = result.data.songs.map(song => ({
+        id: song.id,
+        song,
+        startTime: secondsToMmSs(song.start_sec),
+        endTime: secondsToMmSs(song.end_sec),
+        isEditing: false,
+        isChangingSong: false,
+        searchQuery: '',
+        searchResults: [],
+        isSearching: false,
+        isPersisted: true,
+      }));
+      setAllSongs(updatedSongs);
+      setSuccess('全ての変更を保存しました！');
     });
   };
 
+  // ----- インライン編集機能 -----
+
+  const toggleEdit = (index: number) => {
+    setAllSongs((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              isEditing: !item.isEditing,
+              isChangingSong: false,
+              searchQuery: '',
+              searchResults: [],
+            }
+          : item
+      )
+    );
+  };
+
+  const updateSongField = (index: number, field: 'startTime' | 'endTime', value: string) => {
+    setAllSongs((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleSaveSongLocal = (index: number) => {
+    const item = allSongs[index];
+    const s = parseTimeToSeconds(item.startTime);
+    const e = parseTimeToSeconds(item.endTime);
+    
+    if (s === null || e === null || s >= e) {
+      setError('時間の形式が正しくありません');
+      return;
+    }
+
+    setAllSongs((prev) =>
+      prev.map((it, i) =>
+        i === index 
+          ? { 
+              ...it, 
+              song: { ...it.song, start_sec: s, end_sec: e }, 
+              isEditing: false,
+              isPersisted: false 
+            } 
+          : it
+      )
+    );
+  };
+
+  const handleDeleteSong = (index: number) => {
+    const item = allSongs[index];
+    if (item.isPersisted) {
+      setAllSongs((prev) =>
+        prev.map((it, i) => (i === index ? { ...it, isDeleted: !it.isDeleted } : it))
+      );
+    } else {
+      setAllSongs((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const toggleChangeSong = (index: number) => {
+    setAllSongs((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, isChangingSong: !item.isChangingSong, searchQuery: '', searchResults: [] }
+          : item
+      )
+    );
+  };
+
+  const handleSearchSongForEditInPlace = async (index: number) => {
+    const item = allSongs[index];
+    if (!item.searchQuery.trim()) return;
+
+    setAllSongs((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, isSearching: true } : it))
+    );
+
+    const result = await searchSongForEdit(item.searchQuery);
+
+    setAllSongs((prev) =>
+      prev.map((it, i) =>
+        i === index
+          ? {
+              ...it,
+              isSearching: false,
+              searchResults: result.success ? result.data : [],
+            }
+          : it
+      )
+    );
+
+    if (!result.success) {
+      setError(result.error);
+    }
+  };
+
+  const updateSongSearchQuery = (index: number, value: string) => {
+    setAllSongs((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, searchQuery: value } : item))
+    );
+  };
+
+  const handleSelectNewSongInPlaceLocal = (index: number, track: any) => {
+    setAllSongs((prev) =>
+      prev.map((it, i) =>
+        i === index
+          ? {
+              ...it,
+              song: {
+                ...it.song,
+                master_songs: {
+                  title: track.title,
+                  artist: track.artist,
+                  artwork_url: track.artworkUrl,
+                  itunes_id: String(track.trackId),
+                  duration_sec: track.durationSec,
+                } as any
+              },
+              isChangingSong: false,
+              isPersisted: false,
+              searchQuery: '',
+              searchResults: [],
+            }
+          : it
+      )
+    );
+  };
+
   const handleReset = () => {
-    setUrl('');
-    setMetadata(null);
-    setVideo(null);
-    setSelectedSong(null);
-    setSearchQuery('');
-    setSearchResults([]);
-    setStartTime('');
-    setEndTime('');
-    setError('');
-    setSuccess('');
-    setStep(1);
-    setRegisteredSongs([]);
+    const resetAction = () => {
+      setUrl('');
+      setMetadata(null);
+      setVideo(null);
+      setAllSongs([]);
+      setSelectedSong(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      setStartTime('');
+      setEndTime('');
+      setError('');
+      setSuccess('');
+      setStep(1);
+      hasAutoFetched.current = false;
+      setIsModalOpen(false);
+    };
+
+    if (hasChanges) {
+      setPendingUrl(null);
+      setOnConfirmAction(() => resetAction);
+      setIsModalOpen(true);
+    } else {
+      resetAction();
+    }
+  };
+
+  const handleNavigationClick = (e: React.MouseEvent, targetUrl: string) => {
+    if (hasChanges) {
+      e.preventDefault();
+      setPendingUrl(targetUrl);
+      setOnConfirmAction(null);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleConfirmNavigation = () => {
+    if (onConfirmAction) {
+      onConfirmAction();
+    } else if (pendingUrl) {
+      router.push(pendingUrl);
+    }
+    setIsModalOpen(false);
   };
 
   return (
+    <>
     <div className="page-container">
       <h1 className="page-title">歌を登録</h1>
       <p className="page-description">
@@ -190,7 +491,7 @@ export default function NewSongClient() {
                   disabled={isPending}
                 />
                 <button
-                  onClick={handleFetchVideo}
+                  onClick={() => handleFetchVideo()}
                   disabled={isPending || !url.trim()}
                   className="btn btn--primary"
                 >
@@ -227,12 +528,13 @@ export default function NewSongClient() {
             <div className="card__header">
               <span className="card__step">2</span>
               <h2 className="card__title">曲を検索</h2>
-              {registeredSongs.length > 0 && (
+              {allSongs.length > 0 && (
                 <span className="card__badge">
-                  {registeredSongs.length} 曲登録済み
+                  {allSongs.length} 曲登録済み
                 </span>
               )}
             </div>
+
             <div className="card__body">
               {/* 選択済みの曲カード */}
               {selectedSong ? (
@@ -351,49 +653,211 @@ export default function NewSongClient() {
                 disabled={isPending || !selectedSong || !startTime || !endTime}
                 className="btn btn--primary btn--full"
               >
-                {isPending ? '登録中...' : '歌を登録'}
+                {isPending ? '登録中...' : 'リストに追加'}
               </button>
             </div>
           </div>
 
-          {/* 登録済み曲リスト */}
-          {registeredSongs.length > 0 && (
+          {/* 一括保存ボタン（フローティングまたは目立つ位置） */}
+          {hasChanges && (
+            <div className="batch-save-banner">
+              <div className="batch-save-banner__content">
+                <AlertCircle size={20} className="batch-save-banner__icon" />
+                <span className="batch-save-banner__text">未保存の変更があります</span>
+              </div>
+              <button
+                onClick={handleSaveBatch}
+                disabled={isPending}
+                className="btn btn--success btn--sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                {isPending ? '保存中...' : (
+                  <>
+                    <Save size={16} />
+                    全ての変更を保存
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* 統合された曲リスト */}
+          {allSongs.length > 0 && (
             <div className="card">
               <div className="card__header">
                 <span className="card__step">✓</span>
                 <h2 className="card__title">
-                  このアーカイブに登録した曲（{registeredSongs.length} 曲）
+                  曲リスト（{allSongs.length} 曲）
                 </h2>
               </div>
               <div className="card__body" style={{ padding: 0 }}>
-                <div className="registered-songs">
-                  {registeredSongs.map((song, index) => (
-                    <div key={song.id} className="registered-songs__item">
-                      <span className="registered-songs__num">{index + 1}</span>
-                      <div className="registered-songs__info">
-                        <span className="registered-songs__title">
-                          {song.master_songs?.title || '(不明)'}
-                        </span>
-                        <span className="registered-songs__artist">
-                          {song.master_songs?.artist || '-'}
-                        </span>
+                <div className="edit-songs">
+                  {allSongs.map((item, index) => (
+                    <div
+                      key={item.id || `new-${index}`}
+                      className={`edit-songs__card ${item.isEditing ? 'edit-songs__card--active' : ''} ${item.isDeleted ? 'edit-songs__card--deleted' : ''}`}
+                      style={{ border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border)', opacity: item.isDeleted ? 0.6 : 1 }}
+                    >
+                      <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
+                        <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
+                        {item.song.master_songs?.artwork_url && (
+                          <img
+                            src={item.song.master_songs.artwork_url}
+                            alt={item.song.master_songs.title}
+                            className="edit-songs__artwork"
+                            style={{ width: '40px', height: '40px' }}
+                          />
+                        )}
+                        <div className="edit-songs__info" style={{ flex: 1 }}>
+                          <span className="edit-songs__title" style={{ fontSize: '14px' }}>
+                            {item.song.master_songs?.title || '(不明)'}
+                          </span>
+                          <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
+                            {item.song.master_songs?.artist || '-'}
+                          </span>
+                        </div>
+                        <div className="edit-songs__actions">
+                          <button
+                            onClick={() => toggleEdit(index)}
+                            className="edit-songs__btn"
+                            title={item.isEditing ? 'キャンセル' : '編集'}
+                          >
+                            {item.isEditing ? <X size={14} /> : <Pencil size={14} />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSong(index)}
+                            className={`edit-songs__btn ${item.isDeleted ? 'edit-songs__btn--active' : 'edit-songs__btn--danger'}`}
+                            title={item.isDeleted ? '削除を取り消す' : '削除'}
+                            disabled={isPending}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <span className="registered-songs__time">
-                        {formatTime(song.start_sec)} - {formatTime(song.end_sec)}
-                      </span>
-                      <span className="registered-songs__duration">
-                        {formatTime(song.end_sec - song.start_sec)}
-                      </span>
+
+                      {/* 編集フォーム（インライン） */}
+                      {item.isEditing && (
+                        <div className="edit-songs__form" style={{ margin: '0 16px 16px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                          <button
+                            onClick={() => toggleChangeSong(index)}
+                            className="edit-songs__change-song-btn"
+                            style={{ marginBottom: '12px' }}
+                          >
+                            <Music size={14} />
+                            {item.isChangingSong ? '曲の変更をキャンセル' : '曲を変更する'}
+                          </button>
+
+                          {item.isChangingSong && (
+                            <div className="edit-songs__search" style={{ marginBottom: '12px' }}>
+                              <div className="form-input-group">
+                                <input
+                                  type="text"
+                                  value={item.searchQuery}
+                                  onChange={(e) => updateSongSearchQuery(index, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSearchSongForEditInPlace(index);
+                                    }
+                                  }}
+                                  placeholder="曲名で検索..."
+                                  className="form-input"
+                                  disabled={item.isSearching}
+                                />
+                                <button
+                                  onClick={() => handleSearchSongForEditInPlace(index)}
+                                  disabled={item.isSearching || !item.searchQuery.trim()}
+                                  className="btn btn--primary"
+                                >
+                                  {item.isSearching ? '...' : <Search size={16} />}
+                                </button>
+                              </div>
+
+                              {item.searchResults.length > 0 && (
+                                <div className="search-results" style={{ marginTop: '8px' }}>
+                                  {item.searchResults.map((track) => (
+                                    <button
+                                      key={track.trackId}
+                                      onClick={() => handleSelectNewSongInPlaceLocal(index, track)}
+                                      className="search-results__item"
+                                      disabled={isPending}
+                                    >
+                                      <img
+                                        src={track.artworkUrl}
+                                        alt={track.title}
+                                        className="search-results__artwork"
+                                        style={{ width: '32px', height: '32px' }}
+                                      />
+                                      <div className="search-results__info">
+                                        <span className="search-results__title" style={{ fontSize: '12px' }}>{track.title}</span>
+                                        <span className="search-results__artist" style={{ fontSize: '11px' }}>{track.artist}</span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="form-row" style={{ gap: '8px' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '12px' }}>開始</label>
+                              <input
+                                type="text"
+                                value={item.startTime}
+                                onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
+                                placeholder="mm:ss"
+                                className="form-input form-input--sm"
+                                disabled={isPending}
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '12px' }}>終了</label>
+                              <input
+                                type="text"
+                                value={item.endTime}
+                                onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
+                                placeholder="mm:ss"
+                                className="form-input form-input--sm"
+                                disabled={isPending}
+                              />
+                            </div>
+                            <div style={{ alignSelf: 'flex-end', flex: 1 }}>
+                              <button
+                                onClick={() => handleSaveSongLocal(index)}
+                                disabled={isPending}
+                                className="btn btn--primary btn--full btn--sm"
+                                style={{ height: '36px' }}
+                              >
+                                <Save size={14} />
+                                保存
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!item.isEditing && (
+                        <div className="edit-songs__time-info" style={{ paddingLeft: '40px', marginLeft: '24px', paddingBottom: '12px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {formatTime(item.song.start_sec ?? 0)} - {formatTime(item.song.end_sec ?? 0)}
+                          </span>
+                          <span className="edit-songs__duration" style={{ fontSize: '11px', marginLeft: '8px' }}>
+                            ({formatTime((item.song.end_sec ?? 0) - (item.song.start_sec ?? 0))})
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
 
                 {/* アーカイブページへのリンク */}
                 {video && (
-                  <div className="registered-songs__footer">
+                  <div className="registered-songs__footer" style={{ padding: '16px', borderTop: 'none' }}>
                     <Link
                       href={`/videos/${video.video_id}`}
-                      className="btn btn--secondary"
+                      className="btn btn--secondary btn--full"
+                      onClick={(e) => handleNavigationClick(e, `/videos/${video.video_id}`)}
                     >
                       アーカイブページで確認する →
                     </Link>
@@ -404,6 +868,41 @@ export default function NewSongClient() {
           )}
         </>
       )}
+
     </div>
+
+    {/* カスタム確認モーダル */}
+    {isModalOpen && (
+      <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body">
+            <div className="modal-icon">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="modal-title">変更を破棄しますか？</h3>
+            <p className="modal-text">
+              未保存の変更があります。このまま移動すると、編集した内容は失われます。
+            </p>
+          </div>
+          <div className="modal-footer">
+            <button 
+              className="btn btn--secondary" 
+              onClick={() => setIsModalOpen(false)}
+              disabled={isPending}
+            >
+              キャンセル
+            </button>
+            <button 
+              className="btn btn--warning" 
+              onClick={handleConfirmNavigation}
+              disabled={isPending}
+            >
+              移動する
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
