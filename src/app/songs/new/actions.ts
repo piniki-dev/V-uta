@@ -1,9 +1,9 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { extractVideoId, fetchVideoMetadata } from '@/lib/youtube';
+import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata } from '@/lib/youtube';
 import { searchTracks as itunesSearch, getHighResArtwork } from '@/lib/itunes';
-import type { Video, Song, YouTubeVideoMetadata } from '@/types';
+import type { Video, Song, YouTubeVideoMetadata, Channel, Production } from '@/types';
 
 // ===== 時刻ユーティリティ =====
 
@@ -71,7 +71,12 @@ export async function searchSongAction(
  */
 export async function fetchVideoPreview(
   url: string
-): Promise<ActionResult<{ metadata: YouTubeVideoMetadata; existingSongs: Song[] }>> {
+): Promise<ActionResult<{ 
+  metadata: YouTubeVideoMetadata; 
+  existingSongs: Song[];
+  isChannelRegistered: boolean;
+  channelData?: any;
+}>> {
   const videoId = extractVideoId(url);
   if (!videoId) {
     return { success: false, error: '有効な YouTube URL を入力してください' };
@@ -85,6 +90,21 @@ export async function fetchVideoPreview(
 
     const supabase = await createClient();
     
+    // チャンネルが登録済みかチェック
+    const { data: channelRecord } = await supabase
+      .from('channels')
+      .select('id, vtuber_id')
+      .eq('yt_channel_id', metadata.channelId)
+      .single();
+
+    let isChannelRegistered = !!channelRecord;
+    let channelData = null;
+
+    if (!isChannelRegistered) {
+      // 未登録ならチャンネル情報を追加取得
+      channelData = await fetchChannelMetadata(metadata.channelId);
+    }
+
     // DB に動画が登録済みかチェック
     const { data: videoData } = await supabase
       .from('videos')
@@ -108,10 +128,115 @@ export async function fetchVideoPreview(
 
     return { 
       success: true, 
-      data: { metadata, existingSongs } 
+      data: { 
+        metadata, 
+        existingSongs,
+        isChannelRegistered,
+        channelData
+      } 
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : 'データの取得に失敗しました';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * 事務所一覧を取得する
+ */
+export async function getProductions(): Promise<ActionResult<Production[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('productions')
+    .select('*')
+    .order('name');
+  
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+/**
+ * VTuber とチャンネルを一括で登録する
+ */
+export async function registerVtuberAndChannel(params: {
+  vtuberName: string;
+  gender: string;
+  vtuberLink?: string;
+  productionId?: number;
+  newProductionName?: string;
+  channelData: {
+    ytChannelId: string;
+    name: string;
+    handle: string;
+    description: string;
+    image: string;
+  };
+}): Promise<ActionResult<{ vtuberId: number; channelId: number }>> {
+  const supabase = await createClient();
+
+  try {
+    let productionId = params.productionId;
+
+    // 新規事務所の登録
+    if (!productionId && params.newProductionName) {
+      console.log('Registering new production:', params.newProductionName);
+      const { data: newProd, error: prodErr } = await supabase
+        .from('productions')
+        .insert({ name: params.newProductionName })
+        .select('id')
+        .single();
+      
+      if (prodErr) {
+        console.error('Production insert error:', prodErr);
+        throw prodErr;
+      }
+      productionId = newProd.id;
+      console.log('Production registered with ID:', productionId);
+    }
+
+    // VTuber の登録
+    console.log('Registering vtuber:', params.vtuberName);
+    const { data: vtuber, error: vtErr } = await supabase
+      .from('vtubers')
+      .insert({
+        name: params.vtuberName,
+        gender: params.gender,
+        link: params.vtuberLink,
+        production_id: productionId || null,
+      })
+      .select('id')
+      .single();
+    
+    if (vtErr) {
+      console.error('VTuber insert error:', vtErr);
+      throw vtErr;
+    }
+    console.log('VTuber registered with ID:', vtuber.id);
+
+    // チャンネルの登録
+    console.log('Registering channel:', params.channelData.name);
+    const { data: channel, error: chanErr } = await supabase
+      .from('channels')
+      .insert({
+        yt_channel_id: params.channelData.ytChannelId,
+        name: params.channelData.name,
+        handle: params.channelData.handle,
+        description: params.channelData.description,
+        image: params.channelData.image,
+        vtuber_id: vtuber.id,
+      })
+      .select('id')
+      .single();
+    
+    if (chanErr) {
+      console.error('Channel insert error:', chanErr);
+      throw chanErr;
+    }
+    console.log('Channel registered with ID:', channel.id);
+
+    return { success: true, data: { vtuberId: vtuber.id, channelId: channel.id } };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '登録に失敗しました';
     return { success: false, error: message };
   }
 }
