@@ -64,3 +64,78 @@ export async function fetchVideoMetadata(
     publishedAt: snippet.publishedAt,
   };
 }
+
+/**
+ * テキストからURLを抽出し、X (Twitter) のリンクを優先的に取得する
+ */
+export function extractLinksFromText(text: string): string | null {
+  if (!text) return null;
+
+  // URL 抽出用の正規表現
+  const urlRegex = /https?:\/\/[^\s\r\n]+/g;
+  const matches = text.match(urlRegex);
+  if (!matches) return null;
+
+  // 重複排除
+  const urls = Array.from(new Set(matches));
+
+  // X / Twitter のパターンのみを抽出
+  const xPatterns = [
+    /twitter\.com\/([a-zA-Z0-9_]+)$/,
+    /twitter\.com\/([a-zA-Z0-9_]+)\?/,
+    /x\.com\/([a-zA-Z0-9_]+)$/,
+    /x\.com\/([a-zA-Z0-9_]+)\?/,
+  ];
+
+  for (const pattern of xPatterns) {
+    const found = urls.find(url => pattern.test(url));
+    if (found) return found;
+  }
+
+  return null;
+}
+
+/**
+ * YouTube Data API v3 でチャンネル詳細情報を取得する
+ */
+export async function fetchChannelMetadata(
+  channelId: string
+): Promise<{
+  ytChannelId: string;
+  name: string;
+  handle: string;
+  description: string;
+  image: string;
+  officialLink?: string;
+} | null> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    throw new Error('YOUTUBE_API_KEY が設定されていません');
+  }
+
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${apiKey}`;
+
+  const res = await fetch(url, { next: { revalidate: 86400 } });
+  if (!res.ok) {
+    throw new Error(`YouTube API エラー: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+
+  if (!data.items || data.items.length === 0) {
+    return null;
+  }
+
+  const snippet = data.items[0].snippet;
+  const description = snippet.description || '';
+  const officialLink = extractLinksFromText(description);
+
+  return {
+    ytChannelId: channelId,
+    name: snippet.title,
+    handle: snippet.customUrl || '',
+    description,
+    image: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || '',
+    officialLink: officialLink || undefined,
+  };
+}

@@ -1,14 +1,50 @@
 // ===== データベースモデル =====
 
+export interface Production {
+  id: number;
+  name: string;
+  link: string | null;
+  created_at: string;
+}
+
+export interface Vtuber {
+  id: number;
+  name: string;
+  gender: '男性' | '女性' | 'その他' | '不明' | null;
+  link: string | null;
+  production_id: number | null;
+  created_at: string;
+  productions?: Production;
+}
+
+export interface Channel {
+  id: number;
+  yt_channel_id: string;
+  name: string;
+  handle: string | null;
+  description: string | null;
+  image: string | null;
+  vtuber_id: number | null;
+  created_at: string;
+  vtubers?: Vtuber;
+}
+
 export interface Video {
   id: number;
   video_id: string;
   title: string;
-  channel_id: string | null;
-  channel_name: string | null;
+  channel_id: string | null; // YouTube ID (移行用)
+  channel_name: string | null; // 移行用
   thumbnail_url: string | null;
   published_at: string | null;
   created_at: string;
+  // 新規追加
+  channel_record_id: number | null;
+  description: string | null;
+  thumbnail: string | null;
+  duration: string | null;
+  is_stream: boolean;
+  channels?: Channel;
 }
 
 export interface MasterSong {

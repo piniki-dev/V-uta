@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition, useCallback, useEffect, useRef, useMemo } from 'react';
-import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive } from './actions';
+import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from './actions';
 import type { ITunesSearchResult } from './actions';
-import type { YouTubeVideoMetadata, Video, Song } from '@/types';
+import type { YouTubeVideoMetadata, Video, Song, Production } from '@/types';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
-import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
 import { updateSong, deleteSong, updateSongMaster, searchSongForEdit } from '@/app/videos/[videoId]/edit/actions';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -75,6 +75,18 @@ export default function NewSongClient() {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
+
+  // VTuber登録モーダル
+  const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
+  const [productions, setProductions] = useState<Production[]>([]);
+  const [vtuberForm, setVtuberForm] = useState({
+    name: '',
+    gender: '不明' as any,
+    link: '',
+    productionId: '',
+    newProductionName: '',
+  });
+  const [channelDataForReg, setChannelDataForReg] = useState<any>(null);
 
   // 変更があるかどうか
   const hasChanges = useMemo(() => {
@@ -150,15 +162,66 @@ export default function NewSongClient() {
       setAllSongs(convertedSongs);
 
       if (result.data.existingSongs.length > 0) {
-        setSuccess('登録済みのアーカイブを取得しました。変更を加えて「一括保存」できます。');
+        setSuccess('登録済みのアーカイブを取得しました。変更を加えられます。');
       }
 
-      // videos テーブルに登録（冪等）
+      // チャンネル未登録の場合はモーダルを表示
+      if (!result.data.isChannelRegistered && result.data.channelData) {
+        setChannelDataForReg(result.data.channelData);
+        setVtuberForm(prev => ({ 
+          ...prev, 
+          name: result.data.channelData.name,
+          link: result.data.channelData.officialLink || ''
+        }));
+        
+        // 事務所一覧を取得してモーダルを開く
+        const prods = await getProductions();
+        if (prods.success) {
+          setProductions(prods.data);
+        }
+        setIsVtuberModalOpen(true);
+        // ここで一旦止める（動画登録はVTuber登録後）
+        return;
+      }
+
+      // 登録済みなら動画登録（冪等）
       const videoResult = await registerVideo(result.data.metadata);
       if (videoResult.success) {
         setVideo(videoResult.data);
       }
       setStep(2);
+    });
+  };
+
+  const handleRegisterVtuber = async () => {
+    if (!channelDataForReg) return;
+    setError('');
+    startTransition(async () => {
+      const result = await registerVtuberAndChannel({
+        vtuberName: vtuberForm.name,
+        gender: vtuberForm.gender,
+        vtuberLink: vtuberForm.link,
+        productionId: (vtuberForm.productionId && vtuberForm.productionId !== 'new') ? Number(vtuberForm.productionId) : undefined,
+        newProductionName: vtuberForm.productionId === 'new' ? vtuberForm.newProductionName : undefined,
+        channelData: channelDataForReg,
+      });
+
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+
+      setIsVtuberModalOpen(false);
+      setSuccess(`${vtuberForm.name} さんとチャンネルを登録しました！`);
+      
+      // 改めて動画を登録
+      if (metadata) {
+        const videoResult = await registerVideo(metadata);
+        if (videoResult.success) {
+          setVideo(videoResult.data);
+        }
+        setStep(2);
+      }
     });
   };
 
@@ -870,6 +933,116 @@ export default function NewSongClient() {
       )}
 
     </div>
+
+    {/* VTuber登録モーダル */}
+    {isVtuberModalOpen && (
+      <div className="modal-overlay">
+        <div className="modal-container" style={{ maxWidth: '500px' }}>
+          <div className="modal-body" style={{ alignItems: 'flex-start', textAlign: 'left' }}>
+            <div className="modal-icon" style={{ alignSelf: 'center' }}>
+              <UserPlus size={32} />
+            </div>
+            <h3 className="modal-title" style={{ alignSelf: 'center' }}>VTuber情報を登録</h3>
+            <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
+              このチャンネルは未登録です。VTuber情報を入力してください。
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">VTuber名 <span className="form-required">*</span></label>
+                <input
+                  type="text"
+                  value={vtuberForm.name}
+                  onChange={e => setVtuberForm(p => ({ ...p, name: e.target.value }))}
+                  className="form-input"
+                  placeholder="例: 博衣こより"
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">性別</label>
+                  <select
+                    value={vtuberForm.gender}
+                    onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as any }))}
+                    className="form-input"
+                  >
+                    <option value="女性">女性</option>
+                    <option value="男性">男性</option>
+                    <option value="その他">その他</option>
+                    <option value="不明">不明</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">所属事務所</label>
+                  <select
+                    value={vtuberForm.productionId}
+                    onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
+                    className="form-input"
+                  >
+                    <option value="">(選択なし / 個人勢)</option>
+                    {productions.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                    <option value="new">+ 新規作成...</option>
+                  </select>
+                </div>
+              </div>
+
+              {vtuberForm.productionId === 'new' && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">新規事務所名</label>
+                  <div className="form-input-group">
+                    <Building2 size={18} className="form-input-icon" />
+                    <input
+                      type="text"
+                      value={vtuberForm.newProductionName}
+                      onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
+                      className="form-input"
+                      placeholder="事務所名を入力"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">X (Twitter) リンク</label>
+                <input
+                  type="text"
+                  value={vtuberForm.link}
+                  onChange={e => setVtuberForm(p => ({ ...p, link: e.target.value }))}
+                  className="form-input"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {channelDataForReg?.image && (
+                  <img src={channelDataForReg.image} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="" />
+                )}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600 }}>紐付けられるチャンネル</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{channelDataForReg?.name}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn--secondary" onClick={() => {
+              setIsVtuberModalOpen(false);
+              setStep(1);
+            }} disabled={isPending}>キャンセル</button>
+            <button 
+              className="btn btn--primary" 
+              onClick={handleRegisterVtuber}
+              disabled={isPending || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
+            >
+              {isPending ? '登録中...' : '登録して進む'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* カスタム確認モーダル */}
     {isModalOpen && (
