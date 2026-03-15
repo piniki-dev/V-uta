@@ -265,6 +265,13 @@ export async function registerVideo(
     return { success: true, data: existing as Video };
   }
 
+  // チャンネルの内部 ID を取得
+  const { data: channelRecord } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('yt_channel_id', metadata.channelId)
+    .single();
+
   const { data, error } = await supabase
     .from('videos')
     .insert({
@@ -274,6 +281,7 @@ export async function registerVideo(
       channel_name: metadata.channelName,
       thumbnail_url: metadata.thumbnailUrl,
       published_at: metadata.publishedAt,
+      channel_record_id: channelRecord?.id || null,
     })
     .select()
     .single();
@@ -467,4 +475,86 @@ export async function registerFullArchive(input: {
     const message = e instanceof Error ? e.message : '一括登録に失敗しました';
     return { success: false, error: message };
   }
+}
+
+/**
+ * チャンネル詳細と紐付く動画・曲リストを取得する (ID またはハンドルに対応)
+ */
+export async function getChannelWithVideos(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
+  console.log('getChannelWithVideos called with identifier:', identifier);
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('channels')
+    .select(`
+      *,
+      vtuber:vtubers (
+        *,
+        production:productions (*)
+      )
+    `);
+
+  if (typeof identifier === 'string' && identifier.startsWith('@')) {
+    // ハンドルで検索 (大文字小文字を区別しない)
+    query = query.ilike('handle', identifier);
+  } else {
+    // ID で検索
+    query = query.eq('id', Number(identifier));
+  }
+
+  const { data: channel, error: chanErr } = await query.single();
+
+  if (chanErr || !channel) {
+    // ハンドルで不一致の場合、@ を取って再試行
+    if (typeof identifier === 'string' && identifier.startsWith('@')) {
+      const { data: retryChannel } = await supabase
+        .from('channels')
+        .select(`
+          *,
+          vtuber:vtubers (
+            *,
+            production:productions (*)
+          )
+        `)
+        .eq('handle', identifier.substring(1))
+        .single();
+      
+      if (retryChannel) {
+        return fetchVideosForChannel(retryChannel, supabase);
+      }
+    }
+    return { success: false, error: 'チャンネルが見つかりませんでした' };
+  }
+
+  return fetchVideosForChannel(channel, supabase);
+}
+
+/**
+ * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする
+ */
+async function fetchVideosForChannel(channel: any, supabase: any): Promise<ActionResult<any>> {
+  const { data: videos, error: vidErr } = await supabase
+    .from('videos')
+    .select(`
+      *,
+      songs (
+        *,
+        master_songs (*)
+      )
+    `)
+    .eq('channel_record_id', channel.id)
+    .order('published_at', { ascending: false });
+
+  if (vidErr) {
+    console.error('fetchVideosForChannel error:', vidErr);
+    return { success: false, error: '動画リストの取得に失敗しました' };
+  }
+
+  return {
+    success: true,
+    data: {
+      ...channel,
+      videos: (videos || []) as (Video & { songs: Song[] })[]
+    }
+  };
 }

@@ -26,7 +26,7 @@ export default async function Header() {
           </Link>
         </nav>
 
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="header__actions">
           <AuthButton user={user} />
         </div>
       </div>

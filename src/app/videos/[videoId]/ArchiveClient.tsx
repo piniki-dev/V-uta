@@ -69,7 +69,13 @@ export default function ArchiveClient({ video, songs }: Props) {
 
         <div className="archive-header__info">
           <h1 className="archive-header__title">{video.title}</h1>
-          <p className="archive-header__channel">{video.channel_name}</p>
+          {video.channels ? (
+            <Link href={`/channels/${video.channels.handle || video.channels.id}`} className="archive-header__channel hover:underline">
+              {video.channels.name}
+            </Link>
+          ) : (
+            <p className="archive-header__channel">{video.channel_name}</p>
+          )}
           <div className="archive-header__meta">
             <span>{songs.length} 曲</span>
             <a

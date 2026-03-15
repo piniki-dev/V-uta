@@ -13,7 +13,7 @@ export default async function ArchivePage({ params }: Props) {
   // 動画取得 (video_id = YouTube ID)
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('*')
+    .select('*, channels(*)')
     .eq('video_id', videoId)
     .single();
 
