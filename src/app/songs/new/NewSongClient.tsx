@@ -4,7 +4,7 @@ import { useState, useTransition, useCallback, useEffect, useRef, useMemo } from
 import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from './actions';
 import type { ITunesSearchResult } from './actions';
 import type { YouTubeVideoMetadata, Video, Song, Production } from '@/types';
-import { formatTime } from '@/lib/utils';
+import { formatTime, parseTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
 import { updateSong, deleteSong, updateSongMaster, searchSongForEdit } from '@/app/videos/[videoId]/edit/actions';
@@ -12,22 +12,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
 
-/** 秒数を "mm:ss" に変換 */
-function secondsToMmSs(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-/** "mm:ss" を秒数に変換 */
-function parseTimeToSeconds(time: string): number | null {
-  const match = time.match(/^(\d{1,3}):(\d{2})$/);
-  if (!match) return null;
-  const minutes = parseInt(match[1], 10);
-  const seconds = parseInt(match[2], 10);
-  if (seconds >= 60) return null;
-  return minutes * 60 + seconds;
-}
 
 interface EditableSong {
   id?: number; // DB 登録済みの場合は ID がある
@@ -41,6 +25,7 @@ interface EditableSong {
   isSearching: boolean;
   isPersisted: boolean; // DB 保存済みか
   isDeleted?: boolean; // 削除フラグ（一括保存時に反映）
+  isConfirmed: boolean; // ユーザーが曲名・アーティスト名を確定させたか
 }
 
 export default function NewSongClient() {
@@ -58,6 +43,9 @@ export default function NewSongClient() {
   const [searchResults, setSearchResults] = useState<ITunesSearchResult[]>([]);
   const [selectedSong, setSelectedSong] = useState<ITunesSearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isManualInput, setIsManualInput] = useState(false);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualArtist, setManualArtist] = useState('');
 
   // Step 3: 区間入力
   const [startTime, setStartTime] = useState('');
@@ -76,6 +64,19 @@ export default function NewSongClient() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    type: 'warning' | 'danger' | 'info';
+  }>({
+    title: '変更を破棄しますか？',
+    message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
+    confirmText: '移動する',
+    cancelText: 'キャンセル',
+    type: 'warning',
+  });
   const [step, setStep] = useState<1 | 2>(1);
 
   // VTuber登録モーダル
@@ -123,7 +124,13 @@ export default function NewSongClient() {
     if (index < 0 || index >= batchArchives.length) return;
 
     if (hasChanges) {
-      setPendingUrl(null); // URL遷移ではないことを示す
+      setModalConfig({
+        title: '変更を破棄しますか？',
+        message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
+        confirmText: '移動する',
+        cancelText: 'キャンセル',
+        type: 'warning',
+      });
       setOnConfirmAction(() => () => {
         const item = batchArchives[index];
         setCurrentBatchIndex(index);
@@ -155,12 +162,10 @@ export default function NewSongClient() {
     if (!selectedSong || !startTime) {
       return;
     }
-    const match = startTime.match(/^(\d{1,3}):(\d{2})$/);
-    if (!match) return;
-    const startSec = parseInt(match[1]) * 60 + parseInt(match[2]);
-    if (isNaN(startSec) || selectedSong.durationSec <= 0) return;
+    const startSec = parseTime(startTime);
+    if (!startSec || isNaN(startSec) || selectedSong.durationSec <= 0) return;
     const endSec = startSec + selectedSong.durationSec;
-    setEndTime(secondsToMmSs(endSec));
+    setEndTime(formatTime(endSec));
   }, [startTime, selectedSong]);
 
   const handleFetchVideo = (manualUrl?: string, batchIndex?: number, batchData?: BatchArchive[]) => {
@@ -180,14 +185,15 @@ export default function NewSongClient() {
       const convertedSongs: EditableSong[] = result.data.existingSongs.map(song => ({
         id: song.id,
         song,
-        startTime: secondsToMmSs(song.start_sec),
-        endTime: secondsToMmSs(song.end_sec),
+        startTime: formatTime(song.start_sec),
+        endTime: formatTime(song.end_sec),
         isEditing: false,
         isChangingSong: false,
         searchQuery: '',
         searchResults: [],
         isSearching: false,
         isPersisted: true,
+        isConfirmed: true,
       }));
 
       // バッチモードの場合、既存曲とインポートデータをマージ
@@ -200,7 +206,7 @@ export default function NewSongClient() {
         
         const newBatchSongs: EditableSong[] = batchItem.songs
           .filter(s => {
-            const startSec = parseTimeToSeconds(s.startTime);
+            const startSec = parseTime(s.startTime);
             if (startSec === null) return true;
             // ±5秒以内の重複を回避
             return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 5);
@@ -208,8 +214,8 @@ export default function NewSongClient() {
           .map((s: ImportedSong) => ({
             song: {
               master_songs: { title: s.title, artist: s.artist },
-              start_sec: parseTimeToSeconds(s.startTime) || 0,
-              end_sec: s.endTime ? parseTimeToSeconds(s.endTime) || 0 : 0
+              start_sec: parseTime(s.startTime) || 0,
+              end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
             } as any,
             startTime: s.startTime,
             endTime: s.endTime || '',
@@ -219,6 +225,7 @@ export default function NewSongClient() {
             searchResults: [],
             isSearching: false,
             isPersisted: false,
+            isConfirmed: false,
           }));
           setAllSongs([...convertedSongs, ...newBatchSongs]);
         } else {
@@ -342,26 +349,47 @@ export default function NewSongClient() {
     });
   };
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = async () => {
     if (!searchQuery.trim()) return;
+    setIsManualInput(false);
     setIsSearching(true);
     setError('');
     try {
       const result = await searchSongAction(searchQuery);
       if (result.success) {
         setSearchResults(result.data);
+        if (result.data.length === 0) {
+          setError('楽曲が見つかりませんでした。手動で入力してください。');
+          setIsManualInput(true);
+          setManualTitle(searchQuery);
+        }
       } else {
         setError(result.error);
       }
     } finally {
       setIsSearching(false);
     }
-  }, [searchQuery]);
+  };
 
   const handleSelectSong = (track: ITunesSearchResult) => {
     setSelectedSong(track);
     setSearchResults([]);
     setSearchQuery('');
+    setIsManualInput(false);
+  };
+
+  const handleManualSongSelect = () => {
+    const manualSong: ITunesSearchResult = {
+      trackId: -1,
+      title: manualTitle || searchQuery || '不明な楽曲',
+      artist: manualArtist || '不明なアーティスト',
+      albumName: '手動登録',
+      artworkUrl: '', // 空文字にしておく（プレースホルダー表示用）
+      durationSec: 0,
+    };
+    setSelectedSong(manualSong);
+    setIsManualInput(false);
+    setSearchResults([]);
   };
 
   const handleClearSelection = () => {
@@ -372,8 +400,8 @@ export default function NewSongClient() {
     setError('');
     if (!selectedSong || !startTime || !endTime) return;
 
-    const startSec = parseTimeToSeconds(startTime);
-    const endSec = parseTimeToSeconds(endTime);
+    const startSec = parseTime(startTime);
+    const endSec = parseTime(endTime);
     if (startSec === null || endSec === null || startSec >= endSec) {
       setError('時間の形式が正しくないか、終了時間が開始時間以前です');
       return;
@@ -384,8 +412,8 @@ export default function NewSongClient() {
         master_songs: {
           title: selectedSong.title,
           artist: selectedSong.artist,
-          artwork_url: selectedSong.artworkUrl,
-          itunes_id: String(selectedSong.trackId),
+          artwork_url: selectedSong.artworkUrl || '',
+          itunes_id: selectedSong.trackId === -1 ? null : String(selectedSong.trackId),
           duration_sec: selectedSong.durationSec,
         } as any,
         start_sec: startSec,
@@ -399,6 +427,7 @@ export default function NewSongClient() {
       searchResults: [],
       isSearching: false,
       isPersisted: false,
+      isConfirmed: true,
     };
 
     setAllSongs((prev) => [...prev, newSong]);
@@ -415,45 +444,68 @@ export default function NewSongClient() {
     setError('');
     setSuccess('');
 
-    startTransition(async () => {
-      const songsToRegister = allSongs.map(item => ({
-        id: item.id,
-        songTitle: item.song.master_songs?.title || '',
-        songArtist: item.song.master_songs?.artist || '',
-        artworkUrl: item.song.master_songs?.artwork_url || '',
-        itunesId: item.song.master_songs?.itunes_id || '',
-        durationSec: item.song.master_songs?.duration_sec || 0,
-        startSec: parseTimeToSeconds(item.startTime) || 0,
-        endSec: parseTimeToSeconds(item.endTime) || 0,
-        isDeleted: item.isDeleted,
-      }));
+    // 未確定（未検索・未入力）の楽曲があるかチェック
+    const unconfirmedCount = allSongs.filter(s => !s.isConfirmed && !s.isDeleted).length;
 
-      const result = await registerFullArchive({
-        videoMetadata: metadata,
-        songs: songsToRegister,
+    const performSave = async () => {
+      startTransition(async () => {
+        // 確定済みのものだけを対象にする
+        const songsToRegister = allSongs
+          .filter(s => s.isConfirmed || s.id) // 既存曲(idあり)または確定済み
+          .map(item => ({
+            id: item.id,
+            songTitle: item.song.master_songs?.title || '',
+            songArtist: item.song.master_songs?.artist || '',
+            artworkUrl: item.song.master_songs?.artwork_url || '',
+            itunesId: item.song.master_songs?.itunes_id || '',
+            durationSec: item.song.master_songs?.duration_sec || 0,
+            startSec: parseTime(item.startTime) || 0,
+            endSec: parseTime(item.endTime) || 0,
+            isDeleted: item.isDeleted,
+          }));
+
+        const result = await registerFullArchive({
+          videoMetadata: metadata,
+          songs: songsToRegister,
+        });
+
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        setVideo(result.data.video);
+        const updatedSongs: EditableSong[] = result.data.songs.map(song => ({
+          id: song.id,
+          song,
+          startTime: formatTime(song.start_sec),
+          endTime: formatTime(song.end_sec),
+          isEditing: false,
+          isChangingSong: false,
+          searchQuery: '',
+          searchResults: [],
+          isSearching: false,
+          isPersisted: true,
+          isConfirmed: true,
+        }));
+        setAllSongs(updatedSongs);
+        setSuccess('全ての変更を保存しました！' + (unconfirmedCount > 0 ? `（未確定の ${unconfirmedCount} 曲はスキップされました）` : ''));
       });
+    };
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      setVideo(result.data.video);
-      const updatedSongs: EditableSong[] = result.data.songs.map(song => ({
-        id: song.id,
-        song,
-        startTime: secondsToMmSs(song.start_sec),
-        endTime: secondsToMmSs(song.end_sec),
-        isEditing: false,
-        isChangingSong: false,
-        searchQuery: '',
-        searchResults: [],
-        isSearching: false,
-        isPersisted: true,
-      }));
-      setAllSongs(updatedSongs);
-      setSuccess('全ての変更を保存しました！');
-    });
+    if (unconfirmedCount > 0) {
+      setModalConfig({
+        title: '未確定の楽曲があります',
+        message: `まだ曲が確定されていないデータが ${unconfirmedCount} 件あります。これらは保存されませんが、よろしいですか？`,
+        confirmText: '保存する',
+        cancelText: '戻って確認',
+        type: 'warning',
+      });
+      setOnConfirmAction(() => performSave);
+      setIsModalOpen(true);
+    } else {
+      performSave();
+    }
   };
 
   // ----- インライン編集機能 -----
@@ -482,8 +534,8 @@ export default function NewSongClient() {
 
   const handleSaveSongLocal = (index: number) => {
     const item = allSongs[index];
-    const s = parseTimeToSeconds(item.startTime);
-    const e = parseTimeToSeconds(item.endTime);
+    const s = parseTime(item.startTime);
+    const e = parseTime(item.endTime);
     
     if (s === null || e === null || s >= e) {
       setError('時間の形式が正しくありません');
@@ -562,9 +614,9 @@ export default function NewSongClient() {
     setAllSongs((prev) =>
       prev.map((it, i) => {
         if (i === index) {
-          const startSec = parseTimeToSeconds(it.startTime);
+          const startSec = parseTime(it.startTime);
           const newEndTime = (!it.endTime && startSec !== null && track.durationSec > 0) 
-            ? secondsToMmSs(startSec + track.durationSec)
+            ? formatTime(startSec + track.durationSec)
             : it.endTime;
 
           return {
@@ -574,12 +626,13 @@ export default function NewSongClient() {
               master_songs: {
                 title: track.title,
                 artist: track.artist,
-                artwork_url: track.artworkUrl,
-                itunes_id: String(track.trackId),
+                artwork_url: track.artworkUrl || '',
+                itunes_id: track.trackId === -1 ? null : String(track.trackId),
                 duration_sec: track.durationSec,
               } as any
             },
             endTime: newEndTime,
+            isConfirmed: true,
             isChangingSong: false,
             isPersisted: false,
             searchQuery: '',
@@ -624,19 +677,18 @@ export default function NewSongClient() {
   const handleNavigationClick = (e: React.MouseEvent, targetUrl: string) => {
     if (hasChanges) {
       e.preventDefault();
-      setPendingUrl(targetUrl);
-      setOnConfirmAction(null);
+      setModalConfig({
+        title: '変更を破棄しますか？',
+        message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
+        confirmText: '移動する',
+        cancelText: 'キャンセル',
+        type: 'warning',
+      });
+      setOnConfirmAction(() => () => {
+        router.push(targetUrl);
+      });
       setIsModalOpen(true);
     }
-  };
-
-  const handleConfirmNavigation = () => {
-    if (onConfirmAction) {
-      onConfirmAction();
-    } else if (pendingUrl) {
-      router.push(pendingUrl);
-    }
-    setIsModalOpen(false);
   };
 
   return (
@@ -819,11 +871,17 @@ export default function NewSongClient() {
                 {/* 選択済みの曲カード */}
                 {selectedSong ? (
                   <div className="selected-song">
-                    <img
-                      src={selectedSong.artworkUrl}
-                      alt={selectedSong.title}
-                      className="selected-song__artwork"
-                    />
+                    {selectedSong.artworkUrl ? (
+                      <img
+                        src={selectedSong.artworkUrl}
+                        alt={selectedSong.title}
+                        className="selected-song__artwork"
+                      />
+                    ) : (
+                      <div className="selected-song__artwork" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>
+                        <Music size={24} style={{ margin: 'auto' }} />
+                      </div>
+                    )}
                     <div className="selected-song__info">
                       <span className="selected-song__title">{selectedSong.title}</span>
                       <span className="selected-song__artist">{selectedSong.artist}</span>
@@ -871,7 +929,7 @@ export default function NewSongClient() {
 
                     {/* 検索結果一覧 */}
                     {searchResults.length > 0 && (
-                      <div className="search-results">
+                      <div className="search-results" style={{ marginBottom: '1rem' }}>
                         {searchResults.map((track) => (
                           <button
                             key={track.trackId}
@@ -892,6 +950,54 @@ export default function NewSongClient() {
                         ))}
                       </div>
                     )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                      <button
+                        onClick={() => {
+                          setIsManualInput(!isManualInput);
+                          if (!isManualInput) {
+                            setManualTitle(searchQuery);
+                            setSearchResults([]);
+                          }
+                        }}
+                        className="btn btn--sm"
+                        style={{ fontSize: '12px' }}
+                      >
+                        {isManualInput ? '検索に戻る' : '見つからないので手動で入力する'}
+                      </button>
+                    </div>
+
+                    {isManualInput && (
+                      <div className="manual-input-form" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                        <div className="form-group">
+                          <label className="form-label">曲名</label>
+                          <input
+                            type="text"
+                            value={manualTitle}
+                            onChange={(e) => setManualTitle(e.target.value)}
+                            className="form-input"
+                            placeholder="曲名を入力"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">アーティスト</label>
+                          <input
+                            type="text"
+                            value={manualArtist}
+                            onChange={(e) => setManualArtist(e.target.value)}
+                            className="form-input"
+                            placeholder="アーティスト名を入力"
+                          />
+                        </div>
+                        <button
+                          onClick={handleManualSongSelect}
+                          className="btn btn--secondary btn--full btn--sm"
+                          disabled={!manualTitle.trim()}
+                        >
+                          この内容で決定
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -906,7 +1012,7 @@ export default function NewSongClient() {
                       type="text"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      placeholder="mm:ss"
+                      placeholder="m:ss or h:mm:ss"
                       className="form-input"
                       disabled={isPending}
                     />
@@ -921,7 +1027,7 @@ export default function NewSongClient() {
                       type="text"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      placeholder="mm:ss"
+                      placeholder="m:ss or h:mm:ss"
                       className="form-input"
                       disabled={isPending}
                     />
@@ -981,13 +1087,17 @@ export default function NewSongClient() {
                     >
                       <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
                         <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
-                        {item.song.master_songs?.artwork_url && (
+                        {item.song.master_songs?.artwork_url ? (
                           <img
                             src={item.song.master_songs.artwork_url}
                             alt={item.song.master_songs.title}
                             className="edit-songs__artwork"
                             style={{ width: '40px', height: '40px' }}
                           />
+                        ) : (
+                          <div className="edit-songs__artwork" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                            <Music size={20} style={{ margin: 'auto' }} />
+                          </div>
                         )}
                         <div className="edit-songs__info" style={{ flex: 1 }}>
                           <span className="edit-songs__title" style={{ fontSize: '14px' }}>
@@ -1081,6 +1191,27 @@ export default function NewSongClient() {
                                   ))}
                                 </div>
                               )}
+                              {item.searchResults.length === 0 && item.searchQuery && !item.isSearching && (
+                                <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                                  <button
+                                    onClick={() => {
+                                      const manualResult: ITunesSearchResult = {
+                                        trackId: -1,
+                                        title: item.searchQuery,
+                                        artist: '不明なアーティスト',
+                                        albumName: '手動登録',
+                                        artworkUrl: '',
+                                        durationSec: 0,
+                                      };
+                                      handleSelectNewSongInPlaceLocal(index, manualResult);
+                                    }}
+                                    className="btn btn--sm"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    手動で登録する
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -1091,7 +1222,7 @@ export default function NewSongClient() {
                                 type="text"
                                 value={item.startTime}
                                 onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
-                                placeholder="mm:ss"
+                                placeholder="m:ss or h:mm:ss"
                                 className="form-input form-input--sm"
                                 disabled={isPending}
                               />
@@ -1102,7 +1233,7 @@ export default function NewSongClient() {
                                 type="text"
                                 value={item.endTime}
                                 onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
-                                placeholder="mm:ss"
+                                placeholder="m:ss or h:mm:ss"
                                 className="form-input form-input--sm"
                                 disabled={isPending}
                               />
@@ -1273,12 +1404,14 @@ export default function NewSongClient() {
       <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
         <div className="modal-container" onClick={(e) => e.stopPropagation()}>
           <div className="modal-body">
-            <div className="modal-icon">
-              <AlertCircle size={32} />
+            <div className={`modal-icon modal-icon--${modalConfig.type}`}>
+               {modalConfig.type === 'warning' && <AlertCircle size={32} />}
+               {modalConfig.type === 'danger' && <Trash2 size={32} />}
+               {modalConfig.type === 'info' && <Info size={32} />}
             </div>
-            <h3 className="modal-title">変更を破棄しますか？</h3>
+            <h3 className="modal-title">{modalConfig.title}</h3>
             <p className="modal-text">
-              未保存の変更があります。このまま移動すると、編集した内容は失われます。
+              {modalConfig.message}
             </p>
           </div>
           <div className="modal-footer">
@@ -1287,14 +1420,17 @@ export default function NewSongClient() {
               onClick={() => setIsModalOpen(false)}
               disabled={isPending}
             >
-              キャンセル
+              {modalConfig.cancelText}
             </button>
             <button 
-              className="btn btn--warning" 
-              onClick={handleConfirmNavigation}
+              className={`btn ${modalConfig.type === 'warning' ? 'btn--warning' : modalConfig.type === 'danger' ? 'btn--danger' : 'btn--primary'}`} 
+              onClick={() => {
+                setIsModalOpen(false);
+                if (onConfirmAction) onConfirmAction();
+              }}
               disabled={isPending}
             >
-              移動する
+              {modalConfig.confirmText}
             </button>
           </div>
         </div>
