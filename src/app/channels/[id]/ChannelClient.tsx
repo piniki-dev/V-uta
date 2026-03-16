@@ -67,7 +67,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] pt-16">
+    <div className="min-h-screen bg-[#0f0f0f]">
       {/* チャンネルヘッダー */}
       <motion.section
         className="relative overflow-hidden border-b border-white/[0.06] py-10"
