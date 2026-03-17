@@ -25,6 +25,20 @@ export function extractVideoId(url: string): string | null {
 }
 
 /**
+ * YouTube の ISO 8601 形式の期間（PT1H2M10Sなど）を秒数に変換する
+ */
+export function parseISO8601Duration(duration: string): number {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  
+  const hours = parseInt(match[1] || '0', 10);
+  const minutes = parseInt(match[2] || '0', 10);
+  const seconds = parseInt(match[3] || '0', 10);
+  
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+/**
  * YouTube Data API v3 で動画メタデータを取得する
  */
 export async function fetchVideoMetadata(
@@ -35,7 +49,7 @@ export async function fetchVideoMetadata(
     throw new Error('YOUTUBE_API_KEY が設定されていません');
   }
 
-  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails,contentDetails&id=${videoId}&key=${apiKey}`;
 
   const res = await fetch(url, { next: { revalidate: 3600 } });
   if (!res.ok) {
@@ -48,7 +62,13 @@ export async function fetchVideoMetadata(
     return null;
   }
 
-  const snippet = data.items[0].snippet;
+  const item = data.items[0];
+  const snippet = item.snippet;
+  const contentDetails = item.contentDetails;
+  const liveDetails = item.liveStreamingDetails;
+  // プレミア公開の場合、liveStreamingDetails を持つが actualStartTime が publishedAt と同じになる性質を利用
+  const isStream = !!liveDetails && snippet.publishedAt !== liveDetails.actualStartTime;
+  const duration = contentDetails?.duration ? parseISO8601Duration(contentDetails.duration) : 0;
 
   return {
     videoId,
@@ -62,6 +82,9 @@ export async function fetchVideoMetadata(
       snippet.thumbnails?.default?.url ||
       '',
     publishedAt: snippet.publishedAt,
+    isStream,
+    duration,
+    description: snippet.description || '',
   };
 }
 

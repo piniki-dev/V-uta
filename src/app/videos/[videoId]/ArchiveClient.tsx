@@ -20,7 +20,7 @@ function toPlayerSong(song: Song, video: Video): PlayerSong {
     videoId: video.video_id,
     startSec: song.start_sec,
     endSec: song.end_sec,
-    channelName: video.channel_name,
+    channelName: video.channels?.name || '(不明)',
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
   };
@@ -74,7 +74,7 @@ export default function ArchiveClient({ video, songs }: Props) {
               {video.channels.name}
             </Link>
           ) : (
-            <p className="archive-header__channel">{video.channel_name}</p>
+            <p className="archive-header__channel">(不明)</p>
           )}
           <div className="archive-header__meta">
             <span>{songs.length} 曲</span>

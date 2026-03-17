@@ -7,7 +7,7 @@ export default async function HomePage() {
 
   const { data: videos } = await supabase
     .from('videos')
-    .select('*')
+    .select('*, channels(*)')
     .order('created_at', { ascending: false })
     .limit(12);
 
@@ -57,7 +57,7 @@ export default async function HomePage() {
                 )}
                 <div className="video-card__info">
                   <h3 className="video-card__title">{video.title}</h3>
-                  <p className="video-card__channel">{video.channel_name}</p>
+                  <p className="video-card__channel">{video.channels?.name || '(不明)'}</p>
                 </div>
               </Link>
             ))}

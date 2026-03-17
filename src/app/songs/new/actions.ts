@@ -173,6 +173,10 @@ export async function registerVtuberAndChannel(params: {
   };
 }): Promise<ActionResult<{ vtuberId: number; channelId: number }>> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'ログインが必要です' };
+  }
 
   try {
     let productionId = params.productionId;
@@ -182,7 +186,7 @@ export async function registerVtuberAndChannel(params: {
       console.log('Registering new production:', params.newProductionName);
       const { data: newProd, error: prodErr } = await supabase
         .from('productions')
-        .insert({ name: params.newProductionName })
+        .insert({ name: params.newProductionName, created_by: user.id })
         .select('id')
         .single();
       
@@ -203,6 +207,7 @@ export async function registerVtuberAndChannel(params: {
         gender: params.gender,
         link: params.vtuberLink,
         production_id: productionId || null,
+        created_by: user.id,
       })
       .select('id')
       .single();
@@ -224,6 +229,7 @@ export async function registerVtuberAndChannel(params: {
         description: params.channelData.description,
         image: params.channelData.image,
         vtuber_id: vtuber.id,
+        created_by: user.id,
       })
       .select('id')
       .single();
@@ -272,16 +278,23 @@ export async function registerVideo(
     .eq('yt_channel_id', metadata.channelId)
     .single();
 
+  if (!channelRecord) {
+    return { success: false, error: `チャンネル (ID: ${metadata.channelId}) が登録されていません。先にチャンネルを登録してください。` };
+  }
+
   const { data, error } = await supabase
     .from('videos')
     .insert({
       video_id: metadata.videoId,
       title: metadata.title,
-      channel_id: metadata.channelId,
-      channel_name: metadata.channelName,
+      description: metadata.description,
       thumbnail_url: metadata.thumbnailUrl,
       published_at: metadata.publishedAt,
-      channel_record_id: channelRecord?.id || null,
+      duration: metadata.duration,
+      channel_record_id: channelRecord.id,
+      is_stream: metadata.isStream,
+      is_publish: true,
+      created_by: user.id,
     })
     .select()
     .single();
@@ -335,26 +348,37 @@ export async function registerSong(input: {
     return { success: false, error: 'ログインが必要です' };
   }
 
-  // master_songs に UPSERT（曲名+アーティスト名で名寄せ）
-  const { data: masterSong, error: masterError } = await supabase
+  // master_songs の存在チェック（曲名+アーティスト名で名寄せ）
+  let { data: masterSong, error: masterSearchError } = await supabase
     .from('master_songs')
-    .upsert(
-      {
+    .select()
+    .eq('title', input.songTitle.trim())
+    .eq('artist', input.songArtist.trim() || 'Unknown')
+    .maybeSingle();
+
+  if (masterSearchError) {
+    return { success: false, error: `原曲情報の検索に失敗しました: ${masterSearchError.message}` };
+  }
+
+  // 存在しない場合は新規登録
+  if (!masterSong) {
+    const { data: newMaster, error: masterInsertError } = await supabase
+      .from('master_songs')
+      .insert({
         title: input.songTitle.trim(),
         artist: input.songArtist.trim() || 'Unknown',
         artwork_url: input.artworkUrl || null,
         itunes_id: input.itunesId ? String(input.itunesId) : null,
         duration_sec: input.durationSec > 0 ? input.durationSec : null,
-      },
-      {
-        onConflict: 'title,artist',
-      }
-    )
-    .select()
-    .single();
+        created_by: user.id,
+      })
+      .select()
+      .single();
 
-  if (masterError) {
-    return { success: false, error: `原曲情報の登録に失敗しました: ${masterError.message}` };
+    if (masterInsertError) {
+      return { success: false, error: `原曲情報の登録に失敗しました: ${masterInsertError.message}` };
+    }
+    masterSong = newMaster;
   }
 
   // songs テーブルに INSERT
@@ -420,23 +444,34 @@ export async function registerFullArchive(input: {
         continue;
       }
 
-      // master_songs の処理
-      const { data: masterSong, error: masterError } = await supabase
+      // master_songs の存在チェック
+      let { data: masterSong, error: masterSearchError } = await supabase
         .from('master_songs')
-        .upsert(
-          {
+        .select()
+        .eq('title', songInput.songTitle.trim())
+        .eq('artist', songInput.songArtist.trim() || 'Unknown')
+        .maybeSingle();
+      
+      if (masterSearchError) throw new Error(`原曲情報の検索に失敗しました: ${masterSearchError.message}`);
+
+      if (!masterSong) {
+        // 存在しない場合は新規登録
+        const { data: newMaster, error: masterInsertError } = await supabase
+          .from('master_songs')
+          .insert({
             title: songInput.songTitle.trim(),
             artist: songInput.songArtist.trim() || 'Unknown',
             artwork_url: songInput.artworkUrl || null,
             itunes_id: songInput.itunesId ? String(songInput.itunesId) : null,
             duration_sec: songInput.durationSec > 0 ? songInput.durationSec : null,
-          },
-          { onConflict: 'title,artist' }
-        )
-        .select()
-        .single();
-      
-      if (masterError) throw new Error(`原曲情報の登録に失敗しました: ${masterError.message}`);
+            created_by: user.id,
+          })
+          .select()
+          .single();
+        
+        if (masterInsertError) throw new Error(`原曲情報の登録に失敗しました: ${masterInsertError.message}`);
+        masterSong = newMaster;
+      }
 
       if (songInput.id) {
         // 更新
@@ -446,6 +481,7 @@ export async function registerFullArchive(input: {
             master_song_id: masterSong.id,
             start_sec: songInput.startSec,
             end_sec: songInput.endSec,
+            updated_by: user.id,
           })
           .eq('id', songInput.id)
           .select('*, master_songs(*)')

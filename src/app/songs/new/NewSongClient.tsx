@@ -97,9 +97,19 @@ export default function NewSongClient() {
     const hasUnsavedInList = allSongs.some(s => !s.isPersisted || s.isDeleted || s.isEditing);
     // 2. 現在新規追加フォームに入力中のものがある場合
     const hasActiveInput = !!selectedSong || !!startTime.trim() || !!endTime.trim() || !!searchQuery.trim();
-    
+
     return hasUnsavedInList || hasActiveInput;
   }, [allSongs, selectedSong, startTime, endTime, searchQuery]);
+
+  const [isCoverVideo, setIsCoverVideo] = useState(false);
+
+  // 歌ってみた動画モードの自動入力
+  useEffect(() => {
+    if (isCoverVideo && metadata) {
+      setStartTime('0:00');
+      setEndTime(formatTime(metadata.duration));
+    }
+  }, [isCoverVideo, metadata]);
 
   // 一括モード用
   const [batchArchives, setBatchArchives] = useState<BatchArchive[]>([]);
@@ -181,7 +191,8 @@ export default function NewSongClient() {
         return;
       }
       setMetadata(result.data.metadata);
-      
+      setIsCoverVideo(!result.data.metadata.isStream); // 自動判定
+
       const convertedSongs: EditableSong[] = result.data.existingSongs.map(song => ({
         id: song.id,
         song,
@@ -200,33 +211,33 @@ export default function NewSongClient() {
       if (batchIndex !== undefined && batchIndex !== -1) {
         const dataToUse = batchData || batchArchives;
         const batchItem = dataToUse[batchIndex];
-        
+
         if (batchItem) {
           const existingStartTimes = result.data.existingSongs.map(s => s.start_sec);
-        
-        const newBatchSongs: EditableSong[] = batchItem.songs
-          .filter(s => {
-            const startSec = parseTime(s.startTime);
-            if (startSec === null) return true;
-            // ±5秒以内の重複を回避
-            return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 5);
-          })
-          .map((s: ImportedSong) => ({
-            song: {
-              master_songs: { title: s.title, artist: s.artist },
-              start_sec: parseTime(s.startTime) || 0,
-              end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
-            } as any,
-            startTime: s.startTime,
-            endTime: s.endTime || '',
-            isEditing: false,
-            isChangingSong: true, // 曲検索を表示
-            searchQuery: s.title,
-            searchResults: [],
-            isSearching: false,
-            isPersisted: false,
-            isConfirmed: false,
-          }));
+
+          const newBatchSongs: EditableSong[] = batchItem.songs
+            .filter(s => {
+              const startSec = parseTime(s.startTime);
+              if (startSec === null) return true;
+              // ±5秒以内の重複を回避
+              return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 5);
+            })
+            .map((s: ImportedSong) => ({
+              song: {
+                master_songs: { title: s.title, artist: s.artist },
+                start_sec: parseTime(s.startTime) || 0,
+                end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
+              } as any,
+              startTime: s.startTime,
+              endTime: s.endTime || '',
+              isEditing: false,
+              isChangingSong: true, // 曲検索を表示
+              searchQuery: s.title,
+              searchResults: [],
+              isSearching: false,
+              isPersisted: false,
+              isConfirmed: false,
+            }));
           setAllSongs([...convertedSongs, ...newBatchSongs]);
         } else {
           setAllSongs(convertedSongs);
@@ -242,12 +253,12 @@ export default function NewSongClient() {
       // チャンネル未登録の場合はモーダルを表示
       if (!result.data.isChannelRegistered && result.data.channelData) {
         setChannelDataForReg(result.data.channelData);
-        setVtuberForm(prev => ({ 
-          ...prev, 
+        setVtuberForm(prev => ({
+          ...prev,
           name: result.data.channelData.name,
           link: result.data.channelData.officialLink || ''
         }));
-        
+
         // 事務所一覧を取得してモーダルを開く
         const prods = await getProductions();
         if (prods.success) {
@@ -336,8 +347,8 @@ export default function NewSongClient() {
       }
 
       setIsVtuberModalOpen(false);
-      setSuccess(`${vtuberForm.name} さんとチャンネルを登録しました！`);
-      
+      setSuccess(`${vtuberForm.name} さんのチャンネルを登録しました！`);
+
       // 改めて動画を登録
       if (metadata) {
         const videoResult = await registerVideo(metadata);
@@ -400,6 +411,11 @@ export default function NewSongClient() {
     setError('');
     if (!selectedSong || !startTime || !endTime) return;
 
+    if (isCoverVideo && allSongs.filter(s => !s.isDeleted).length > 0) {
+      setError('歌ってみた動画モードでは、1つの動画に1曲しか登録できません。');
+      return;
+    }
+
     const startSec = parseTime(startTime);
     const endSec = parseTime(endTime);
     if (startSec === null || endSec === null || startSec >= endSec) {
@@ -432,7 +448,7 @@ export default function NewSongClient() {
 
     setAllSongs((prev) => [...prev, newSong]);
     setSuccess(`「${selectedSong.title}」をリストに追加しました。最後に一括保存してください。`);
-    
+
     setSelectedSong(null);
     setSearchQuery('');
     setStartTime('');
@@ -515,12 +531,12 @@ export default function NewSongClient() {
       prev.map((item, i) =>
         i === index
           ? {
-              ...item,
-              isEditing: !item.isEditing,
-              isChangingSong: false,
-              searchQuery: '',
-              searchResults: [],
-            }
+            ...item,
+            isEditing: !item.isEditing,
+            isChangingSong: false,
+            searchQuery: '',
+            searchResults: [],
+          }
           : item
       )
     );
@@ -536,7 +552,7 @@ export default function NewSongClient() {
     const item = allSongs[index];
     const s = parseTime(item.startTime);
     const e = parseTime(item.endTime);
-    
+
     if (s === null || e === null || s >= e) {
       setError('時間の形式が正しくありません');
       return;
@@ -544,13 +560,13 @@ export default function NewSongClient() {
 
     setAllSongs((prev) =>
       prev.map((it, i) =>
-        i === index 
-          ? { 
-              ...it, 
-              song: { ...it.song, start_sec: s, end_sec: e }, 
-              isEditing: false,
-              isPersisted: false 
-            } 
+        i === index
+          ? {
+            ...it,
+            song: { ...it.song, start_sec: s, end_sec: e },
+            isEditing: false,
+            isPersisted: false
+          }
           : it
       )
     );
@@ -591,10 +607,10 @@ export default function NewSongClient() {
       prev.map((it, i) =>
         i === index
           ? {
-              ...it,
-              isSearching: false,
-              searchResults: result.success ? result.data : [],
-            }
+            ...it,
+            isSearching: false,
+            searchResults: result.success ? result.data : [],
+          }
           : it
       )
     );
@@ -615,7 +631,7 @@ export default function NewSongClient() {
       prev.map((it, i) => {
         if (i === index) {
           const startSec = parseTime(it.startTime);
-          const newEndTime = (!it.endTime && startSec !== null && track.durationSec > 0) 
+          const newEndTime = (!it.endTime && startSec !== null && track.durationSec > 0)
             ? formatTime(startSec + track.durationSec)
             : it.endTime;
 
@@ -693,749 +709,771 @@ export default function NewSongClient() {
 
   return (
     <>
-    <div className="page-container">
-      <h1 className="page-title">歌を登録</h1>
-      <p className="page-description">
-        YouTube 歌枠アーカイブから曲の区間を登録します。
-        1つのアーカイブから複数の曲を連続で登録できます。
-      </p>
+      <div className="page-container">
+        <h1 className="page-title">歌を登録</h1>
+        <p className="page-description">
+          YouTube 歌枠アーカイブから曲の区間を登録します。
+          1つのアーカイブから複数の曲を連続で登録できます。
+        </p>
 
-      {/* エラー・成功メッセージ */}
-      {error && <div className="alert alert--error">{error}</div>}
-      {success && <div className="alert alert--success">{success}</div>}
+        {/* エラー・成功メッセージ */}
+        {error && <div className="alert alert--error">{error}</div>}
+        {success && <div className="alert alert--success">{success}</div>}
 
-      {/* バッチナビゲーション */}
-      {isBatchMode && (
-        <div className="card mb-6" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--accent-subtle)' }}>
-          <div className="card__body py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-[13px] font-bold text-white px-3 py-1 bg-[#ff4e8e]/20 rounded-full border border-[#ff4e8e]/30">
-                一括登録モード
-              </span>
-              <span className="text-[13px] text-[#999] font-medium">
-                アーカイブ {currentBatchIndex + 1} / {batchArchives.length}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="btn btn--secondary btn--sm flex items-center gap-1"
-                disabled={currentBatchIndex === 0}
-                onClick={() => navigateToBatchItem(currentBatchIndex - 1)}
-              >
-                <ChevronLeft size={16} /> 前のアーカイブ
-              </button>
-              <button
-                className="btn btn--secondary btn--sm flex items-center gap-1"
-                disabled={currentBatchIndex === batchArchives.length - 1}
-                onClick={() => navigateToBatchItem(currentBatchIndex + 1)}
-              >
-                次のアーカイブ <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 1: YouTube URL 入力 */}
-      <div className={`card ${step === 1 ? '' : 'card--completed'}`}>
-        <div className="card__header">
-          <span className="card__step">1</span>
-          <h2 className="card__title">アーカイブ URL</h2>
-          {step === 2 && (
-            <button onClick={handleReset} className="card__change-btn">
-              変更
-            </button>
-          )}
-        </div>
-
-        {step === 1 ? (
-          <div className="card__body">
-            <div className="form-group">
-              <label htmlFor="youtube-url" className="form-label">
-                YouTube URL
-              </label>
-              <div className="form-input-group">
-                <input
-                  id="youtube-url"
-                  type="text"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="form-input"
-                  disabled={isPending}
-                />
+        {/* バッチナビゲーション */}
+        {isBatchMode && (
+          <div className="card mb-6" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--accent-subtle)' }}>
+            <div className="card__body py-3 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-[13px] font-bold text-white px-3 py-1 bg-[#ff4e8e]/20 rounded-full border border-[#ff4e8e]/30">
+                  一括登録モード
+                </span>
+                <span className="text-[13px] text-[#999] font-medium">
+                  アーカイブ {currentBatchIndex + 1} / {batchArchives.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleFetchVideo()}
-                  disabled={isPending || !url.trim()}
-                  className="btn btn--primary"
+                  className="btn btn--secondary btn--sm flex items-center gap-1"
+                  disabled={currentBatchIndex === 0}
+                  onClick={() => navigateToBatchItem(currentBatchIndex - 1)}
                 >
-                  {isPending ? '取得中...' : '取得'}
+                  <ChevronLeft size={16} /> 前のアーカイブ
+                </button>
+                <button
+                  className="btn btn--secondary btn--sm flex items-center gap-1"
+                  disabled={currentBatchIndex === batchArchives.length - 1}
+                  onClick={() => navigateToBatchItem(currentBatchIndex + 1)}
+                >
+                  次のアーカイブ <ChevronRight size={16} />
                 </button>
               </div>
             </div>
-
-            <div className="mt-6 pt-6 border-t border-white/[0.06]">
-              <h3 className="text-[14px] font-bold text-[#e0e0e0] mb-4 flex items-center gap-2">
-                <Table size={16} className="text-[#ff4e8e]" /> 一括インポート
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
-                      <FileUp size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> CSVから追加
-                    </span>
-                    <input
-                      type="file"
-                      id="csv-upload"
-                      accept=".csv"
-                      onChange={handleCsvUpload}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="csv-upload"
-                      className="text-[11px] font-bold text-[#ff4e8e] cursor-pointer hover:underline"
-                    >
-                      ファイルを選択
-                    </label>
-                  </div>
-                  <p className="text-[11px] text-[#666] leading-relaxed">
-                    アーカイブURL, 曲名, アーティスト, 開始, 終了の順に含まれるCSVを読み込みます。
-                  </p>
-                </div>
-
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
-                      <Table size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> Googleスプレッドシートから追加
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={gsUrl}
-                      onChange={(e) => setGsUrl(e.target.value)}
-                      placeholder="共有用リンクを入力"
-                      className="form-input text-[11px] py-1.5 h-auto"
-                    />
-                    <button
-                      onClick={handleGsImport}
-                      disabled={isPending || !gsUrl.trim()}
-                      className="btn btn--primary btn--sm text-[11px] px-3 whitespace-nowrap"
-                    >
-                      取得
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-        ) : (
-          metadata && (
+        )}
+
+        {/* Step 1: YouTube URL 入力 */}
+        <div className={`card ${step === 1 ? '' : 'card--completed'}`}>
+          <div className="card__header">
+            <span className="card__step">1</span>
+            <h2 className="card__title">アーカイブ URL</h2>
+            {step === 2 && (
+              <button onClick={handleReset} className="card__change-btn">
+                変更
+              </button>
+            )}
+          </div>
+
+          {step === 1 ? (
             <div className="card__body">
-              <div className="video-preview">
-                {metadata.thumbnailUrl && (
-                  <img
-                    src={metadata.thumbnailUrl}
-                    alt={metadata.title}
-                    className="video-preview__thumbnail"
+              <div className="form-group">
+                <label htmlFor="youtube-url" className="form-label">
+                  YouTube URL
+                </label>
+                <div className="form-input-group">
+                  <input
+                    id="youtube-url"
+                    type="text"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="form-input"
+                    disabled={isPending}
                   />
-                )}
-                <div className="video-preview__info">
-                  <p className="video-preview__title">{metadata.title}</p>
-                  <p className="video-preview__channel">{metadata.channelName}</p>
+                  <button
+                    onClick={() => handleFetchVideo()}
+                    disabled={isPending || !url.trim()}
+                    className="btn btn--primary"
+                  >
+                    {isPending ? '取得中...' : '取得'}
+                  </button>
                 </div>
               </div>
-            </div>
-          )
-        )}
-      </div>
 
-      {/* Step 2: 曲検索 + 区間入力 */}
-      {step === 2 && (
-        <>
-          {/* 一括モード以外の場合のみ通常の検索フォームを表示 */}
-          {!isBatchMode && (
-            <div className="card">
-              <div className="card__header">
-                <span className="card__step">2</span>
-                <h2 className="card__title">曲を検索</h2>
-                {allSongs.length > 0 && (
-                  <span className="card__badge">
-                    {allSongs.length} 曲登録済み
-                  </span>
-                )}
-              </div>
+              <div className="mt-6 pt-6 border-t border-white/[0.06]">
+                <h3 className="text-[14px] font-bold text-[#e0e0e0] mb-4 flex items-center gap-2">
+                  <Table size={16} className="text-[#ff4e8e]" /> 一括インポート
+                </h3>
 
-              <div className="card__body">
-                {/* 選択済みの曲カード */}
-                {selectedSong ? (
-                  <div className="selected-song">
-                    {selectedSong.artworkUrl ? (
-                      <img
-                        src={selectedSong.artworkUrl}
-                        alt={selectedSong.title}
-                        className="selected-song__artwork"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
+                        <FileUp size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> CSVから追加
+                      </span>
+                      <input
+                        type="file"
+                        id="csv-upload"
+                        accept=".csv"
+                        onChange={handleCsvUpload}
+                        className="hidden"
                       />
-                    ) : (
-                      <div className="selected-song__artwork" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>
-                        <Music size={24} style={{ margin: 'auto' }} />
-                      </div>
-                    )}
-                    <div className="selected-song__info">
-                      <span className="selected-song__title">{selectedSong.title}</span>
-                      <span className="selected-song__artist">{selectedSong.artist}</span>
-                    </div>
-                    <button
-                      onClick={handleClearSelection}
-                      className="selected-song__clear"
-                      title="選択を解除"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {/* 検索バー */}
-                    <div className="form-group">
-                      <label htmlFor="song-search" className="form-label">
-                        曲名で検索 <span className="form-required">*</span>
-                      </label>
-                      <div className="form-input-group">
-                        <input
-                          id="song-search"
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleSearch();
-                            }
-                          }}
-                          placeholder="例: 夜に駆ける"
-                          className="form-input"
-                          disabled={isSearching}
-                        />
-                        <button
-                          onClick={handleSearch}
-                          disabled={isSearching || !searchQuery.trim()}
-                          className="btn btn--primary"
-                        >
-                          {isSearching ? '検索中...' : <Search size={18} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 検索結果一覧 */}
-                    {searchResults.length > 0 && (
-                      <div className="search-results" style={{ marginBottom: '1rem' }}>
-                        {searchResults.map((track) => (
-                          <button
-                            key={track.trackId}
-                            onClick={() => handleSelectSong(track)}
-                            className="search-results__item"
-                          >
-                            <img
-                              src={track.artworkUrl}
-                              alt={track.title}
-                              className="search-results__artwork"
-                            />
-                            <div className="search-results__info">
-                              <span className="search-results__title">{track.title}</span>
-                              <span className="search-results__artist">{track.artist}</span>
-                            </div>
-                            <Music size={16} className="search-results__icon" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                      <button
-                        onClick={() => {
-                          setIsManualInput(!isManualInput);
-                          if (!isManualInput) {
-                            setManualTitle(searchQuery);
-                            setSearchResults([]);
-                          }
-                        }}
-                        className="btn btn--sm"
-                        style={{ fontSize: '12px' }}
+                      <label
+                        htmlFor="csv-upload"
+                        className="text-[11px] font-bold text-[#ff4e8e] cursor-pointer hover:underline"
                       >
-                        {isManualInput ? '検索に戻る' : '見つからないので手動で入力する'}
+                        ファイルを選択
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-[#666] leading-relaxed">
+                      アーカイブURL, 曲名, アーティスト, 開始, 終了の順に含まれるCSVを読み込みます。
+                    </p>
+                  </div>
+
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
+                        <Table size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> Googleスプレッドシートから追加
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={gsUrl}
+                        onChange={(e) => setGsUrl(e.target.value)}
+                        placeholder="共有用リンクを入力"
+                        className="form-input text-[11px] py-1.5 h-auto"
+                      />
+                      <button
+                        onClick={handleGsImport}
+                        disabled={isPending || !gsUrl.trim()}
+                        className="btn btn--primary btn--sm text-[11px] px-3 whitespace-nowrap"
+                      >
+                        取得
                       </button>
                     </div>
-
-                    {isManualInput && (
-                      <div className="manual-input-form" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                        <div className="form-group">
-                          <label className="form-label">曲名</label>
-                          <input
-                            type="text"
-                            value={manualTitle}
-                            onChange={(e) => setManualTitle(e.target.value)}
-                            className="form-input"
-                            placeholder="曲名を入力"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">アーティスト</label>
-                          <input
-                            type="text"
-                            value={manualArtist}
-                            onChange={(e) => setManualArtist(e.target.value)}
-                            className="form-input"
-                            placeholder="アーティスト名を入力"
-                          />
-                        </div>
-                        <button
-                          onClick={handleManualSongSelect}
-                          className="btn btn--secondary btn--full btn--sm"
-                          disabled={!manualTitle.trim()}
-                        >
-                          この内容で決定
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* 区間入力 */}
-                <div className="form-row" style={{ marginTop: '1rem' }}>
-                  <div className="form-group">
-                    <label htmlFor="start-time" className="form-label">
-                      開始時間 <span className="form-required">*</span>
-                    </label>
-                    <input
-                      id="start-time"
-                      type="text"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      placeholder="m:ss or h:mm:ss"
-                      className="form-input"
-                      disabled={isPending}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="end-time" className="form-label">
-                      終了時間 <span className="form-required">*</span>
-                    </label>
-                    <input
-                      id="end-time"
-                      type="text"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      placeholder="m:ss or h:mm:ss"
-                      className="form-input"
-                      disabled={isPending}
-                    />
                   </div>
                 </div>
-
-                <button
-                  onClick={handleRegisterSong}
-                  disabled={isPending || !selectedSong || !startTime || !endTime}
-                  className="btn btn--primary btn--full"
-                >
-                  {isPending ? '登録中...' : 'リストに追加'}
-                </button>
               </div>
             </div>
-          )}
-
-          {/* 一括保存ボタン（フローティングまたは目立つ位置） */}
-          {hasChanges && (
-            <div className="batch-save-banner">
-              <div className="batch-save-banner__content">
-                <AlertCircle size={20} className="batch-save-banner__icon" />
-                <span className="batch-save-banner__text">未保存の変更があります</span>
+          ) : (
+            metadata && (
+              <div className="card__body">
+                <div className="video-preview">
+                  {metadata.thumbnailUrl && (
+                    <img
+                      src={metadata.thumbnailUrl}
+                      alt={metadata.title}
+                      className="video-preview__thumbnail"
+                    />
+                  )}
+                  <div className="video-preview__info">
+                    <p className="video-preview__title">{metadata.title}</p>
+                    <p className="video-preview__channel">{metadata.channelName}</p>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={handleSaveBatch}
-                disabled={isPending}
-                className="btn btn--success btn--sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-              >
-                {isPending ? '保存中...' : (
-                  <>
-                    <Save size={16} />
-                    全ての変更を保存
-                  </>
-                )}
-              </button>
-            </div>
+            )
           )}
+        </div>
 
-          {/* 統合された曲リスト */}
-          {allSongs.length > 0 && (
-            <div className="card">
-              <div className="card__header">
-                <span className="card__step">✓</span>
-                <h2 className="card__title">
-                  曲リスト（{allSongs.length} 曲）
-                </h2>
-              </div>
-              <div className="card__body" style={{ padding: 0 }}>
-                <div className="edit-songs">
-                  {allSongs.map((item, index) => (
-                    <div
-                      key={item.id || `new-${index}`}
-                      className={`edit-songs__card ${item.isEditing ? 'edit-songs__card--active' : ''} ${item.isDeleted ? 'edit-songs__card--deleted' : ''}`}
-                      style={{ border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border)', opacity: item.isDeleted ? 0.6 : 1 }}
-                    >
-                      <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
-                        <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
-                        {item.song.master_songs?.artwork_url ? (
-                          <img
-                            src={item.song.master_songs.artwork_url}
-                            alt={item.song.master_songs.title}
-                            className="edit-songs__artwork"
-                            style={{ width: '40px', height: '40px' }}
-                          />
-                        ) : (
-                          <div className="edit-songs__artwork" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', borderRadius: 'var(--radius-sm)' }}>
-                            <Music size={20} style={{ margin: 'auto' }} />
-                          </div>
-                        )}
-                        <div className="edit-songs__info" style={{ flex: 1 }}>
-                          <span className="edit-songs__title" style={{ fontSize: '14px' }}>
-                            {item.song.master_songs?.title || '(不明)'}
-                          </span>
-                          <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
-                            {item.song.master_songs?.artist || '-'}
-                          </span>
+        {/* Step 2: 曲検索 + 区間入力 */}
+        {step === 2 && (
+          <>
+            {/* 一括モード以外の場合のみ通常の検索フォームを表示 */}
+            {!isBatchMode && (
+              <div className="card">
+                <div className="card__header">
+                  <span className="card__step">2</span>
+                  <h2 className="card__title">曲を検索</h2>
+                  {allSongs.length > 0 && (
+                    <span className="card__badge">
+                      {allSongs.length} 曲登録済み
+                    </span>
+                  )}
+                </div>
+
+                <div className="card__body">
+                  {/* 歌ってみた動画トグル */}
+                  <div className="mb-6 flex items-center gap-2 bg-[#ff4e8e]/5 border border-[#ff4e8e]/10 p-3 rounded-xl">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={isCoverVideo}
+                          onChange={(e) => setIsCoverVideo(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff4e8e]"></div>
+                      </div>
+                      <span className="text-[13px] font-bold text-[#e0e0e0]">歌ってみた動画として登録</span>
+                    </label>
+                    <div className="group relative">
+                      <Info size={14} className="text-[#666]" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-[11px] text-[#999] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl leading-relaxed">
+                        歌ってみた等、1曲のみの動画に適したモードです。ONにすると開始・終了時間が自動セットされ、登録数が1曲に制限されます。
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 選択済みの曲カード */}
+                  {selectedSong ? (
+                    <div className="selected-song">
+                      {selectedSong.artworkUrl ? (
+                        <img
+                          src={selectedSong.artworkUrl}
+                          alt={selectedSong.title}
+                          className="selected-song__artwork"
+                        />
+                      ) : (
+                        <div className="selected-song__artwork" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>
+                          <Music size={24} style={{ margin: 'auto' }} />
                         </div>
-                        {!isBatchMode && (
-                          <div className="edit-songs__actions">
-                            <button
-                              onClick={() => toggleEdit(index)}
-                              className="edit-songs__btn"
-                              title={item.isEditing ? 'キャンセル' : '編集'}
-                            >
-                              {item.isEditing ? <X size={14} /> : <Pencil size={14} />}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSong(index)}
-                              className={`edit-songs__btn ${item.isDeleted ? 'edit-songs__btn--active' : 'edit-songs__btn--danger'}`}
-                              title={item.isDeleted ? '削除を取り消す' : '削除'}
-                              disabled={isPending}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )}
+                      )}
+                      <div className="selected-song__info">
+                        <span className="selected-song__title">{selectedSong.title}</span>
+                        <span className="selected-song__artist">{selectedSong.artist}</span>
+                      </div>
+                      <button
+                        onClick={handleClearSelection}
+                        className="selected-song__clear"
+                        title="選択を解除"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 検索バー */}
+                      <div className="form-group">
+                        <label htmlFor="song-search" className="form-label">
+                          曲名で検索 <span className="form-required">*</span>
+                        </label>
+                        <div className="form-input-group">
+                          <input
+                            id="song-search"
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSearch();
+                              }
+                            }}
+                            placeholder="例: 夜に駆ける"
+                            className="form-input"
+                            disabled={isSearching}
+                          />
+                          <button
+                            onClick={handleSearch}
+                            disabled={isSearching || !searchQuery.trim()}
+                            className="btn btn--primary"
+                          >
+                            {isSearching ? '検索中...' : <Search size={18} />}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* 編集フォーム（インライン） */}
-                      {(item.isEditing || isBatchMode) && (
-                        <div className="edit-songs__form" style={{ margin: '0 16px 16px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                          {!isBatchMode && (
+                      {/* 検索結果一覧 */}
+                      {searchResults.length > 0 && (
+                        <div className="search-results" style={{ marginBottom: '1rem' }}>
+                          {searchResults.map((track) => (
                             <button
-                              onClick={() => toggleChangeSong(index)}
-                              className="edit-songs__change-song-btn"
-                              style={{ marginBottom: '12px' }}
+                              key={track.trackId}
+                              onClick={() => handleSelectSong(track)}
+                              className="search-results__item"
                             >
-                              <Music size={14} />
-                              {item.isChangingSong ? '曲の変更をキャンセル' : '曲を変更する'}
+                              <img
+                                src={track.artworkUrl}
+                                alt={track.title}
+                                className="search-results__artwork"
+                              />
+                              <div className="search-results__info">
+                                <span className="search-results__title">{track.title}</span>
+                                <span className="search-results__artist">{track.artist}</span>
+                              </div>
+                              <Music size={16} className="search-results__icon" />
                             </button>
-                          )}
+                          ))}
+                        </div>
+                      )}
 
-                          {(item.isChangingSong || isBatchMode) && (
-                            <div className="edit-songs__search" style={{ marginBottom: '12px' }}>
-                              <div className="form-input-group">
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                        <button
+                          onClick={() => {
+                            setIsManualInput(!isManualInput);
+                            if (!isManualInput) {
+                              setManualTitle(searchQuery);
+                              setSearchResults([]);
+                            }
+                          }}
+                          className="btn btn--sm"
+                          style={{ fontSize: '12px' }}
+                        >
+                          {isManualInput ? '検索に戻る' : '見つからないので手動で入力する'}
+                        </button>
+                      </div>
+
+                      {isManualInput && (
+                        <div className="manual-input-form" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                          <div className="form-group">
+                            <label className="form-label">曲名</label>
+                            <input
+                              type="text"
+                              value={manualTitle}
+                              onChange={(e) => setManualTitle(e.target.value)}
+                              className="form-input"
+                              placeholder="曲名を入力"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">アーティスト</label>
+                            <input
+                              type="text"
+                              value={manualArtist}
+                              onChange={(e) => setManualArtist(e.target.value)}
+                              className="form-input"
+                              placeholder="アーティスト名を入力"
+                            />
+                          </div>
+                          <button
+                            onClick={handleManualSongSelect}
+                            className="btn btn--secondary btn--full btn--sm"
+                            disabled={!manualTitle.trim()}
+                          >
+                            この内容で決定
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* 区間入力 */}
+                  <div className="form-row" style={{ marginTop: '1rem' }}>
+                    <div className="form-group">
+                      <label htmlFor="start-time" className="form-label">
+                        開始時間 <span className="form-required">*</span>
+                      </label>
+                      <input
+                        id="start-time"
+                        type="text"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        placeholder="m:ss or h:mm:ss"
+                        className="form-input"
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="end-time" className="form-label">
+                        終了時間 <span className="form-required">*</span>
+                      </label>
+                      <input
+                        id="end-time"
+                        type="text"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        placeholder="m:ss or h:mm:ss"
+                        className="form-input"
+                        disabled={isPending}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleRegisterSong}
+                    disabled={isPending || !selectedSong || !startTime || !endTime}
+                    className="btn btn--primary btn--full"
+                  >
+                    {isPending ? '登録中...' : 'リストに追加'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 一括保存ボタン（フローティングまたは目立つ位置） */}
+            {hasChanges && (
+              <div className="batch-save-banner">
+                <div className="batch-save-banner__content">
+                  <AlertCircle size={20} className="batch-save-banner__icon" />
+                  <span className="batch-save-banner__text">未保存の変更があります</span>
+                </div>
+                <button
+                  onClick={handleSaveBatch}
+                  disabled={isPending}
+                  className="btn btn--success btn--sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  {isPending ? '保存中...' : (
+                    <>
+                      <Save size={16} />
+                      全ての変更を保存
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* 統合された曲リスト */}
+            {allSongs.length > 0 && (
+              <div className="card">
+                <div className="card__header">
+                  <span className="card__step">✓</span>
+                  <h2 className="card__title">
+                    曲リスト（{allSongs.length} 曲）
+                  </h2>
+                </div>
+                <div className="card__body" style={{ padding: 0 }}>
+                  <div className="edit-songs">
+                    {allSongs.map((item, index) => (
+                      <div
+                        key={item.id || `new-${index}`}
+                        className={`edit-songs__card ${item.isEditing ? 'edit-songs__card--active' : ''} ${item.isDeleted ? 'edit-songs__card--deleted' : ''}`}
+                        style={{ border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border)', opacity: item.isDeleted ? 0.6 : 1 }}
+                      >
+                        <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
+                          <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
+                          {item.song.master_songs?.artwork_url ? (
+                            <img
+                              src={item.song.master_songs.artwork_url}
+                              alt={item.song.master_songs.title}
+                              className="edit-songs__artwork"
+                              style={{ width: '40px', height: '40px' }}
+                            />
+                          ) : (
+                            <div className="edit-songs__artwork" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                              <Music size={20} style={{ margin: 'auto' }} />
+                            </div>
+                          )}
+                          <div className="edit-songs__info" style={{ flex: 1 }}>
+                            <span className="edit-songs__title" style={{ fontSize: '14px' }}>
+                              {item.song.master_songs?.title || '(不明)'}
+                            </span>
+                            <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
+                              {item.song.master_songs?.artist || '-'}
+                            </span>
+                          </div>
+                          {!isBatchMode && (
+                            <div className="edit-songs__actions">
+                              <button
+                                onClick={() => toggleEdit(index)}
+                                className="edit-songs__btn"
+                                title={item.isEditing ? 'キャンセル' : '編集'}
+                              >
+                                {item.isEditing ? <X size={14} /> : <Pencil size={14} />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSong(index)}
+                                className={`edit-songs__btn ${item.isDeleted ? 'edit-songs__btn--active' : 'edit-songs__btn--danger'}`}
+                                title={item.isDeleted ? '削除を取り消す' : '削除'}
+                                disabled={isPending}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 編集フォーム（インライン） */}
+                        {(item.isEditing || isBatchMode) && (
+                          <div className="edit-songs__form" style={{ margin: '0 16px 16px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                            {!isBatchMode && (
+                              <button
+                                onClick={() => toggleChangeSong(index)}
+                                className="edit-songs__change-song-btn"
+                                style={{ marginBottom: '12px' }}
+                              >
+                                <Music size={14} />
+                                {item.isChangingSong ? '曲の変更をキャンセル' : '曲を変更する'}
+                              </button>
+                            )}
+
+                            {(item.isChangingSong || isBatchMode) && (
+                              <div className="edit-songs__search" style={{ marginBottom: '12px' }}>
+                                <div className="form-input-group">
+                                  <input
+                                    type="text"
+                                    value={item.searchQuery}
+                                    onChange={(e) => updateSongSearchQuery(index, e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSearchSongForEditInPlace(index);
+                                      }
+                                    }}
+                                    placeholder="曲名で検索..."
+                                    className="form-input"
+                                    disabled={item.isSearching}
+                                  />
+                                  <button
+                                    onClick={() => handleSearchSongForEditInPlace(index)}
+                                    disabled={item.isSearching || !item.searchQuery.trim()}
+                                    className="btn btn--primary"
+                                  >
+                                    {item.isSearching ? '...' : <Search size={16} />}
+                                  </button>
+                                </div>
+
+                                {item.searchResults.length > 0 && (
+                                  <div className="search-results" style={{ marginTop: '8px' }}>
+                                    {item.searchResults.map((track) => (
+                                      <button
+                                        key={track.trackId}
+                                        onClick={() => handleSelectNewSongInPlaceLocal(index, track)}
+                                        className="search-results__item"
+                                        disabled={isPending}
+                                      >
+                                        <img
+                                          src={track.artworkUrl}
+                                          alt={track.title}
+                                          className="search-results__artwork"
+                                          style={{ width: '32px', height: '32px' }}
+                                        />
+                                        <div className="search-results__info">
+                                          <span className="search-results__title" style={{ fontSize: '12px' }}>{track.title}</span>
+                                          <span className="search-results__artist" style={{ fontSize: '11px' }}>{track.artist}</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.searchResults.length === 0 && item.searchQuery && !item.isSearching && (
+                                  <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                                    <button
+                                      onClick={() => {
+                                        const manualResult: ITunesSearchResult = {
+                                          trackId: -1,
+                                          title: item.searchQuery,
+                                          artist: '不明なアーティスト',
+                                          albumName: '手動登録',
+                                          artworkUrl: '',
+                                          durationSec: 0,
+                                        };
+                                        handleSelectNewSongInPlaceLocal(index, manualResult);
+                                      }}
+                                      className="btn btn--sm"
+                                      style={{ fontSize: '11px' }}
+                                    >
+                                      手動で登録する
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="form-row" style={{ gap: '8px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '12px' }}>開始</label>
                                 <input
                                   type="text"
-                                  value={item.searchQuery}
-                                  onChange={(e) => updateSongSearchQuery(index, e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleSearchSongForEditInPlace(index);
-                                    }
-                                  }}
-                                  placeholder="曲名で検索..."
-                                  className="form-input"
-                                  disabled={item.isSearching}
+                                  value={item.startTime}
+                                  onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
+                                  placeholder="m:ss or h:mm:ss"
+                                  className="form-input form-input--sm"
+                                  disabled={isPending}
                                 />
-                                <button
-                                  onClick={() => handleSearchSongForEditInPlace(index)}
-                                  disabled={item.isSearching || !item.searchQuery.trim()}
-                                  className="btn btn--primary"
-                                >
-                                  {item.isSearching ? '...' : <Search size={16} />}
-                                </button>
                               </div>
-
-                              {item.searchResults.length > 0 && (
-                                <div className="search-results" style={{ marginTop: '8px' }}>
-                                  {item.searchResults.map((track) => (
-                                    <button
-                                      key={track.trackId}
-                                      onClick={() => handleSelectNewSongInPlaceLocal(index, track)}
-                                      className="search-results__item"
-                                      disabled={isPending}
-                                    >
-                                      <img
-                                        src={track.artworkUrl}
-                                        alt={track.title}
-                                        className="search-results__artwork"
-                                        style={{ width: '32px', height: '32px' }}
-                                      />
-                                      <div className="search-results__info">
-                                        <span className="search-results__title" style={{ fontSize: '12px' }}>{track.title}</span>
-                                        <span className="search-results__artist" style={{ fontSize: '11px' }}>{track.artist}</span>
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              {item.searchResults.length === 0 && item.searchQuery && !item.isSearching && (
-                                <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '12px' }}>終了</label>
+                                <input
+                                  type="text"
+                                  value={item.endTime}
+                                  onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
+                                  placeholder="m:ss or h:mm:ss"
+                                  className="form-input form-input--sm"
+                                  disabled={isPending}
+                                />
+                              </div>
+                              {!isBatchMode && (
+                                <div style={{ alignSelf: 'flex-end', flex: 1 }}>
                                   <button
-                                    onClick={() => {
-                                      const manualResult: ITunesSearchResult = {
-                                        trackId: -1,
-                                        title: item.searchQuery,
-                                        artist: '不明なアーティスト',
-                                        albumName: '手動登録',
-                                        artworkUrl: '',
-                                        durationSec: 0,
-                                      };
-                                      handleSelectNewSongInPlaceLocal(index, manualResult);
-                                    }}
-                                    className="btn btn--sm"
-                                    style={{ fontSize: '11px' }}
+                                    onClick={() => handleSaveSongLocal(index)}
+                                    disabled={isPending}
+                                    className="btn btn--primary btn--full btn--sm"
+                                    style={{ height: '36px' }}
                                   >
-                                    手動で登録する
+                                    <Music size={14} />
+                                    保存
                                   </button>
                                 </div>
                               )}
                             </div>
-                          )}
-
-                          <div className="form-row" style={{ gap: '8px' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '12px' }}>開始</label>
-                              <input
-                                type="text"
-                                value={item.startTime}
-                                onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
-                                placeholder="m:ss or h:mm:ss"
-                                className="form-input form-input--sm"
-                                disabled={isPending}
-                              />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '12px' }}>終了</label>
-                              <input
-                                type="text"
-                                value={item.endTime}
-                                onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
-                                placeholder="m:ss or h:mm:ss"
-                                className="form-input form-input--sm"
-                                disabled={isPending}
-                              />
-                            </div>
-                            {!isBatchMode && (
-                              <div style={{ alignSelf: 'flex-end', flex: 1 }}>
-                                <button
-                                  onClick={() => handleSaveSongLocal(index)}
-                                  disabled={isPending}
-                                  className="btn btn--primary btn--full btn--sm"
-                                  style={{ height: '36px' }}
-                                >
-                                  <Music size={14} />
-                                  保存
-                                </button>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {!item.isEditing && (
-                        <div className="edit-songs__time-info" style={{ paddingLeft: '40px', marginLeft: '24px', paddingBottom: '12px' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            {formatTime(item.song.start_sec ?? 0)} - {formatTime(item.song.end_sec ?? 0)}
-                          </span>
-                          <span className="edit-songs__duration" style={{ fontSize: '11px', marginLeft: '8px' }}>
-                            ({formatTime((item.song.end_sec ?? 0) - (item.song.start_sec ?? 0))})
-                          </span>
-                        </div>
-                      )}
+                        {!item.isEditing && (
+                          <div className="edit-songs__time-info" style={{ paddingLeft: '40px', marginLeft: '24px', paddingBottom: '12px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              {formatTime(item.song.start_sec ?? 0)} - {formatTime(item.song.end_sec ?? 0)}
+                            </span>
+                            <span className="edit-songs__duration" style={{ fontSize: '11px', marginLeft: '8px' }}>
+                              ({formatTime((item.song.end_sec ?? 0) - (item.song.start_sec ?? 0))})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* アーカイブページへのリンク */}
+                  {video && (
+                    <div className="registered-songs__footer" style={{ padding: '16px', borderTop: 'none' }}>
+                      <Link
+                        href={`/videos/${video.video_id}`}
+                        className="btn btn--secondary btn--full"
+                        onClick={(e) => handleNavigationClick(e, `/videos/${video.video_id}`)}
+                      >
+                        アーカイブページで確認する →
+                      </Link>
                     </div>
-                  ))}
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+      </div>
+
+      {/* VTuber登録モーダル */}
+      {isVtuberModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: '500px' }}>
+            <div className="modal-body" style={{ alignItems: 'flex-start', textAlign: 'left' }}>
+              <div className="modal-icon" style={{ alignSelf: 'center' }}>
+                <UserPlus size={32} />
+              </div>
+              <h3 className="modal-title" style={{ alignSelf: 'center' }}>VTuber情報を登録</h3>
+              <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
+                このチャンネルは未登録です。VTuber情報を入力してください。
+              </p>
+
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">VTuber名 <span className="form-required">*</span></label>
+                  <input
+                    type="text"
+                    value={vtuberForm.name}
+                    onChange={e => setVtuberForm(p => ({ ...p, name: e.target.value }))}
+                    className="form-input"
+                    placeholder="例: 博衣こより"
+                  />
                 </div>
 
-                {/* アーカイブページへのリンク */}
-                {video && (
-                  <div className="registered-songs__footer" style={{ padding: '16px', borderTop: 'none' }}>
-                    <Link
-                      href={`/videos/${video.video_id}`}
-                      className="btn btn--secondary btn--full"
-                      onClick={(e) => handleNavigationClick(e, `/videos/${video.video_id}`)}
+                <div className="form-row">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">性別</label>
+                    <select
+                      value={vtuberForm.gender}
+                      onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as any }))}
+                      className="form-input"
                     >
-                      アーカイブページで確認する →
-                    </Link>
+                      <option value="女性">女性</option>
+                      <option value="男性">男性</option>
+                      <option value="その他">その他</option>
+                      <option value="不明">不明</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">所属事務所</label>
+                    <select
+                      value={vtuberForm.productionId}
+                      onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
+                      className="form-input"
+                    >
+                      <option value="">(選択なし / 個人勢)</option>
+                      {productions.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                      <option value="new">+ 新規作成...</option>
+                    </select>
+                  </div>
+                </div>
+
+                {vtuberForm.productionId === 'new' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">新規事務所名</label>
+                    <div className="form-input-group">
+                      <Building2 size={18} className="form-input-icon" />
+                      <input
+                        type="text"
+                        value={vtuberForm.newProductionName}
+                        onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
+                        className="form-input"
+                        placeholder="事務所名を入力"
+                      />
+                    </div>
                   </div>
                 )}
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">X (Twitter) リンク</label>
+                  <input
+                    type="text"
+                    value={vtuberForm.link}
+                    onChange={e => setVtuberForm(p => ({ ...p, link: e.target.value }))}
+                    className="form-input"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {channelDataForReg?.image && (
+                    <img src={channelDataForReg.image} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="" />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600 }}>紐付けられるチャンネル</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{channelDataForReg?.name}</p>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </>
+            <div className="modal-footer">
+              <button className="btn btn--secondary" onClick={() => {
+                setIsVtuberModalOpen(false);
+                setStep(1);
+              }} disabled={isPending}>キャンセル</button>
+              <button
+                className="btn btn--primary"
+                onClick={handleRegisterVtuber}
+                disabled={isPending || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
+              >
+                {isPending ? '登録中...' : '登録して進む'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-    </div>
-
-    {/* VTuber登録モーダル */}
-    {isVtuberModalOpen && (
-      <div className="modal-overlay">
-        <div className="modal-container" style={{ maxWidth: '500px' }}>
-          <div className="modal-body" style={{ alignItems: 'flex-start', textAlign: 'left' }}>
-            <div className="modal-icon" style={{ alignSelf: 'center' }}>
-              <UserPlus size={32} />
+      {/* カスタム確認モーダル */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-body">
+              <div className={`modal-icon modal-icon--${modalConfig.type}`}>
+                {modalConfig.type === 'warning' && <AlertCircle size={32} />}
+                {modalConfig.type === 'danger' && <Trash2 size={32} />}
+                {modalConfig.type === 'info' && <Info size={32} />}
+              </div>
+              <h3 className="modal-title">{modalConfig.title}</h3>
+              <p className="modal-text">
+                {modalConfig.message}
+              </p>
             </div>
-            <h3 className="modal-title" style={{ alignSelf: 'center' }}>VTuber情報を登録</h3>
-            <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
-              このチャンネルは未登録です。VTuber情報を入力してください。
-            </p>
-
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">VTuber名 <span className="form-required">*</span></label>
-                <input
-                  type="text"
-                  value={vtuberForm.name}
-                  onChange={e => setVtuberForm(p => ({ ...p, name: e.target.value }))}
-                  className="form-input"
-                  placeholder="例: 博衣こより"
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">性別</label>
-                  <select
-                    value={vtuberForm.gender}
-                    onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as any }))}
-                    className="form-input"
-                  >
-                    <option value="女性">女性</option>
-                    <option value="男性">男性</option>
-                    <option value="その他">その他</option>
-                    <option value="不明">不明</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">所属事務所</label>
-                  <select
-                    value={vtuberForm.productionId}
-                    onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
-                    className="form-input"
-                  >
-                    <option value="">(選択なし / 個人勢)</option>
-                    {productions.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                    <option value="new">+ 新規作成...</option>
-                  </select>
-                </div>
-              </div>
-
-              {vtuberForm.productionId === 'new' && (
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">新規事務所名</label>
-                  <div className="form-input-group">
-                    <Building2 size={18} className="form-input-icon" />
-                    <input
-                      type="text"
-                      value={vtuberForm.newProductionName}
-                      onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
-                      className="form-input"
-                      placeholder="事務所名を入力"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">X (Twitter) リンク</label>
-                <input
-                  type="text"
-                  value={vtuberForm.link}
-                  onChange={e => setVtuberForm(p => ({ ...p, link: e.target.value }))}
-                  className="form-input"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                {channelDataForReg?.image && (
-                  <img src={channelDataForReg.image} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="" />
-                )}
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600 }}>紐付けられるチャンネル</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{channelDataForReg?.name}</p>
-                </div>
-              </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn--secondary"
+                onClick={() => setIsModalOpen(false)}
+                disabled={isPending}
+              >
+                {modalConfig.cancelText}
+              </button>
+              <button
+                className={`btn ${modalConfig.type === 'warning' ? 'btn--warning' : modalConfig.type === 'danger' ? 'btn--danger' : 'btn--primary'}`}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  if (onConfirmAction) onConfirmAction();
+                }}
+                disabled={isPending}
+              >
+                {modalConfig.confirmText}
+              </button>
             </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn--secondary" onClick={() => {
-              setIsVtuberModalOpen(false);
-              setStep(1);
-            }} disabled={isPending}>キャンセル</button>
-            <button 
-              className="btn btn--primary" 
-              onClick={handleRegisterVtuber}
-              disabled={isPending || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
-            >
-              {isPending ? '登録中...' : '登録して進む'}
-            </button>
           </div>
         </div>
-      </div>
-    )}
-
-    {/* カスタム確認モーダル */}
-    {isModalOpen && (
-      <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-body">
-            <div className={`modal-icon modal-icon--${modalConfig.type}`}>
-               {modalConfig.type === 'warning' && <AlertCircle size={32} />}
-               {modalConfig.type === 'danger' && <Trash2 size={32} />}
-               {modalConfig.type === 'info' && <Info size={32} />}
-            </div>
-            <h3 className="modal-title">{modalConfig.title}</h3>
-            <p className="modal-text">
-              {modalConfig.message}
-            </p>
-          </div>
-          <div className="modal-footer">
-            <button 
-              className="btn btn--secondary" 
-              onClick={() => setIsModalOpen(false)}
-              disabled={isPending}
-            >
-              {modalConfig.cancelText}
-            </button>
-            <button 
-              className={`btn ${modalConfig.type === 'warning' ? 'btn--warning' : modalConfig.type === 'danger' ? 'btn--danger' : 'btn--primary'}`} 
-              onClick={() => {
-                setIsModalOpen(false);
-                if (onConfirmAction) onConfirmAction();
-              }}
-              disabled={isPending}
-            >
-              {modalConfig.confirmText}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+      )}
     </>
   );
 }

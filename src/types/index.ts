@@ -4,7 +4,10 @@ export interface Production {
   id: number;
   name: string;
   link: string | null;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface Vtuber {
@@ -13,7 +16,10 @@ export interface Vtuber {
   gender: '男性' | '女性' | 'その他' | '不明' | null;
   link: string | null;
   production_id: number | null;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
   productions?: Production;
 }
 
@@ -25,7 +31,10 @@ export interface Channel {
   description: string | null;
   image: string | null;
   vtuber_id: number | null;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
   vtubers?: Vtuber;
 }
 
@@ -33,17 +42,19 @@ export interface Video {
   id: number;
   video_id: string;
   title: string;
-  channel_id: string | null; // YouTube ID (移行用)
-  channel_name: string | null; // 移行用
   thumbnail_url: string | null;
   published_at: string | null;
-  created_at: string;
   // 新規追加
   channel_record_id: number | null;
   description: string | null;
   thumbnail: string | null;
-  duration: string | null;
+  duration: number; // 秒数
   is_stream: boolean;
+  is_publish: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
   channels?: Channel;
 }
 
@@ -53,7 +64,10 @@ export interface MasterSong {
   artist: string;
   artwork_url: string | null;
   itunes_id: string | null;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface Song {
@@ -65,6 +79,8 @@ export interface Song {
   created_by: string | null;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
   // JOINされた場合に含まれる
   master_songs?: MasterSong;
 }
@@ -110,6 +126,9 @@ export interface YouTubeVideoMetadata {
   channelName: string;
   thumbnailUrl: string;
   publishedAt: string;
+  isStream: boolean;
+  duration: number;
+  description: string;
 }
 
 // ===== フォーム =====
