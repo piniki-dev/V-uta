@@ -1,10 +1,12 @@
 'use client';
 
 import type { Video, Song, PlayerSong } from '@/types';
+import { useState } from 'react';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
-import { Pencil } from 'lucide-react';
+import { Pencil, ListPlus, MoreVertical } from 'lucide-react';
+import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
 
 interface Props {
   video: Video;
@@ -28,6 +30,7 @@ function toPlayerSong(song: Song, video: Video): PlayerSong {
 
 export default function ArchiveClient({ video, songs }: Props) {
   const { play, state } = usePlayer();
+  const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
 
   const playerSongs = songs.map((s) => toPlayerSong(s, video));
 
@@ -118,15 +121,24 @@ export default function ArchiveClient({ video, songs }: Props) {
             <span className="song-list__col-artist">アーティスト</span>
             <span className="song-list__col-time">区間</span>
             <span className="song-list__col-duration">長さ</span>
+            <span className="song-list__col-add"></span>
           </div>
 
           {songs.map((song, index) => {
             const isCurrentSong = state.currentSong?.id === song.id;
             return (
-              <button
+              <div
                 key={song.id}
                 onClick={() => handlePlaySong(song)}
-                className={`song-list__item ${isCurrentSong ? 'active' : ''}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handlePlaySong(song);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={`song-list__item ${isCurrentSong ? 'active' : ''} cursor-pointer`}
               >
                 <span className="song-list__col-num">
                   {isCurrentSong && state.isPlaying ? (
@@ -143,10 +155,27 @@ export default function ArchiveClient({ video, songs }: Props) {
                 <span className="song-list__col-duration">
                   {formatTime(song.end_sec - song.start_sec)}
                 </span>
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedSongId(song.id);
+                  }}
+                  className="song-list__col-add p-2 hover:bg-white/10 rounded-lg transition-colors text-[#666] hover:text-[#ff4e8e] relative z-10 flex items-center justify-center"
+                  title="メニュー"
+                >
+                  <MoreVertical size={18} />
+                </button>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {selectedSongId && (
+        <PlaylistAddModal
+          songId={selectedSongId}
+          onClose={() => setSelectedSongId(null)}
+        />
       )}
     </div>
   );

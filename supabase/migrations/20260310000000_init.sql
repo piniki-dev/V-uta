@@ -104,6 +104,27 @@ CREATE TABLE public.songs_history (
   changed_at timestamptz DEFAULT now()
 );
 
+-- 8. playlists (プレイリスト本体)
+CREATE TABLE public.playlists (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL,
+  description text,
+  is_public boolean DEFAULT false,
+  created_by uuid REFERENCES auth.users(id) NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_by uuid REFERENCES auth.users(id),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 9. playlist_items (プレイリスト内の楽曲)
+CREATE TABLE public.playlist_items (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  playlist_id bigint NOT NULL REFERENCES public.playlists(id) ON DELETE CASCADE,
+  song_id bigint NOT NULL REFERENCES public.songs(id) ON DELETE CASCADE,
+  position integer NOT NULL,
+  added_at timestamptz DEFAULT now()
+);
+
 -- ==========================================
 -- Functions & Triggers
 -- ==========================================
@@ -153,6 +174,8 @@ CREATE TRIGGER trigger_songs_history
   AFTER UPDATE OR DELETE ON public.songs
   FOR EACH ROW EXECUTE FUNCTION public.handle_song_history();
 
+CREATE TRIGGER trigger_playlists_updated_at BEFORE UPDATE ON public.playlists FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
 -- ==========================================
 -- RLS (Row Level Security)
 -- ==========================================
@@ -164,6 +187,8 @@ ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.master_songs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.songs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.songs_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.playlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.playlist_items ENABLE ROW LEVEL SECURITY;
 
 -- 1. productions: 参照全公開、登録はログイン要、更新削除不可
 CREATE POLICY "productions_select_all" ON public.productions FOR SELECT USING (true);
@@ -193,6 +218,31 @@ CREATE POLICY "songs_mutations_auth" ON public.songs FOR ALL USING (auth.uid() I
 CREATE POLICY "songs_history_select_auth" ON public.songs_history FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "songs_history_insert_auth" ON public.songs_history FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
+-- 8. playlists
+-- 公開プレイリストまたは自分のプレイリストを参照可能
+CREATE POLICY "playlists_select_policy" ON public.playlists FOR SELECT USING (is_public = true OR auth.uid() = created_by);
+-- 登録はログイン要
+CREATE POLICY "playlists_insert_policy" ON public.playlists FOR INSERT WITH CHECK (auth.uid() = created_by);
+-- 更新・削除は作成者のみ
+CREATE POLICY "playlists_update_policy" ON public.playlists FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "playlists_delete_policy" ON public.playlists FOR DELETE USING (auth.uid() = created_by);
+
+-- 9. playlist_items
+-- 親プレイリストが参照可能なら参照可能
+CREATE POLICY "playlist_items_select_policy" ON public.playlist_items FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.playlists 
+    WHERE id = playlist_id AND (is_public = true OR auth.uid() = created_by)
+  )
+);
+-- 作成者のみ変更可能
+CREATE POLICY "playlist_items_modify_policy" ON public.playlist_items FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.playlists 
+    WHERE id = playlist_id AND auth.uid() = created_by
+  )
+);
+
 -- ==========================================
 -- Indexes
 -- ==========================================
@@ -206,5 +256,8 @@ CREATE INDEX idx_master_songs_title ON public.master_songs(title);
 CREATE INDEX idx_songs_video_id ON public.songs(video_id);
 CREATE INDEX idx_songs_master_song_id ON public.songs(master_song_id);
 CREATE INDEX idx_songs_history_song_id ON public.songs_history(song_id);
+CREATE INDEX idx_playlists_created_by ON public.playlists(created_by);
+CREATE INDEX idx_playlist_items_playlist_id ON public.playlist_items(playlist_id);
+CREATE INDEX idx_playlist_items_song_id ON public.playlist_items(song_id);
 
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, PlusSquare } from 'lucide-react';
+import { Home, PlusSquare, ListMusic } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import AuthButton from './AuthButton';
 
@@ -19,6 +19,10 @@ export default async function Header() {
           <Link href="/" className="header__nav-link">
             <Home size={20} />
             ホーム
+          </Link>
+          <Link href="/playlists" className="header__nav-link">
+            <ListMusic size={20} />
+            プレイリスト
           </Link>
           <Link href="/songs/new" className="header__nav-link">
             <PlusSquare size={20} />

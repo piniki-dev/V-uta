@@ -90,6 +90,27 @@ export interface SongWithVideo extends Song {
   video: Video;
 }
 
+export interface Playlist {
+  id: number;
+  name: string;
+  description: string | null;
+  is_public: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  items?: PlaylistItem[];
+}
+
+export interface PlaylistItem {
+  id: number;
+  playlist_id: number;
+  song_id: number;
+  position: number;
+  added_at: string;
+  songs?: Song & { master_songs: MasterSong; video: Video };
+}
+
 // ===== プレイヤー =====
 
 export interface PlayerSong {
@@ -137,3 +158,8 @@ export interface SongFormData {
   startTime: string;  // "mm:ss" 形式
   endTime: string;    // "mm:ss" 形式
 }
+
+export type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: true; data?: never } // void の場合は data なしを許容
+  | { success: false; error: string };

@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Channel, Video, Song, Vtuber, Production, PlayerSong } from '@/types';
 import Link from 'next/link';
-import { Youtube, Twitter, Calendar, Clock, Music, ChevronDown, ChevronUp, Play, X, ExternalLink } from 'lucide-react';
+import { Youtube, Twitter, Calendar, Clock, Music, ChevronDown, ChevronUp, Play, X, ExternalLink, MoreVertical } from 'lucide-react';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
+import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
 
 interface ChannelWithVideos extends Channel {
   vtuber?: Vtuber & { production?: Production };
@@ -15,6 +16,7 @@ interface ChannelWithVideos extends Channel {
 
 export default function ChannelClient({ initialData }: { initialData: any }) {
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
+  const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
   const { play, state } = usePlayer();
   const [cols, setCols] = useState(4);
 
@@ -316,15 +318,24 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                     <span className="song-list__col-artist">アーティスト</span>
                                     <span className="song-list__col-time">区間</span>
                                     <span className="song-list__col-duration">長さ</span>
+                                    <span className="song-list__col-add"></span>
                                   </div>
                                   <div className="flex flex-col gap-1">
                                     {video.songs.map((song, sIndex) => {
                                       const isCurrentSong = state.currentSong?.id === song.id;
                                       return (
-                                        <motion.button
+                                        <motion.div
                                           key={song.id}
-                                          className={`song-list__item ${isCurrentSong ? 'active' : ''} group/item !rounded-xl !border-0 hover:bg-white/[0.05]`}
+                                          role="button"
+                                          tabIndex={0}
+                                          className={`song-list__item ${isCurrentSong ? 'active' : ''} group/item !rounded-xl !border-0 hover:bg-white/[0.05] cursor-pointer`}
                                           onClick={() => handlePlaySong(video, song, video.songs)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                              e.preventDefault();
+                                              handlePlaySong(video, song, video.songs);
+                                            }
+                                          }}
                                           initial={{ x: -15, opacity: 0 }}
                                           animate={{ x: 0, opacity: 1 }}
                                           transition={{ delay: Math.min(sIndex * 0.05, 0.3) }}
@@ -351,7 +362,17 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                           <span className="song-list__col-duration text-xs opacity-60">
                                             {formatTime(song.end_sec - song.start_sec)}
                                           </span>
-                                        </motion.button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedSongId(song.id);
+                                            }}
+                                            className="song-list__col-add p-2 hover:bg-white/10 rounded-lg transition-colors text-[#666] hover:text-[#ff4e8e] relative z-10 flex items-center justify-center"
+                                            title="メニュー"
+                                          >
+                                            <MoreVertical size={16} />
+                                          </button>
+                                        </motion.div>
                                       );
                                     })}
                                   </div>
@@ -381,6 +402,13 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
           </div>
         </div>
       </section>
+
+      {selectedSongId && (
+        <PlaylistAddModal
+          songId={selectedSongId}
+          onClose={() => setSelectedSongId(null)}
+        />
+      )}
     </div>
   );
 }
