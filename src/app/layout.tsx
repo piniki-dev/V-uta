@@ -5,6 +5,9 @@ import Header from "@/components/Header";
 import { PlayerProvider } from "@/components/player/PlayerContext";
 import MiniPlayer from "@/components/player/MiniPlayer";
 import FullPlayer from "@/components/player/FullPlayer";
+import { SidebarProvider } from "@/components/SidebarContext";
+import Sidebar from "@/components/Sidebar";
+import LayoutWrapper from "@/components/LayoutWrapper";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,10 +29,17 @@ export default function RootLayout({
     <html lang="ja">
       <body className={`${inter.variable}`}>
         <PlayerProvider>
-          <Header />
-          <main className="main-content">{children}</main>
-          <MiniPlayer />
-          <FullPlayer />
+          <SidebarProvider>
+            <Header />
+            <div className="app-layout">
+              <Sidebar />
+              <LayoutWrapper>
+                <main className="main-content">{children}</main>
+              </LayoutWrapper>
+            </div>
+            <MiniPlayer />
+            <FullPlayer />
+          </SidebarProvider>
         </PlayerProvider>
       </body>
     </html>
