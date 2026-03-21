@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import { PlayerProvider } from "@/components/player/PlayerContext";
 import MiniPlayer from "@/components/player/MiniPlayer";
 import FullPlayer from "@/components/player/FullPlayer";
+import PersistentPlayer from "@/components/player/PersistentPlayer";
 import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
@@ -39,6 +40,7 @@ export default function RootLayout({
             </div>
             <MiniPlayer />
             <FullPlayer />
+            <PersistentPlayer />
           </SidebarProvider>
         </PlayerProvider>
       </body>

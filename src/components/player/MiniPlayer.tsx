@@ -3,6 +3,20 @@
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import * as Slider from '@radix-ui/react-slider';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { 
+  Square, 
+  Layout, 
+  ChevronUp, 
+  Maximize2, 
+  Minimize2, 
+  PictureInPicture,
+  LayoutPanelLeft,
+  ArrowUpLeft,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowDownRight
+} from 'lucide-react';
 
 export default function MiniPlayer() {
   const {
@@ -16,6 +30,7 @@ export default function MiniPlayer() {
     prevSong,
     seekTo,
     toggleFullPlayer,
+    setPipPosition,
   } = usePlayer();
 
   if (!state.currentSong) return null;
@@ -155,6 +170,53 @@ export default function MiniPlayer() {
 
           <div className="mini-player__divider" />
 
+          {/* PiP 位置設定 (PiP中のみ表示) */}
+          {!state.isFullPlayerOpen && (
+            <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Trigger asChild>
+                <button 
+                  className="mini-player__btn" 
+                  title="動画の位置を変更"
+                >
+                  <PictureInPicture size={18} />
+                </button>
+              </DropdownMenu.Trigger>
+
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content className="pip-menu-content" sideOffset={10} align="end">
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.pipPosition === 'top-left' ? 'active' : ''}`}
+                    onSelect={() => setPipPosition('top-left')}
+                  >
+                    <ArrowUpLeft size={16} />
+                    <span>左上</span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.pipPosition === 'top-right' ? 'active' : ''}`}
+                    onSelect={() => setPipPosition('top-right')}
+                  >
+                    <ArrowUpRight size={16} />
+                    <span>右上</span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.pipPosition === 'bottom-left' ? 'active' : ''}`}
+                    onSelect={() => setPipPosition('bottom-left')}
+                  >
+                    <ArrowDownLeft size={16} />
+                    <span>左下</span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.pipPosition === 'bottom-right' ? 'active' : ''}`}
+                    onSelect={() => setPipPosition('bottom-right')}
+                  >
+                    <ArrowDownRight size={16} />
+                    <span>右下</span>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          )}
+
           {/* フルプレーヤートグル (1番右) */}
           <button
             onClick={toggleFullPlayer}
@@ -162,13 +224,9 @@ export default function MiniPlayer() {
             title={state.isFullPlayerOpen ? '再生ページを閉じる' : '再生ページを開く'}
           >
             {state.isFullPlayerOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              </svg>
+              <Minimize2 size={20} />
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3l4 4h-3v7h-2V7H8l4-4zm0 18l-4-4h3v-7h2v7h3l-4 4z" transform="rotate(45 12 12)"/>
-              </svg>
+              <Maximize2 size={20} />
             )}
           </button>
         </div>

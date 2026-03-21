@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, type ReactNode } from 'react';
-import type { PlayerSong, PlayerState } from '@/types';
+import type { PlayerSong, PlayerState, PipPosition } from '@/types';
 import { recordPlayHistory, updatePlayDuration } from '@/app/history/actions';
 
 // ===== Actions =====
@@ -21,7 +21,8 @@ type PlayerAction =
   | { type: 'CLOSE_FULL_PLAYER' }
   | { type: 'SET_HISTORY_ID'; id: number | null }
   | { type: 'ADD_SONG_NEXT'; song: PlayerSong }
-  | { type: 'ADD_SONG_LAST'; song: PlayerSong };
+  | { type: 'ADD_SONG_LAST'; song: PlayerSong }
+  | { type: 'SET_PIP_POSITION'; position: PipPosition };
 
 // ===== Reducer =====
 
@@ -39,6 +40,7 @@ const initialState: PlayerState = {
   sourceId: null,
   currentHistoryId: null,
   playSessionKey: 0, // 再生セッションを一意に識別
+  pipPosition: 'bottom-right',
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -140,6 +142,8 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       }
       return { ...state, playlist: newPlaylist };
     }
+    case 'SET_PIP_POSITION':
+      return { ...state, pipPosition: action.position };
     default:
       return state;
   }
@@ -165,6 +169,7 @@ interface PlayerContextType {
   seekTo: (seconds: number) => void;
   addSongNext: (song: PlayerSong) => void;
   addSongLast: (song: PlayerSong) => void;
+  setPipPosition: (position: PipPosition) => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -410,6 +415,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_SONG_LAST', song });
   }, []);
 
+  const setPipPosition = useCallback((position: PipPosition) => {
+    dispatch({ type: 'SET_PIP_POSITION', position });
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -430,6 +439,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         seekTo,
         addSongNext,
         addSongLast,
+        setPipPosition,
         playerRef,
       }}
     >

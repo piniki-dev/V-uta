@@ -113,6 +113,8 @@ export interface PlaylistItem {
 
 // ===== プレイヤー =====
 
+export type PipPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
 export interface PlayerSong {
   id: number;
   title: string;
@@ -140,6 +142,7 @@ export interface PlayerState {
   sourceId: string | null;
   currentHistoryId: number | null;
   playSessionKey: number;
+  pipPosition: PipPosition;
 }
 
 // ===== YouTube API =====

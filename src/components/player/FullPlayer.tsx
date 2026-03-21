@@ -1,7 +1,6 @@
 'use client';
 
 import { usePlayer } from './PlayerContext';
-import YouTubePlayer from './YouTubePlayer';
 import { formatTime } from '@/lib/utils';
 
 export default function FullPlayer() {
@@ -26,9 +25,8 @@ export default function FullPlayer() {
       <div className="full-player__body">
         {/* 左: YouTube プレイヤー (動画のみ) */}
         <div className="full-player__main">
-          <div className="full-player__video">
-            <YouTubePlayer />
-          </div>
+          {/* PersistentPlayer will be positioned here when open */}
+          <div className="full-player__video-placeholder" />
         </div>
 
         {/* 右: 再生リスト */}
