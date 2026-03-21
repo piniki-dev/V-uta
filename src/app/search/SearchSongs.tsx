@@ -70,15 +70,20 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
             <Link 
               href={`/videos/${song.videos.video_id}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm text-[#555] hover:text-[#ff4e8e] transition-colors flex flex-col gap-0.5 w-fit max-w-full group/video"
+              className="text-sm text-[#555] hover:text-[#ff4e8e] transition-colors flex items-center gap-3 w-fit max-w-full group/video"
             >
-              <div className="flex items-center gap-1.5 overflow-hidden">
-                <span className="truncate">{song.videos.title}</span>
-                <ExternalLink size={12} className="shrink-0 opacity-40 group-hover/video:opacity-100 transition-opacity" />
-              </div>
-              {song.videos.channels && (
-                <span className="text-[11px] text-[#444] truncate">{song.videos.channels.name}</span>
+              {song.videos.channels?.image && (
+                <img src={song.videos.channels.image} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 shadow-lg border border-white/5" />
               )}
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <span className="truncate">{song.videos.title}</span>
+                  <ExternalLink size={12} className="shrink-0 opacity-40 group-hover/video:opacity-100 transition-opacity" />
+                </div>
+                {song.videos.channels && (
+                  <span className="text-[11px] text-[#444] truncate">{song.videos.channels.name}</span>
+                )}
+              </div>
             </Link>
           </div>
 
