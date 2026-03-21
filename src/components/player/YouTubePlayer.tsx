@@ -42,26 +42,26 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export default function YouTubePlayer() {
-  const { state, setTime, pause, nextSong, playerRef } = usePlayer();
+  const { state, setTime, pause, nextSong, stop, playerRef } = usePlayer();
   const containerRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isLoopingRef = useRef(state.isLooping);
   const currentSongRef = useRef(state.currentSong);
+  const nextSongRef = useRef(nextSong);
+  const stopRef = useRef(stop);
+  const setTimeRef = useRef(setTime);
 
-  // Refs を最新状態に同期
+  // Refs を最新状態に同期（これらは描画に影響しないため Effect で更新）
   useEffect(() => {
     isLoopingRef.current = state.isLooping;
-  }, [state.isLooping]);
-
-  useEffect(() => {
     currentSongRef.current = state.currentSong;
-  }, [state.currentSong]);
+    nextSongRef.current = nextSong;
+    stopRef.current = stop;
+    setTimeRef.current = setTime;
+  }, [state.isLooping, state.currentSong, nextSong, stop, setTime]);
 
   // YouTube Player 初期化
   useEffect(() => {
     if (!state.currentSong) return;
-
-    let player: YT.Player | null = null;
 
     const initPlayer = async () => {
       await loadYouTubeAPI();
@@ -70,7 +70,11 @@ export default function YouTubePlayer() {
 
       // 既存プレイヤーを破棄
       if (playerRef.current) {
-        playerRef.current.destroy();
+        try {
+          playerRef.current.destroy();
+        } catch (e) {
+          console.error('Error destroying player:', e);
+        }
         playerRef.current = null;
       }
 
@@ -80,7 +84,7 @@ export default function YouTubePlayer() {
       playerDiv.id = 'yt-player';
       containerRef.current.appendChild(playerDiv);
 
-      player = new window.YT.Player('yt-player', {
+      new window.YT.Player('yt-player', {
         width: '100%',
         height: '100%',
         videoId: state.currentSong!.videoId,
@@ -108,8 +112,7 @@ export default function YouTubePlayer() {
                 event.target.seekTo(currentSongRef.current.startSec, true);
                 event.target.playVideo();
               } else {
-                // 次の曲、またはプレイリストがない場合は停止
-                nextSong();
+                nextSongRef.current();
               }
             }
           },
@@ -120,78 +123,57 @@ export default function YouTubePlayer() {
     initPlayer();
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {}
+        playerRef.current = null;
       }
     };
-    // currentSong の id/videoId が変わった時のみ再初期化
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentSong?.id, state.currentSong?.videoId]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, playerRef]);
 
   // 再生位置の定期追跡
   useEffect(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    if (state.isPlaying && state.currentSong) {
-      intervalRef.current = setInterval(() => {
-        if (playerRef.current && currentSongRef.current) {
-          const currentTime = playerRef.current.getCurrentTime();
-
+    const interval = setInterval(() => {
+      if (playerRef.current && typeof playerRef.current.getPlayerState === 'function' && 
+          playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
+        const currentTime = playerRef.current.getCurrentTime();
+        if (currentSongRef.current) {
           // 区間終了を超えたらループ or 次曲
           if (currentTime >= currentSongRef.current.endSec) {
             if (isLoopingRef.current) {
               playerRef.current.seekTo(currentSongRef.current.startSec, true);
             } else {
-              nextSong();
+              nextSongRef.current();
               return;
             }
           }
-
-          // currentTime を区間内相対値にして保存
-          const relativeTime = currentTime - currentSongRef.current.startSec;
-          setTime(Math.max(0, relativeTime));
+          // 現在の再生時間をセット（プログレスバー用）
+          setTimeRef.current(Math.max(0, currentTime - currentSongRef.current.startSec));
         }
-      }, 250);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
       }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isPlaying, state.currentSong?.id]);
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [playerRef]);
 
   // 再生/一時停止
   useEffect(() => {
-    if (!playerRef.current) return;
+    if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
     if (state.isPlaying) {
       playerRef.current.playVideo();
     } else {
       playerRef.current.pauseVideo();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isPlaying]);
+  }, [state.isPlaying, playerRef]);
 
-  // 音量変更
+  // 音量・ミュート変更
   useEffect(() => {
-    if (!playerRef.current) return;
+    if (!playerRef.current || typeof playerRef.current.setVolume !== 'function') return;
     playerRef.current.setVolume(state.volume);
-  }, [state.volume, playerRef]);
-
-  // ミュート変更
-  useEffect(() => {
-    if (!playerRef.current) return;
-    if (state.isMuted) {
-      playerRef.current.mute();
-    } else {
-      playerRef.current.unMute();
-    }
-  }, [state.isMuted, playerRef]);
+    if (state.isMuted) playerRef.current.mute();
+    else playerRef.current.unMute();
+  }, [state.volume, state.isMuted, playerRef]);
 
   if (!state.currentSong) return null;
 

@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function PlaylistDetailClient({ playlist }: Props) {
-  const { play, state } = usePlayer();
+  const { playWithSource, state } = usePlayer();
   const [items, setItems] = useState(playlist.items);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
@@ -46,7 +46,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
   const handlePlayAll = () => {
     const playerSongs = items.map(toPlayerSong);
     if (playerSongs.length > 0) {
-      play(playerSongs[0], playerSongs);
+      playWithSource(playerSongs[0], playerSongs, 'playlist', playlist.id.toString());
     }
   };
 
@@ -54,7 +54,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
     if (isEditing) return; // 編集モード時は再生しない
     const playerSongs = items.map(toPlayerSong);
     const index = items.findIndex(i => i.id === item.id);
-    play(playerSongs[index], playerSongs);
+    playWithSource(playerSongs[index], playerSongs, 'playlist', playlist.id.toString());
   };
 
   const handleRemove = async (itemId: number) => {

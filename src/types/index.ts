@@ -136,6 +136,10 @@ export interface PlayerState {
   isMuted: boolean;
   currentTime: number;     // 区間内の現在再生位置（秒）
   isFullPlayerOpen: boolean;
+  sourceType: string | null;
+  sourceId: string | null;
+  currentHistoryId: number | null;
+  playSessionKey: number;
 }
 
 // ===== YouTube API =====

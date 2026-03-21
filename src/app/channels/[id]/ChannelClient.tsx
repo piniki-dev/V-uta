@@ -17,7 +17,7 @@ interface ChannelWithVideos extends Channel {
 export default function ChannelClient({ initialData }: { initialData: any }) {
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
   const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
-  const { play, state } = usePlayer();
+  const { playWithSource, state } = usePlayer();
   const [cols, setCols] = useState(4);
 
   // ウィンドウサイズに応じて列数を更新
@@ -65,7 +65,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
       videoTitle: video.title,
     }));
 
-    play(playerSong, playlist);
+    playWithSource(playerSong, playlist, 'channel', channel.id.toString());
   };
 
   return (

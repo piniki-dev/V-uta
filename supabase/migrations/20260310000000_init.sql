@@ -125,6 +125,18 @@ CREATE TABLE public.playlist_items (
   added_at timestamptz DEFAULT now()
 );
 
+-- 10. play_history (再生履歴 - おすすめ機能の基盤)
+CREATE TABLE public.play_history (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE, -- ログインユーザーのみ（ゲストは保存しない）
+  song_id bigint NOT NULL REFERENCES public.songs(id) ON DELETE CASCADE,
+  played_at timestamptz DEFAULT now(),
+  play_duration integer, -- 秒数（どこまで聴いたか：リコメンデーションに重要）
+  source_type text, -- 'playlist', 'channel', 'search', 'direct' など
+  source_id text, -- playlist_id など
+  meta_data jsonb -- 将来的な拡張性のため
+);
+
 -- ==========================================
 -- Functions & Triggers
 -- ==========================================
@@ -189,6 +201,7 @@ ALTER TABLE public.songs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.songs_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.play_history ENABLE ROW LEVEL SECURITY;
 
 -- 1. productions: 参照全公開、登録はログイン要、更新削除不可
 CREATE POLICY "productions_select_all" ON public.productions FOR SELECT USING (true);
@@ -243,6 +256,9 @@ CREATE POLICY "playlist_items_modify_policy" ON public.playlist_items FOR ALL US
   )
 );
 
+-- 10. play_history: 自分の履歴のみ参照・追加・削除可能
+CREATE POLICY "play_history_all_policy" ON public.play_history FOR ALL USING (auth.uid() = user_id);
+
 -- ==========================================
 -- Indexes
 -- ==========================================
@@ -259,5 +275,9 @@ CREATE INDEX idx_songs_history_song_id ON public.songs_history(song_id);
 CREATE INDEX idx_playlists_created_by ON public.playlists(created_by);
 CREATE INDEX idx_playlist_items_playlist_id ON public.playlist_items(playlist_id);
 CREATE INDEX idx_playlist_items_song_id ON public.playlist_items(song_id);
+
+CREATE INDEX idx_play_history_user_id ON public.play_history(user_id);
+CREATE INDEX idx_play_history_song_id ON public.play_history(song_id);
+CREATE INDEX idx_play_history_played_at ON public.play_history(played_at);
 
 

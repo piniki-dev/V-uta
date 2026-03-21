@@ -29,19 +29,19 @@ function toPlayerSong(song: Song, video: Video): PlayerSong {
 }
 
 export default function ArchiveClient({ video, songs }: Props) {
-  const { play, state } = usePlayer();
+  const { playWithSource, state } = usePlayer();
   const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
 
   const playerSongs = songs.map((s) => toPlayerSong(s, video));
 
   const handlePlaySong = (song: Song) => {
     const ps = toPlayerSong(song, video);
-    play(ps, playerSongs);
+    playWithSource(ps, playerSongs, 'video', video.video_id);
   };
 
   const handlePlayAll = () => {
     if (playerSongs.length > 0) {
-      play(playerSongs[0], playerSongs);
+      playWithSource(playerSongs[0], playerSongs, 'video', video.video_id);
     }
   };
 

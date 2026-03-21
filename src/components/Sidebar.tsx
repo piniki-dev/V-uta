@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Menu, X, Home, PlusSquare, ListMusic, ChevronDown, 
-  ChevronRight, LogOut, User, Search, Settings 
+  ChevronRight, LogOut, User, Search, Settings, History 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
@@ -128,6 +128,11 @@ export default function Sidebar() {
             <Link href="/songs/new" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><PlusSquare size={22} /></div>
               <span>曲の追加</span>
+            </Link>
+
+            <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
+              <div className="sidebar__icon-box"><History size={22} /></div>
+              <span>再生履歴</span>
             </Link>
 
             <div className="sidebar__divider" />

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useCallback, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import type { PlayerSong, PlayerState } from '@/types';
+import { recordPlayHistory, updatePlayDuration } from '@/app/history/actions';
 
 // ===== Actions =====
 
 type PlayerAction =
-  | { type: 'PLAY'; song: PlayerSong; playlist?: PlayerSong[] }
+  | { type: 'PLAY'; song: PlayerSong; playlist?: PlayerSong[]; sourceType?: string; sourceId?: string }
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
   | { type: 'STOP' }
@@ -17,7 +18,8 @@ type PlayerAction =
   | { type: 'NEXT_SONG' }
   | { type: 'PREV_SONG' }
   | { type: 'TOGGLE_FULL_PLAYER' }
-  | { type: 'CLOSE_FULL_PLAYER' };
+  | { type: 'CLOSE_FULL_PLAYER' }
+  | { type: 'SET_HISTORY_ID'; id: number | null };
 
 // ===== Reducer =====
 
@@ -31,6 +33,10 @@ const initialState: PlayerState = {
   isMuted: false,
   currentTime: 0,
   isFullPlayerOpen: false,
+  sourceType: null,
+  sourceId: null,
+  currentHistoryId: null,
+  playSessionKey: 0, // 再生セッションを一意に識別
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -46,6 +52,10 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         isPlaying: true,
         currentTime: 0,
         isFullPlayerOpen: true, // 再生時に自動でフルプレイヤーを表示
+        sourceType: action.sourceType || 'direct',
+        sourceId: action.sourceId || null,
+        currentHistoryId: null,
+        playSessionKey: state.playSessionKey + 1,
       };
     }
     case 'PAUSE':
@@ -71,6 +81,8 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: nextIndex,
         isPlaying: true,
         currentTime: 0,
+        currentHistoryId: null,
+        playSessionKey: state.playSessionKey + 1,
       };
     }
     case 'PREV_SONG': {
@@ -85,12 +97,16 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: prevIndex,
         isPlaying: true,
         currentTime: 0,
+        currentHistoryId: null,
+        playSessionKey: state.playSessionKey + 1,
       };
     }
     case 'TOGGLE_FULL_PLAYER':
       return { ...state, isFullPlayerOpen: !state.isFullPlayerOpen };
     case 'CLOSE_FULL_PLAYER':
       return { ...state, isFullPlayerOpen: false };
+    case 'SET_HISTORY_ID':
+      return { ...state, currentHistoryId: action.id };
     default:
       return state;
   }
@@ -101,6 +117,7 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
 interface PlayerContextType {
   state: PlayerState;
   play: (song: PlayerSong, playlist?: PlayerSong[]) => void;
+  playWithSource: (song: PlayerSong, playlist?: PlayerSong[], sourceType?: string, sourceId?: string) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -132,14 +149,143 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
 
-  const play = useCallback((song: PlayerSong, playlist?: PlayerSong[]) => {
-    dispatch({ type: 'PLAY', song, playlist });
+  // 累積再生時間の追跡
+  const accumulatedTimeRef = useRef(0);
+  const playStartTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let interval: any;
+    if (state.isPlaying) {
+      playStartTimeRef.current = performance.now();
+      interval = setInterval(() => {
+        if (playStartTimeRef.current) {
+          const now = performance.now();
+          const delta = (now - playStartTimeRef.current) / 1000;
+          accumulatedTimeRef.current += delta;
+          playStartTimeRef.current = now;
+        }
+      }, 1000);
+    } else {
+      playStartTimeRef.current = null;
+    }
+    return () => clearInterval(interval);
+  }, [state.isPlaying]);
+
+  // ヘルパー: 再生完了情報の計算
+  const getPlaybackMetrics = useCallback(() => {
+    if (!state.currentSong) return { playDuration: 0, lastPosition: 0, completionRate: 0, isCompleted: false };
+    
+    const duration = state.currentSong.endSec - state.currentSong.startSec;
+    const accumulated = Math.floor(accumulatedTimeRef.current);
+    const rate = Math.min(1, accumulated / duration);
+    
+    return {
+      playDuration: accumulated,
+      lastPosition: Math.floor(state.currentTime),
+      completionRate: parseFloat(rate.toFixed(4)),
+      isCompleted: rate >= 0.9
+    };
+  }, [state.currentSong, state.currentTime]);
+
+  // 再生履歴の自動記録
+  const currentSessionKeyRef = useRef<number>(0);
+  const lastRecordedSessionKey = useRef<number>(-1);
+
+  useEffect(() => {
+    currentSessionKeyRef.current = state.playSessionKey;
+  }, [state.playSessionKey]);
+
+  useEffect(() => {
+    if (state.currentSong && state.playSessionKey !== lastRecordedSessionKey.current) {
+      const songId = state.currentSong.id;
+      const sessionKey = state.playSessionKey;
+      lastRecordedSessionKey.current = sessionKey;
+      
+      // 新しい再生が始まったら累積時間をリセット
+      accumulatedTimeRef.current = 0;
+      if (state.isPlaying) playStartTimeRef.current = performance.now();
+
+      const record = async () => {
+        const result = await recordPlayHistory({ 
+          songId,
+          sourceType: state.sourceType || 'direct',
+          sourceId: state.sourceId || undefined,
+        });
+
+        // 非同期処理中にセッションが変わっていないか確認
+        if (result.success && result.id && sessionKey === currentSessionKeyRef.current) {
+          dispatch({ type: 'SET_HISTORY_ID', id: result.id });
+        }
+      };
+      record();
+    }
+  }, [state.currentSong, state.playSessionKey, state.sourceType, state.sourceId, state.isPlaying]);
+
+  // アンマウント時のみ最終再生時間を保存
+  const latestHistoryIdRef = useRef<number | null>(null);
+  const lastPositionRef = useRef(0);
+
+  useEffect(() => {
+    latestHistoryIdRef.current = state.currentHistoryId;
+  }, [state.currentHistoryId]);
+
+  useEffect(() => {
+    lastPositionRef.current = state.currentTime;
+  }, [state.currentTime]);
+
+  useEffect(() => {
+    return () => {
+      if (latestHistoryIdRef.current) {
+        updatePlayDuration({
+          historyId: latestHistoryIdRef.current,
+          playDuration: Math.floor(accumulatedTimeRef.current),
+          lastPosition: Math.floor(lastPositionRef.current),
+        });
+      }
+    };
   }, []);
 
+  const play = useCallback((song: PlayerSong, playlist?: PlayerSong[]) => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
+    // 再生リストが現在のものと同じ場合はソース情報を引き継ぐ
+    const isContinuingContext = playlist && state.playlist && 
+      playlist.length === state.playlist.length &&
+      playlist.every((s, i) => s.id === state.playlist[i].id);
+
+    dispatch({ 
+      type: 'PLAY', 
+      song, 
+      playlist, 
+      sourceType: isContinuingContext ? (state.sourceType || undefined) : undefined,
+      sourceId: isContinuingContext ? (state.sourceId || undefined) : undefined
+    });
+  }, [state.currentHistoryId, state.playlist, state.sourceType, state.sourceId, getPlaybackMetrics]);
+
+  const playWithSource = useCallback((song: PlayerSong, playlist?: PlayerSong[], sourceType?: string, sourceId?: string) => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
+    dispatch({ type: 'PLAY', song, playlist, sourceType, sourceId });
+  }, [state.currentHistoryId, getPlaybackMetrics]);
+
   const pause = useCallback(() => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
     dispatch({ type: 'PAUSE' });
     playerRef.current?.pauseVideo();
-  }, []);
+  }, [state.currentHistoryId, getPlaybackMetrics]);
 
   const resume = useCallback(() => {
     dispatch({ type: 'RESUME' });
@@ -147,9 +293,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const stop = useCallback(() => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
     dispatch({ type: 'STOP' });
     playerRef.current?.stopVideo();
-  }, []);
+  }, [state.currentHistoryId, getPlaybackMetrics]);
 
   const setTime = useCallback((time: number) => {
     dispatch({ type: 'SET_TIME', time });
@@ -179,12 +331,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const nextSong = useCallback(() => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
     dispatch({ type: 'NEXT_SONG' });
-  }, []);
+  }, [state.currentHistoryId, getPlaybackMetrics]);
 
   const prevSong = useCallback(() => {
+    if (state.currentHistoryId) {
+      updatePlayDuration({
+        historyId: state.currentHistoryId,
+        ...getPlaybackMetrics()
+      });
+    }
     dispatch({ type: 'PREV_SONG' });
-  }, []);
+  }, [state.currentHistoryId, getPlaybackMetrics]);
 
   const toggleFullPlayer = useCallback(() => {
     dispatch({ type: 'TOGGLE_FULL_PLAYER' });
@@ -208,6 +372,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       value={{
         state,
         play,
+        playWithSource,
         pause,
         resume,
         stop,
