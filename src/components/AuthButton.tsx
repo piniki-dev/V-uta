@@ -4,7 +4,8 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { LogIn } from 'lucide-react';
+import { LogIn, User as UserIcon, LogOut } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 export default function AuthButton({ user: initialUser }: { user: User | null }) {
   const router = useRouter();
@@ -12,26 +13,19 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
   const [user, setUser] = useState<User | null>(initialUser);
 
   useEffect(() => {
-    console.log('[AuthButton] Initial User from props:', initialUser?.id);
-    // マウント時にも明示的に現在のセッションを取りに行く（SSR起因の古いPropsを上書き）
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? initialUser);
       
-      console.log('[AuthButton] Client Session User:', session?.user?.id);
-      
-      // クライアントでセッションがあるのに、サーバーから渡された props が未ログインだった場合はサーバー状態が古いので再フェッチ
       if (session?.user && !initialUser) {
-        console.log('[AuthButton] Forcing router.refresh() due to stale props');
         router.refresh();
       }
     };
     checkSession();
-  }, [initialUser, supabase]);
+  }, [initialUser, supabase, router]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthButton] Auth State Changed:', event, session?.user?.id);
       setUser(session?.user ?? null);
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         router.refresh();
@@ -51,66 +45,58 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.refresh(); // セッション状態をサーバーコンポーネントに反映
+    router.refresh();
   };
 
   if (user) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-          {user.user_metadata?.avatar_url && (
-            <img
-              src={user.user_metadata.avatar_url}
-              alt=""
-              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-            />
-          )}
-          <span>{user.user_metadata?.full_name || 'User'}</span>
-        </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            fontSize: '14px',
-            color: 'var(--text-secondary)',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px 8px',
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-        >
-          ログアウト
-        </button>
-      </div>
+      <DropdownMenu.Root modal={false}>
+        <DropdownMenu.Trigger asChild>
+          <button className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden hover:opacity-80 transition-opacity outline-none bg-white/5 border border-white/10">
+            {user.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt={user.user_metadata?.full_name || 'User'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <UserIcon size={20} className="text-white/60" />
+            )}
+          </button>
+        </DropdownMenu.Trigger>
+
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content 
+            className="z-[500] min-w-[200px] bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
+            sideOffset={8}
+            align="end"
+          >
+            <div className="px-3 py-2 border-bottom border-white/5 mb-1">
+              <p className="text-xs text-[#666] font-medium mb-0.5">ログイン中</p>
+              <p className="text-sm font-semibold text-white truncate">
+                {user.user_metadata?.full_name || user.email || 'User'}
+              </p>
+            </div>
+
+            <DropdownMenu.Separator className="h-px bg-white/5 my-1" />
+
+            <DropdownMenu.Item 
+              onSelect={handleLogout}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 text-[#ff4e8e] transition-colors outline-none cursor-pointer group"
+            >
+              <LogOut size={16} />
+              ログアウト
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     );
   }
 
   return (
     <button
       onClick={handleLogin}
-      style={{
-        background: 'var(--text-primary)',
-        color: 'var(--bg-primary)',
-        border: 'none',
-        borderRadius: 'var(--radius-full)',
-        padding: '8px 16px',
-        fontSize: '14px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        transition: 'var(--transition)',
-      }}
-      onMouseOver={(e) => {
-        e.currentTarget.style.background = 'white';
-        e.currentTarget.style.transform = 'scale(1.05)';
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.background = 'var(--text-primary)';
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
+      className="bg-white text-black border-none rounded-full px-4 py-2 text-sm font-semibold cursor-pointer flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
     >
       <LogIn size={18} />
       Google でログイン
