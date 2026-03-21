@@ -5,6 +5,7 @@ import { formatTime } from '@/lib/utils';
 import { Music, Play, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import type { PlayerSong } from '@/types';
+import SongMenu from '@/components/song/SongMenu';
 
 interface SearchSongsProps {
   songs: any[];
@@ -41,7 +42,7 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
         <div 
           key={song.id} 
           onClick={() => handlePlaySong(song)}
-          className="group grid grid-cols-[60px_1fr_1fr_100px] md:grid-cols-[80px_1fr_1fr_120px] px-6 py-4 gap-4 items-center hover:bg-white/10 transition-all relative cursor-pointer"
+          className="group grid grid-cols-[40px_1fr_60px_40px] md:grid-cols-[40px_1fr_1fr_80px_40px] px-6 py-4 gap-4 items-center hover:bg-white/10 transition-all relative cursor-pointer"
         >
           <div className="text-[#444] group-hover:text-[#ff4e8e] font-bold text-sm tabular-nums text-center transition-colors text-nowrap">
             {String(index + 1).padStart(2, '0')}
@@ -89,6 +90,10 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
 
           <div className="text-right text-[#555] font-bold text-sm tabular-nums">
             {formatTime(song.end_sec - song.start_sec)}
+          </div>
+          
+          <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+            <SongMenu song={toPlayerSong(song)} />
           </div>
         </div>
       ))}

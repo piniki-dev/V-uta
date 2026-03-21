@@ -8,6 +8,7 @@ import { formatTime } from '@/lib/utils';
 import { Play, Trash2, History, ExternalLink, Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import SongMenu from '@/components/song/SongMenu';
 
 interface Props {
   initialHistory: any[];
@@ -133,7 +134,7 @@ export default function HistoryClient({ initialHistory }: Props) {
                     <div 
                       key={item.id}
                       onClick={() => handlePlayHistory(item)}
-                      className="group grid grid-cols-[60px_1fr_1fr_100px] md:grid-cols-[80px_1fr_1fr_120px] px-6 py-4 gap-4 items-center hover:bg-white/10 transition-all cursor-pointer relative"
+                      className="group grid grid-cols-[60px_1fr_1fr_40px] md:grid-cols-[80px_1fr_1fr_100px_40px] px-6 py-4 gap-4 items-center hover:bg-white/10 transition-all cursor-pointer relative"
                     >
                       <div className="text-[#444] group-hover:text-[#ff4e8e] font-bold text-sm tabular-nums text-center transition-colors">
                         {playedTime}
@@ -174,6 +175,10 @@ export default function HistoryClient({ initialHistory }: Props) {
 
                       <div className="text-right text-[#555] font-bold text-sm tabular-nums">
                         {formatTime(song.end_sec - song.start_sec)}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <SongMenu song={toPlayerSong(item)} />
                       </div>
                     </div>
                   );

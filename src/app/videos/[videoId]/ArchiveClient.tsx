@@ -6,7 +6,7 @@ import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Pencil, ListPlus, MoreVertical } from 'lucide-react';
-import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
+import SongMenu from '@/components/song/SongMenu';
 
 interface Props {
   video: Video;
@@ -30,7 +30,6 @@ function toPlayerSong(song: Song, video: Video): PlayerSong {
 
 export default function ArchiveClient({ video, songs }: Props) {
   const { playWithSource, state } = usePlayer();
-  const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
 
   const playerSongs = songs.map((s) => toPlayerSong(s, video));
 
@@ -155,28 +154,16 @@ export default function ArchiveClient({ video, songs }: Props) {
                 <span className="song-list__col-duration">
                   {formatTime(song.end_sec - song.start_sec)}
                 </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedSongId(song.id);
-                  }}
-                  className="song-list__col-add p-2 hover:bg-white/10 rounded-lg transition-colors text-[#666] hover:text-[#ff4e8e] relative z-10 flex items-center justify-center"
-                  title="メニュー"
-                >
-                  <MoreVertical size={18} />
-                </button>
+                <div className="song-list__col-add">
+                  <SongMenu song={toPlayerSong(song, video)} />
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {selectedSongId && (
-        <PlaylistAddModal
-          songId={selectedSongId}
-          onClose={() => setSelectedSongId(null)}
-        />
-      )}
+      {/* PlaylistAddModal は SongMenu 内に含まれるようになったため削除 */}
     </div>
   );
 }

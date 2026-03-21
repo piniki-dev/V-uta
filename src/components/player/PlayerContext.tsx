@@ -19,7 +19,9 @@ type PlayerAction =
   | { type: 'PREV_SONG' }
   | { type: 'TOGGLE_FULL_PLAYER' }
   | { type: 'CLOSE_FULL_PLAYER' }
-  | { type: 'SET_HISTORY_ID'; id: number | null };
+  | { type: 'SET_HISTORY_ID'; id: number | null }
+  | { type: 'ADD_SONG_NEXT'; song: PlayerSong }
+  | { type: 'ADD_SONG_LAST'; song: PlayerSong };
 
 // ===== Reducer =====
 
@@ -107,6 +109,37 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, isFullPlayerOpen: false };
     case 'SET_HISTORY_ID':
       return { ...state, currentHistoryId: action.id };
+    case 'ADD_SONG_NEXT': {
+      const newPlaylist = [...state.playlist];
+      if (state.currentIndex === -1) {
+        // 再生リストが空なら先頭に追加
+        return {
+          ...state,
+          playlist: [action.song],
+          currentIndex: 0,
+          currentSong: action.song,
+          isPlaying: true, // 自動再生
+          playSessionKey: state.playSessionKey + 1,
+        };
+      }
+      newPlaylist.splice(state.currentIndex + 1, 0, action.song);
+      return { ...state, playlist: newPlaylist };
+    }
+    case 'ADD_SONG_LAST': {
+      const newPlaylist = [...state.playlist, action.song];
+      if (state.currentIndex === -1) {
+        // 再生リストが空なら先頭に追加
+        return {
+          ...state,
+          playlist: [action.song],
+          currentIndex: 0,
+          currentSong: action.song,
+          isPlaying: true, // 自動再生
+          playSessionKey: state.playSessionKey + 1,
+        };
+      }
+      return { ...state, playlist: newPlaylist };
+    }
     default:
       return state;
   }
@@ -130,6 +163,8 @@ interface PlayerContextType {
   toggleFullPlayer: () => void;
   closeFullPlayer: () => void;
   seekTo: (seconds: number) => void;
+  addSongNext: (song: PlayerSong) => void;
+  addSongLast: (song: PlayerSong) => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -367,6 +402,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.currentSong]);
 
+  const addSongNext = useCallback((song: PlayerSong) => {
+    dispatch({ type: 'ADD_SONG_NEXT', song });
+  }, []);
+
+  const addSongLast = useCallback((song: PlayerSong) => {
+    dispatch({ type: 'ADD_SONG_LAST', song });
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -385,6 +428,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         toggleFullPlayer,
         closeFullPlayer,
         seekTo,
+        addSongNext,
+        addSongLast,
         playerRef,
       }}
     >
