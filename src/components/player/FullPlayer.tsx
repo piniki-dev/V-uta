@@ -2,6 +2,7 @@
 
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
+import { useLocale } from '@/components/LocaleProvider';
 
 export default function FullPlayer() {
   const {
@@ -9,6 +10,7 @@ export default function FullPlayer() {
     play,
     seekTo,
   } = usePlayer();
+  const { t, T } = useLocale();
 
   if (!state.currentSong) return null;
 
@@ -31,7 +33,7 @@ export default function FullPlayer() {
 
         {/* 右: 再生リスト */}
         <div className="full-player__playlist">
-          <h3 className="full-player__playlist-title">再生リスト</h3>
+          <h3 className="full-player__playlist-title">{T('player.queue')}</h3>
           <div className="full-player__playlist-list">
             {state.playlist.map((song, index) => (
               <button
@@ -42,12 +44,14 @@ export default function FullPlayer() {
                 }`}
               >
                 <span className="full-player__playlist-index">{index + 1}</span>
-                <div className="full-player__playlist-info">
-                  <span className="full-player__playlist-song-title">{song.title}</span>
-                  <span className="full-player__playlist-song-artist">
-                    {song.artist || song.channelName}
-                  </span>
-                </div>
+                 <div className="full-player__playlist-info">
+                   <span className="full-player__playlist-song-title">
+                     {t(song.title, song.title_en || song.title)}
+                   </span>
+                   <span className="full-player__playlist-song-artist">
+                     {t(song.artist || '-', song.artist_en || song.artist || '-')}
+                   </span>
+                 </div>
                 <span className="full-player__playlist-duration">
                   {formatTime(song.endSec - song.startSec)}
                 </span>

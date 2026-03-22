@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
+import { useLocale } from '@/components/LocaleProvider';
 
 export default function SearchForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { T } = useLocale();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [isFocused, setIsFocused] = useState(false);
 
@@ -33,7 +35,7 @@ export default function SearchForm() {
         <input
           type="text"
           className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[15px] outline-none p-0 placeholder-[var(--text-tertiary)] font-normal"
-          placeholder="楽曲、チャンネルを検索"
+          placeholder={T('header.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}

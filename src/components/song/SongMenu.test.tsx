@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
 import SongMenu from './SongMenu';
 import { PlayerProvider } from '@/components/player/PlayerContext';
+import { LocaleProvider } from '@/components/LocaleProvider';
 
 // PlayerContext のモック
 vi.mock('@/components/player/PlayerContext', async () => {
@@ -54,6 +55,8 @@ const mockSong = {
   id: 1,
   title: 'Test Song',
   artist: 'Test Artist',
+  title_en: 'Test Song EN',
+  artist_en: 'Test Artist EN',
   artworkUrl: 'https://example.com/art.jpg',
   videoId: 'video123',
   startSec: 0,
@@ -66,7 +69,9 @@ const mockSong = {
 describe('SongMenu', () => {
   it('トリガーボタンが表示されること', () => {
     render(
-      <SongMenu song={mockSong} />
+      <LocaleProvider>
+        <SongMenu song={mockSong} />
+      </LocaleProvider>
     );
     // aria-label などがないので、ボタンの存在を確認
     const button = screen.getByRole('button');
@@ -75,7 +80,9 @@ describe('SongMenu', () => {
 
   it('クリックするとメニュー項目が表示されること', async () => {
     render(
-      <SongMenu song={mockSong} />
+      <LocaleProvider>
+        <SongMenu song={mockSong} />
+      </LocaleProvider>
     );
     
     const button = screen.getByRole('button');

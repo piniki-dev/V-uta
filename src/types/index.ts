@@ -62,6 +62,8 @@ export interface MasterSong {
   id: number;
   title: string;
   artist: string;
+  title_en: string | null;
+  artist_en: string | null;
   artwork_url: string | null;
   itunes_id: string | null;
   created_by: string | null;
@@ -119,6 +121,8 @@ export interface PlayerSong {
   id: number;
   title: string;
   artist: string | null;
+  title_en: string | null;
+  artist_en: string | null;
   artworkUrl: string | null;
   videoId: string;         // YouTube video ID
   startSec: number;

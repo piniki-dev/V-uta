@@ -3,6 +3,14 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Playlist, PlaylistItem, ActionResult } from '@/types';
+import { translations } from '@/lib/translations';
+import { cookies } from 'next/headers';
+
+async function getLocaleT() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  return translations[locale];
+}
 
 /**
  * プレイリスト一覧を取得する（自分のもの、または公開プレイリスト）
@@ -27,7 +35,8 @@ export async function getPlaylists(): Promise<ActionResult<Playlist[]>> {
   const { data, error } = await query;
 
   if (error) {
-    return { success: false, error: `プレイリストの取得に失敗しました: ${error.message}` };
+    const t = await getLocaleT();
+    return { success: false, error: `${t.common.searchError}: ${error.message}` };
   }
 
   return { success: true, data: data as Playlist[] };
@@ -40,12 +49,13 @@ export async function createPlaylist(name: string, description: string, isPublic
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const t = await getLocaleT();
   if (!user) {
-    return { success: false, error: 'ログインが必要です' };
+    return { success: false, error: t.common.loginRequired };
   }
 
   if (!name.trim()) {
-    return { success: false, error: 'プレイリスト名を入力してください' };
+    return { success: false, error: t.playlist.enterName };
   }
 
   const { data, error } = await supabase
@@ -60,7 +70,7 @@ export async function createPlaylist(name: string, description: string, isPublic
     .single();
 
   if (error) {
-    return { success: false, error: `プレイリストの作成に失敗しました: ${error.message}` };
+    return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
   revalidatePath('/playlists');
@@ -91,7 +101,8 @@ export async function getPlaylistDetail(id: number): Promise<ActionResult<Playli
     .single();
 
   if (error) {
-    return { success: false, error: `プレイリストの取得に失敗しました: ${error.message}` };
+    const t = await getLocaleT();
+    return { success: false, error: `${t.common.searchError}: ${error.message}` };
   }
 
   return { success: true, data: data as any };
@@ -104,7 +115,8 @@ export async function addSongToPlaylist(playlistId: number, songId: number): Pro
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'ログインが必要です' };
+  const t = await getLocaleT();
+  if (!user) return { success: false, error: t.common.loginRequired };
 
   // 現在の最大位置を取得
   const { data: currentItems, error: fetchErr } = await supabase
@@ -114,7 +126,7 @@ export async function addSongToPlaylist(playlistId: number, songId: number): Pro
     .order('position', { ascending: false })
     .limit(1);
 
-  if (fetchErr) return { success: false, error: `データ取得に失敗しました: ${fetchErr.message}` };
+  if (fetchErr) return { success: false, error: `${t.common.errorOccurred}: ${fetchErr.message}` };
   
   const nextPosition = currentItems.length > 0 ? currentItems[0].position + 1 : 0;
 
@@ -129,7 +141,7 @@ export async function addSongToPlaylist(playlistId: number, songId: number): Pro
     .single();
 
   if (error) {
-    return { success: false, error: `楽曲の追加に失敗しました: ${error.message}` };
+    return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
   revalidatePath(`/playlists/${playlistId}`);
@@ -149,7 +161,8 @@ export async function removeSongFromPlaylist(playlistId: number, itemId: number)
     .eq('playlist_id', playlistId);
 
   if (error) {
-    return { success: false, error: `楽曲の削除に失敗しました: ${error.message}` };
+    const t = await getLocaleT();
+    return { success: false, error: `${t.common.deleteError}: ${error.message}` };
   }
 
   revalidatePath(`/playlists/${playlistId}`);
@@ -166,7 +179,8 @@ export async function updatePlaylist(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'ログインが必要です' };
+  const t = await getLocaleT();
+  if (!user) return { success: false, error: t.common.loginRequired };
 
   const { data: updated, error } = await supabase
     .from('playlists')
@@ -182,7 +196,7 @@ export async function updatePlaylist(
     .single();
 
   if (error) {
-    return { success: false, error: `プレイリストの更新に失敗しました: ${error.message}` };
+    return { success: false, error: `${t.common.updateError}: ${error.message}` };
   }
 
   revalidatePath(`/playlists/${id}`);
@@ -200,7 +214,8 @@ export async function updatePlaylistOrder(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'ログインが必要です' };
+  const t = await getLocaleT();
+  if (!user) return { success: false, error: t.common.loginRequired };
 
   // 1つずつ更新（小規模なプレイリストを想定）
   // 本来は upsert や一時テーブルを使った一括更新が望ましいが、実装のシンプルさを優先
@@ -212,7 +227,7 @@ export async function updatePlaylistOrder(
       .eq('playlist_id', playlistId);
 
     if (error) {
-      return { success: false, error: `順序の更新に失敗しました: ${error.message}` };
+      return { success: false, error: `${t.common.updateError}: ${error.message}` };
     }
   }
 

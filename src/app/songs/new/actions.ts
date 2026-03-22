@@ -2,8 +2,16 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata } from '@/lib/youtube';
-import { searchTracks as itunesSearch, getHighResArtwork } from '@/lib/itunes';
+import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@/lib/itunes';
 import type { Video, Song, YouTubeVideoMetadata, Channel, Production } from '@/types';
+import { translations } from '@/lib/translations';
+import { cookies } from 'next/headers';
+
+async function getLocaleT() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  return translations[locale];
+}
 
 // ===== 時刻ユーティリティ =====
 
@@ -42,14 +50,17 @@ export interface ITunesSearchResult {
  * iTunes Search API で曲を検索する
  */
 export async function searchSongAction(
-  query: string
+  query: string,
+  country = 'jp',
+  lang = 'ja_jp'
 ): Promise<ActionResult<ITunesSearchResult[]>> {
+  const t = await getLocaleT();
   if (!query.trim()) {
-    return { success: false, error: '検索キーワードを入力してください' };
+    return { success: false, error: t.search.inputKeyword };
   }
 
   try {
-    const tracks = await itunesSearch(query, 10);
+    const tracks = await itunesSearch(query, 10, country, lang);
     const results: ITunesSearchResult[] = tracks.map((t) => ({
       trackId: t.trackId,
       title: t.trackName,
@@ -60,7 +71,7 @@ export async function searchSongAction(
     }));
     return { success: true, data: results };
   } catch (e) {
-    const message = e instanceof Error ? e.message : '曲の検索に失敗しました';
+    const message = e instanceof Error ? e.message : t.common.searchError;
     return { success: false, error: message };
   }
 }
@@ -78,14 +89,15 @@ export async function fetchVideoPreview(
   channelData?: any;
 }>> {
   const videoId = extractVideoId(url);
+  const t = await getLocaleT();
   if (!videoId) {
-    return { success: false, error: '有効な YouTube URL を入力してください' };
+    return { success: false, error: t.newSong.inputYoutubeUrl };
   }
 
   try {
     const metadata = await fetchVideoMetadata(videoId);
     if (!metadata) {
-      return { success: false, error: '動画が見つかりません' };
+      return { success: false, error: t.archive.notFound };
     }
 
     const supabase = await createClient();
@@ -136,7 +148,7 @@ export async function fetchVideoPreview(
       } 
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'データの取得に失敗しました';
+    const message = e instanceof Error ? e.message : t.common.errorOccurred;
     return { success: false, error: message };
   }
 }
@@ -173,9 +185,10 @@ export async function registerVtuberAndChannel(params: {
   };
 }): Promise<ActionResult<{ vtuberId: number; channelId: number }>> {
   const supabase = await createClient();
+  const t = await getLocaleT();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'ログインが必要です' };
+    return { success: false, error: t.common.loginRequired };
   }
 
   try {
@@ -242,7 +255,7 @@ export async function registerVtuberAndChannel(params: {
 
     return { success: true, data: { vtuberId: vtuber.id, channelId: channel.id } };
   } catch (e) {
-    const message = e instanceof Error ? e.message : '登録に失敗しました';
+    const message = e instanceof Error ? e.message : t.common.saveError;
     return { success: false, error: message };
   }
 }
@@ -254,10 +267,11 @@ export async function registerVideo(
   metadata: YouTubeVideoMetadata
 ): Promise<ActionResult<Video>> {
   const supabase = await createClient();
+  const t = await getLocaleT();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'ログインが必要です' };
+    return { success: false, error: t.common.loginRequired };
   }
 
   // 既存チェック
@@ -279,7 +293,7 @@ export async function registerVideo(
     .single();
 
   if (!channelRecord) {
-    return { success: false, error: `チャンネル (ID: ${metadata.channelId}) が登録されていません。先にチャンネルを登録してください。` };
+    return { success: false, error: `${t.vtuber.linkedChannel} (ID: ${metadata.channelId}) ${t.archive.noArchives}` }; // 暫定
   }
 
   const { data, error } = await supabase
@@ -300,7 +314,7 @@ export async function registerVideo(
     .single();
 
   if (error) {
-    return { success: false, error: `動画の登録に失敗しました: ${error.message}` };
+    return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
   return { success: true, data: data as Video };
@@ -319,54 +333,99 @@ export async function registerSong(input: {
   durationSec: number;
   startTime: string;
   endTime: string;
+  searchLocale?: 'ja' | 'en';
 }): Promise<ActionResult<Song>> {
+  const t = await getLocaleT();
   // バリデーション
   if (!input.songTitle.trim()) {
-    return { success: false, error: '曲を選択してください' };
+    return { success: false, error: t.newSong.searchByName }; // 暫定
   }
 
   const startSec = parseTimeToSeconds(input.startTime);
   const endSec = parseTimeToSeconds(input.endTime);
 
-  if (startSec === null) {
-    return { success: false, error: '開始時間の形式が正しくありません（mm:ss）' };
-  }
-  if (endSec === null) {
-    return { success: false, error: '終了時間の形式が正しくありません（mm:ss）' };
+  if (startSec === null || endSec === null) {
+    return { success: false, error: t.newSong.timeFormatError };
   }
   if (startSec >= endSec) {
-    return { success: false, error: '終了時間は開始時間より後にしてください' };
+    return { success: false, error: t.newSong.timeError };
   }
   if (endSec - startSec < 10) {
-    return { success: false, error: '区間は10秒以上にしてください' };
+    return { success: false, error: t.newSong.durationError };
   }
 
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'ログインが必要です' };
+    return { success: false, error: t.common.loginRequired };
   }
 
-  // master_songs の存在チェック（曲名+アーティスト名で名寄せ）
-  let { data: masterSong, error: masterSearchError } = await supabase
-    .from('master_songs')
-    .select()
-    .eq('title', input.songTitle.trim())
-    .eq('artist', input.songArtist.trim() || 'Unknown')
-    .maybeSingle();
+  // master_songs の存在チェック（itunes_id または 曲名+アーティスト名で名寄せ）
+  let masterSong = null;
+  if (input.itunesId) {
+    const { data: byItunes } = await supabase
+      .from('master_songs')
+      .select()
+      .eq('itunes_id', String(input.itunesId))
+      .maybeSingle();
+    masterSong = byItunes;
+  }
 
-  if (masterSearchError) {
-    return { success: false, error: `原曲情報の検索に失敗しました: ${masterSearchError.message}` };
+  if (!masterSong) {
+    const { data: byTitle } = await supabase
+      .from('master_songs')
+      .select()
+      .eq('title', input.songTitle.trim())
+      .eq('artist', input.songArtist.trim() || 'Unknown')
+      .maybeSingle();
+    masterSong = byTitle;
   }
 
   // 存在しない場合は新規登録
   if (!masterSong) {
+    let titleJa = input.songTitle.trim();
+    let artistJa = input.songArtist.trim() || 'Unknown';
+    let titleEn = null;
+    let artistEn = null;
+
+    // iTunes ID があるなら、反対の言語情報も取得
+    if (input.itunesId) {
+      const otherLocale = input.searchLocale === 'en' ? 'ja' : 'en';
+      const country = otherLocale === 'en' ? 'us' : 'jp';
+      const lang = otherLocale === 'en' ? 'en_us' : 'ja_jp';
+      
+      const otherInfo = await getTrackById(input.itunesId, country, lang);
+      if (otherInfo) {
+        if (input.searchLocale === 'en') {
+          // 検索時が英語モード：inputは英語、otherInfoが日本語
+          titleEn = input.songTitle.trim();
+          artistEn = input.songArtist.trim();
+          titleJa = otherInfo.trackName;
+          artistJa = otherInfo.artistName;
+        } else {
+          // 検索時が日本語モード：inputは日本語、otherInfoが英語
+          titleJa = input.songTitle.trim();
+          artistJa = input.songArtist.trim();
+          titleEn = otherInfo.trackName;
+          artistEn = otherInfo.artistName;
+        }
+      } else {
+        // 反対側の情報が取れなかった場合
+        if (input.searchLocale === 'en') {
+          titleEn = input.songTitle.trim();
+          artistEn = input.songArtist.trim();
+        }
+      }
+    }
+
     const { data: newMaster, error: masterInsertError } = await supabase
       .from('master_songs')
       .insert({
-        title: input.songTitle.trim(),
-        artist: input.songArtist.trim() || 'Unknown',
+        title: titleJa,
+        artist: artistJa,
+        title_en: titleEn,
+        artist_en: artistEn,
         artwork_url: input.artworkUrl || null,
         itunes_id: input.itunesId ? String(input.itunesId) : null,
         duration_sec: input.durationSec > 0 ? input.durationSec : null,
@@ -376,7 +435,7 @@ export async function registerSong(input: {
       .single();
 
     if (masterInsertError) {
-      return { success: false, error: `原曲情報の登録に失敗しました: ${masterInsertError.message}` };
+      return { success: false, error: `${t.common.saveError} (master): ${masterInsertError.message}` };
     }
     masterSong = newMaster;
   }
@@ -395,7 +454,7 @@ export async function registerSong(input: {
     .single();
 
   if (error) {
-    return { success: false, error: `曲の登録に失敗しました: ${error.message}` };
+    return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
   return { success: true, data: data as Song };
@@ -407,7 +466,7 @@ export async function registerSong(input: {
 export async function registerFullArchive(input: {
   videoMetadata: YouTubeVideoMetadata;
   songs: {
-    id?: number; // 既存曲の場合は ID がある
+    id?: number;
     songTitle: string;
     songArtist: string;
     artworkUrl: string;
@@ -416,13 +475,15 @@ export async function registerFullArchive(input: {
     startSec: number;
     endSec: number;
     isDeleted?: boolean;
+    searchLocale?: 'ja' | 'en';
   }[];
 }): Promise<ActionResult<{ video: Video; songs: Song[] }>> {
   const supabase = await createClient();
+  const t = await getLocaleT();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'ログインが必要です' };
+    return { success: false, error: t.common.loginRequired };
   }
 
   try {
@@ -433,34 +494,75 @@ export async function registerFullArchive(input: {
 
     const finalSongs: Song[] = [];
 
-    // 2. 曲の処理（ループで回すが、本来はストアドプロシージャなどで一気にやるのが理想）
+    // 2. 曲の処理
     for (const songInput of input.songs) {
       if (songInput.isDeleted) {
         if (songInput.id) {
-          // 既存曲かつ削除フラグなら削除
           const { error } = await supabase.from('songs').delete().eq('id', songInput.id);
           if (error) throw new Error(`曲の削除に失敗しました: ${error.message}`);
         }
         continue;
       }
 
-      // master_songs の存在チェック
-      let { data: masterSong, error: masterSearchError } = await supabase
-        .from('master_songs')
-        .select()
-        .eq('title', songInput.songTitle.trim())
-        .eq('artist', songInput.songArtist.trim() || 'Unknown')
-        .maybeSingle();
-      
-      if (masterSearchError) throw new Error(`原曲情報の検索に失敗しました: ${masterSearchError.message}`);
+      // master_songs の存在チェック（itunes_id または 曲名+アーティスト名）
+      let masterSong = null;
+      if (songInput.itunesId) {
+        const { data: byItunes } = await supabase
+          .from('master_songs')
+          .select()
+          .eq('itunes_id', String(songInput.itunesId))
+          .maybeSingle();
+        masterSong = byItunes;
+      }
 
       if (!masterSong) {
-        // 存在しない場合は新規登録
+        const { data: byTitle } = await supabase
+          .from('master_songs')
+          .select()
+          .eq('title', songInput.songTitle.trim())
+          .eq('artist', songInput.songArtist.trim() || 'Unknown')
+          .maybeSingle();
+        masterSong = byTitle;
+      }
+
+      if (!masterSong) {
+        let titleJa = songInput.songTitle.trim();
+        let artistJa = songInput.songArtist.trim() || 'Unknown';
+        let titleEn = null;
+        let artistEn = null;
+
+        if (songInput.itunesId) {
+          const otherLocale = songInput.searchLocale === 'en' ? 'ja' : 'en';
+          const country = otherLocale === 'en' ? 'us' : 'jp';
+          const lang = otherLocale === 'en' ? 'en_us' : 'ja_jp';
+          const otherInfo = await getTrackById(songInput.itunesId, country, lang);
+          if (otherInfo) {
+            if (songInput.searchLocale === 'en') {
+              titleEn = songInput.songTitle.trim();
+              artistEn = songInput.songArtist.trim();
+              titleJa = otherInfo.trackName;
+              artistJa = otherInfo.artistName;
+            } else {
+              titleJa = songInput.songTitle.trim();
+              artistJa = songInput.songArtist.trim();
+              titleEn = otherInfo.trackName;
+              artistEn = otherInfo.artistName;
+            }
+          } else {
+            if (songInput.searchLocale === 'en') {
+              titleEn = songInput.songTitle.trim();
+              artistEn = songInput.songArtist.trim();
+            }
+          }
+        }
+
         const { data: newMaster, error: masterInsertError } = await supabase
           .from('master_songs')
           .insert({
-            title: songInput.songTitle.trim(),
-            artist: songInput.songArtist.trim() || 'Unknown',
+            title: titleJa,
+            artist: artistJa,
+            title_en: titleEn,
+            artist_en: artistEn,
             artwork_url: songInput.artworkUrl || null,
             itunes_id: songInput.itunesId ? String(songInput.itunesId) : null,
             duration_sec: songInput.durationSec > 0 ? songInput.durationSec : null,
@@ -508,7 +610,7 @@ export async function registerFullArchive(input: {
 
     return { success: true, data: { video, songs: finalSongs } };
   } catch (e) {
-    const message = e instanceof Error ? e.message : '一括登録に失敗しました';
+    const message = e instanceof Error ? e.message : t.common.saveError;
     return { success: false, error: message };
   }
 }
@@ -519,6 +621,7 @@ export async function registerFullArchive(input: {
 export async function getChannelWithVideos(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
   console.log('getChannelWithVideos called with identifier:', identifier);
   const supabase = await createClient();
+  const t = await getLocaleT();
 
   let query = supabase
     .from('channels')
@@ -559,7 +662,7 @@ export async function getChannelWithVideos(identifier: string | number): Promise
         return fetchVideosForChannel(retryChannel, supabase);
       }
     }
-    return { success: false, error: 'チャンネルが見つかりませんでした' };
+    return { success: false, error: t.archive.notFound };
   }
 
   return fetchVideosForChannel(channel, supabase);
@@ -569,6 +672,7 @@ export async function getChannelWithVideos(identifier: string | number): Promise
  * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする
  */
 async function fetchVideosForChannel(channel: any, supabase: any): Promise<ActionResult<any>> {
+  const t = await getLocaleT();
   const { data: videos, error: vidErr } = await supabase
     .from('videos')
     .select(`
@@ -583,7 +687,7 @@ async function fetchVideosForChannel(channel: any, supabase: any): Promise<Actio
 
   if (vidErr) {
     console.error('fetchVideosForChannel error:', vidErr);
-    return { success: false, error: '動画リストの取得に失敗しました' };
+    return { success: false, error: `${t.common.errorOccurred} (videos)` };
   }
 
   return {

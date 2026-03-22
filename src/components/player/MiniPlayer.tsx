@@ -2,6 +2,7 @@
 
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
+import { useLocale } from '@/components/LocaleProvider';
 import * as Slider from '@radix-ui/react-slider';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { 
@@ -32,6 +33,7 @@ export default function MiniPlayer() {
     toggleFullPlayer,
     setPipPosition,
   } = usePlayer();
+  const { t, T } = useLocale();
 
   if (!state.currentSong) return null;
 
@@ -72,7 +74,7 @@ export default function MiniPlayer() {
             />
           )}
           <div className="mini-player__text">
-            <span className="mini-player__title">{state.currentSong.title}</span>
+            <span className="mini-player__title">{t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}</span>
             <span className="mini-player__meta">
               {state.currentSong.channelName}
               {state.currentSong.videoTitle && (
@@ -87,7 +89,7 @@ export default function MiniPlayer() {
           <button
             onClick={prevSong}
             className="mini-player__btn"
-            title="前の曲"
+            title={T('player.previous')}
             disabled={state.playlist.length <= 1}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -98,7 +100,7 @@ export default function MiniPlayer() {
           <button
             onClick={() => (state.isPlaying ? pause() : resume())}
             className="mini-player__btn mini-player__btn--play"
-            title={state.isPlaying ? '一時停止' : '再生'}
+            title={state.isPlaying ? T('player.pause') : T('player.play')}
           >
             {state.isPlaying ? (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -114,7 +116,7 @@ export default function MiniPlayer() {
           <button
             onClick={nextSong}
             className="mini-player__btn"
-            title="次の曲"
+            title={T('player.next')}
             disabled={state.playlist.length <= 1}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -132,7 +134,7 @@ export default function MiniPlayer() {
           <button
             onClick={toggleLoop}
             className={`mini-player__btn mini-player__btn--toggle ${state.isLooping ? 'active' : ''}`}
-            title={state.isLooping ? 'ループ OFF' : 'ループ ON'}
+            title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
@@ -142,7 +144,7 @@ export default function MiniPlayer() {
           <button
             onClick={toggleMute}
             className="mini-player__btn"
-            title={state.isMuted ? 'ミュート解除' : 'ミュート'}
+            title={state.isMuted ? T('player.unmute') : T('player.mute')}
           >
             {state.isMuted || state.volume === 0 ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -176,7 +178,7 @@ export default function MiniPlayer() {
               <DropdownMenu.Trigger asChild>
                 <button 
                   className="mini-player__btn" 
-                  title="動画の位置を変更"
+                  title={T('player.changePosition')}
                 >
                   <PictureInPicture size={18} />
                 </button>
@@ -189,28 +191,28 @@ export default function MiniPlayer() {
                     onSelect={() => setPipPosition('top-left')}
                   >
                     <ArrowUpLeft size={16} />
-                    <span>左上</span>
+                    <span>{T('player.topLeft')}</span>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'top-right' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('top-right')}
                   >
                     <ArrowUpRight size={16} />
-                    <span>右上</span>
+                    <span>{T('player.topRight')}</span>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'bottom-left' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('bottom-left')}
                   >
                     <ArrowDownLeft size={16} />
-                    <span>左下</span>
+                    <span>{T('player.bottomLeft')}</span>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'bottom-right' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('bottom-right')}
                   >
                     <ArrowDownRight size={16} />
-                    <span>右下</span>
+                    <span>{T('player.bottomRight')}</span>
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
@@ -221,7 +223,7 @@ export default function MiniPlayer() {
           <button
             onClick={toggleFullPlayer}
             className={`mini-player__btn ${state.isFullPlayerOpen ? 'active' : ''}`}
-            title={state.isFullPlayerOpen ? '再生ページを閉じる' : '再生ページを開く'}
+            title={state.isFullPlayerOpen ? T('player.closePlayer') : T('player.openPlayer')}
           >
             {state.isFullPlayerOpen ? (
               <Minimize2 size={20} />

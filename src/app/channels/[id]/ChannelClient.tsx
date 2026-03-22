@@ -8,16 +8,19 @@ import { Youtube, Twitter, Calendar, Clock, Music, ChevronDown, ChevronUp, Play,
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
 import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
+import { useLocale } from '@/components/LocaleProvider';
+import SongMenu from '@/components/song/SongMenu';
 
 interface ChannelWithVideos extends Channel {
   vtuber?: Vtuber & { production?: Production };
   videos: (Video & { songs: Song[] })[];
 }
 
-export default function ChannelClient({ initialData }: { initialData: any }) {
+export default function ChannelClient({ initialData, error }: { initialData: any, error?: string | null }) {
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
   const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
   const { playWithSource, state } = usePlayer();
+  const { t, T } = useLocale();
   const [cols, setCols] = useState(4);
 
   // ウィンドウサイズに応じて列数を更新
@@ -32,7 +35,17 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
     return () => window.removeEventListener('resize', updateCols);
   }, []);
 
+  if (error) {
+    return (
+      <div className="container" style={{ paddingTop: '100px', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--error)' }}>{T('common.errorOccurred')}</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+      </div>
+    );
+  }
+
   const channel = initialData as ChannelWithVideos;
+  if (!channel) return null;
 
   const toggleExpand = (id: number) => {
     setExpandedVideoId(expandedVideoId === id ? null : id);
@@ -41,8 +54,10 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
   const handlePlaySong = (video: Video, song: Song, songs: Song[]) => {
     const playerSong: PlayerSong = {
       id: song.id,
-      title: song.master_songs?.title || 'Unknown Title',
-      artist: song.master_songs?.artist || 'Unknown Artist',
+      title: song.master_songs?.title || T('common.unknown'),
+      artist: song.master_songs?.artist || T('common.unknown'),
+      title_en: song.master_songs?.title_en || null,
+      artist_en: song.master_songs?.artist_en || null,
       artworkUrl: song.master_songs?.artwork_url || null,
       videoId: video.video_id,
       startSec: song.start_sec,
@@ -54,8 +69,10 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
 
     const playlist: PlayerSong[] = songs.map(s => ({
       id: s.id,
-      title: s.master_songs?.title || 'Unknown Title',
-      artist: s.master_songs?.artist || 'Unknown Artist',
+      title: s.master_songs?.title || T('common.unknown'),
+      artist: s.master_songs?.artist || T('common.unknown'),
+      title_en: s.master_songs?.title_en || null,
+      artist_en: s.master_songs?.artist_en || null,
       artworkUrl: s.master_songs?.artwork_url || null,
       videoId: video.video_id,
       startSec: s.start_sec,
@@ -118,7 +135,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                   <img src={channel.image} alt={channel.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full text-4xl text-[#aaaaaa] bg-[#1a1a1a]">
-                    {channel.name[0]}
+                    {channel.name ? channel.name[0] : '?'}
                   </div>
                 )}
               </div>
@@ -193,9 +210,9 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
           >
             <div className="w-1.5 h-8 bg-gradient-to-b from-[#ff4e8e] to-[#6366f1] rounded-full shadow-[0_0_15px_rgba(255,78,142,0.4)]" />
             <h2 className="text-2xl font-black tracking-wider text-[var(--text-primary)] flex items-center gap-3">
-              登録済みアーカイブ
+              {T('archive.registeredArchives')}
               <span className="text-xs font-bold bg-[var(--bg-secondary)] text-[var(--text-tertiary)] px-2.5 py-1 rounded-full border border-[var(--border)] shadow-inner">
-                {channel.videos.length} ARCHIVES
+                {channel.videos.length} {T('archive.songs').toUpperCase()}
               </span>
             </h2>
           </motion.div>
@@ -251,7 +268,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                               <Calendar size={12} className="text-[var(--text-tertiary)]" /> {video.published_at ? new Date(video.published_at).toLocaleDateString() : 'N/A'}
                             </span>
                             <span className="flex items-center gap-1.5">
-                              <Music size={12} className="text-[var(--text-tertiary)]" /> {video.songs.length} 曲
+                              <Music size={12} className="text-[var(--text-tertiary)]" /> {video.songs.length} {T('archive.songs')}
                             </span>
                           </div>
 
@@ -263,9 +280,9 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                             onClick={() => toggleExpand(video.id)}
                           >
                             {isExpanded ? (
-                              <><ChevronUp size={15} /> 閉じる</>
+                              <><ChevronUp size={15} /> {T('common.close')}</>
                             ) : (
-                              <><ChevronDown size={15} /> 曲リストを見る</>
+                              <><ChevronDown size={15} /> {T('archive.viewSongs')}</>
                             )}
                           </button>
                         </div>
@@ -300,7 +317,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                 <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center">
                                   <Music className="text-[var(--accent)]" size={16} />
                                 </div>
-                                曲リスト
+                                {T('archive.songList')}
                                 <span className="text-xs font-semibold text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">{video.songs.length}</span>
                               </h4>
                               <button
@@ -316,10 +333,10 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                 <div className="song-list overflow-x-auto overflow-y-hidden">
                                   <div className="song-list__header hidden md:grid min-w-[500px]">
                                     <span className="song-list__col-num">#</span>
-                                    <span className="song-list__col-title">曲名</span>
-                                    <span className="song-list__col-artist">アーティスト</span>
-                                    <span className="song-list__col-time">区間</span>
-                                    <span className="song-list__col-duration">長さ</span>
+                                    <span className="song-list__col-title">{T('archive.title')}</span>
+                                    <span className="song-list__col-artist">{T('archive.artist')}</span>
+                                    <span className="song-list__col-time">{T('archive.time')}</span>
+                                    <span className="song-list__col-duration">{T('archive.duration')}</span>
                                     <span className="song-list__col-add"></span>
                                   </div>
                                   <div className="flex flex-col gap-1">
@@ -354,38 +371,46 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                               <div className="relative w-8 h-8 rounded-md overflow-hidden shrink-0 shadow-sm md:hidden">
                                                 <img src={video.thumbnail_url || video.thumbnail || undefined} alt={song.master_songs?.title} className="w-full h-full object-cover" />
                                               </div>
-                                              <span className="truncate">{song.master_songs?.title || '(不明)'}</span>
+                                              <span className="truncate">{t(song.master_songs?.title || T('common.unknown'), song.master_songs?.title_en || song.master_songs?.title || T('common.unknown'))}</span>
                                             </div>
                                           </div>
-                                          <span className="song-list__col-artist truncate">{song.master_songs?.artist || '-'}</span>
+                                          <span className="song-list__col-artist truncate">{t(song.master_songs?.artist || '-', song.master_songs?.artist_en || song.master_songs?.artist || '-')}</span>
                                           <span className="song-list__col-time text-xs opacity-60">
                                             {formatTime(song.start_sec)} - {formatTime(song.end_sec)}
                                           </span>
                                           <span className="song-list__col-duration text-xs opacity-60">
                                             {formatTime(song.end_sec - song.start_sec)}
                                           </span>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedSongId(song.id);
-                                            }}
-                                            className="song-list__col-add p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors text-[var(--text-tertiary)] hover:text-[var(--accent)] relative z-10 flex items-center justify-center"
-                                            title="メニュー"
-                                          >
-                                            <MoreVertical size={16} />
-                                          </button>
+                                          <div className="song-list__col-add">
+                                            <SongMenu 
+                                              song={{
+                                                id: song.id,
+                                                title: song.master_songs?.title || T('common.unknown'),
+                                                artist: song.master_songs?.artist || T('common.unknown'),
+                                                title_en: song.master_songs?.title_en || null,
+                                                artist_en: song.master_songs?.artist_en || null,
+                                                artworkUrl: song.master_songs?.artwork_url || null,
+                                                videoId: video.video_id,
+                                                startSec: song.start_sec,
+                                                endSec: song.end_sec,
+                                                channelName: channel.name,
+                                                thumbnailUrl: video.thumbnail_url,
+                                                videoTitle: video.title,
+                                              }} 
+                                            />
+                                          </div>
                                         </motion.div>
                                       );
                                     })}
                                   </div>
                                 </div>
                               ) : (
-                                <div className="py-16 flex flex-col items-center justify-center text-center">
-                                  <div className="w-16 h-16 rounded-full bg-white/[0.02] flex items-center justify-center mb-4 border border-white/[0.05]">
-                                    <Music className="text-[#333]" size={24} />
+                                  <div className="py-16 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/[0.02] flex items-center justify-center mb-4 border border-white/[0.05]">
+                                      <Music className="text-[#333]" size={24} />
+                                    </div>
+                                    <p className="text-[#555] text-sm font-medium">{T('archive.noSongs')}</p>
                                   </div>
-                                  <p className="text-[#555] text-sm font-medium">登録されている曲がありません</p>
-                                </div>
                               )}
                             </div>
                           </div>
@@ -396,10 +421,10 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                 );
               })
             ) : (
-              <div className="col-span-full py-20 text-center text-[#555] bg-white/[0.02] rounded-2xl border border-dashed border-white/[0.06]">
-                <Music size={32} className="mx-auto mb-3 text-[#444]" />
-                <p className="text-sm font-medium">登録されているアーカイブがありません。</p>
-              </div>
+               <div className="col-span-full py-20 text-center text-[#555] bg-white/[0.02] rounded-2xl border border-dashed border-white/[0.06]">
+                 <Music size={32} className="mx-auto mb-3 text-[#444]" />
+                 <p className="text-sm font-medium">{T('archive.noArchives')}</p>
+               </div>
             )}
           </div>
         </div>

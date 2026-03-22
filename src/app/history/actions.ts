@@ -1,6 +1,14 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { translations } from '@/lib/translations';
+import { cookies } from 'next/headers';
+
+async function getLocaleT() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  return translations[locale];
+}
 
 export type HistoryItem = {
   id: number;
@@ -39,7 +47,10 @@ export async function recordPlayHistory(params: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'User not logged in' };
+  if (!user) {
+    const t = await getLocaleT();
+    return { success: false, error: t.common.loginRequired };
+  }
 
   const { data, error } = await supabase
     .from('play_history')
@@ -100,7 +111,10 @@ export async function getPlayHistory(limit = 50) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'User not logged in' };
+  if (!user) {
+    const t = await getLocaleT();
+    return { success: false, error: t.common.loginRequired };
+  }
 
   const { data, error } = await supabase
     .from('play_history')
@@ -147,7 +161,10 @@ export async function clearPlayHistory() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: 'User not logged in' };
+  if (!user) {
+    const t = await getLocaleT();
+    return { success: false, error: t.common.loginRequired };
+  }
 
   const { error } = await supabase
     .from('play_history')

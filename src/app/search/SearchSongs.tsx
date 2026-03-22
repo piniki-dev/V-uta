@@ -6,6 +6,7 @@ import { Music, Play, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import type { PlayerSong } from '@/types';
 import SongMenu from '@/components/song/SongMenu';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface SearchSongsProps {
   songs: any[];
@@ -13,18 +14,21 @@ interface SearchSongsProps {
 
 export default function SearchSongs({ songs }: SearchSongsProps) {
   const { playWithSource } = usePlayer();
+  const { t } = useLocale();
 
   const toPlayerSong = (item: any): PlayerSong => {
     return {
       id: item.id,
       title: item.master_songs.title,
       artist: item.master_songs.artist,
+      title_en: item.master_songs.title_en || null,
+      artist_en: item.master_songs.artist_en || null,
       artworkUrl: item.master_songs.artwork_url,
       videoId: item.videos.video_id,
       startSec: item.start_sec,
       endSec: item.end_sec,
       channelName: item.videos.channels?.name || null,
-      thumbnailUrl: null,
+      thumbnailUrl: item.videos.thumbnail_url || null,
       videoTitle: item.videos.title
     };
   };
@@ -61,9 +65,11 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
             </div>
             <div className="min-w-0">
               <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">
-                {song.master_songs.title}
+                {t(song.master_songs.title, song.master_songs.title_en || song.master_songs.title)}
               </div>
-              <div className="text-sm text-[var(--text-secondary)] truncate">{song.master_songs.artist}</div>
+              <div className="text-sm text-[var(--text-secondary)] truncate">
+                {t(song.master_songs.artist || '-', song.master_songs.artist_en || song.master_songs.artist || '-')}
+              </div>
             </div>
           </div>
 

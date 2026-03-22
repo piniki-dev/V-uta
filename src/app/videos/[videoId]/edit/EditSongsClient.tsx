@@ -7,6 +7,7 @@ import type { ITunesSearchResult } from './actions';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Search, X, Music, Pencil } from 'lucide-react';
+import { useLocale } from '@/components/LocaleProvider';
 
 /** 秒数を "mm:ss" に変換 */
 function secondsToMmSs(sec: number): string {
@@ -27,11 +28,12 @@ interface EditableSong {
 }
 
 interface Props {
-  video: Video;
+  video: Video | null;
   songs: Song[];
+  error?: string | null;
 }
 
-export default function EditSongsClient({ video, songs: initialSongs }: Props) {
+export default function EditSongsClient({ video, songs: initialSongs, error }: Props) {
   const [editableSongs, setEditableSongs] = useState<EditableSong[]>(() =>
     initialSongs.map((song) => ({
       song,
@@ -46,6 +48,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
   );
 
   const [isPending, startTransition] = useTransition();
+  const { locale, t, T } = useLocale();
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const clearMessage = () => setMessage(null);
@@ -103,15 +106,15 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
             : it
         )
       );
-      setMessage({ type: 'success', text: '区間を更新しました' });
+      setMessage({ type: 'success', text: T('editSong.updateSuccess') });
     });
   };
 
   // 曲を削除（論理削除）
   const handleDelete = (index: number) => {
     const item = editableSongs[index];
-    const songName = item.song.master_songs?.title || '(不明)';
-    if (!confirm(`「${songName}」を削除しますか？`)) return;
+    const songName = item.song.master_songs?.title || T('common.unknown');
+    if (!confirm(T('editSong.deleteConfirm', { name: songName }))) return;
 
     clearMessage();
     startTransition(async () => {
@@ -121,7 +124,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
         return;
       }
       setEditableSongs((prev) => prev.filter((_, i) => i !== index));
-      setMessage({ type: 'success', text: `「${songName}」を削除しました` });
+      setMessage({ type: 'success', text: T('editSong.deleteSuccess', { name: songName }) });
     });
   };
 
@@ -145,7 +148,9 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
       prev.map((it, i) => (i === index ? { ...it, isSearching: true } : it))
     );
 
-    const result = await searchSongForEdit(item.searchQuery);
+    const country = locale === 'en' ? 'us' : 'jp';
+    const lang = locale === 'en' ? 'en_us' : 'ja_jp';
+    const result = await searchSongForEdit(item.searchQuery, country, lang);
 
     setEditableSongs((prev) =>
       prev.map((it, i) =>
@@ -183,6 +188,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
         artworkUrl: track.artworkUrl,
         itunesId: String(track.trackId),
         durationSec: track.durationSec,
+        searchLocale: locale,
       });
       if (!result.success) {
         setMessage({ type: 'error', text: result.error });
@@ -201,9 +207,23 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
             : it
         )
       );
-      setMessage({ type: 'success', text: `曲を「${track.title}」に変更しました` });
+      setMessage({ type: 'success', text: T('editSong.changeSuccess', { name: track.title }) });
     });
   };
+
+  if (error || !video) {
+    return (
+      <div className="page-container">
+        <div className="empty-state">
+          <h1 className="empty-state__title">{T('archive.notFound')}</h1>
+          <p className="empty-state__text">
+            {T('archive.notFoundText')}
+          </p>
+          {error && <p className="text-[var(--error)] mt-4">{error}</p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -211,10 +231,10 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
       <div className="edit-header">
         <Link href={`/videos/${video.video_id}`} className="edit-header__back">
           <ArrowLeft size={20} />
-          戻る
+          {T('common.back')}
         </Link>
         <div className="edit-header__info">
-          <h1 className="edit-header__title">曲の編集</h1>
+          <h1 className="edit-header__title">{T('editSong.pageTitle')}</h1>
           <p className="edit-header__video-title">{video.title}</p>
         </div>
       </div>
@@ -230,10 +250,10 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
       {editableSongs.length === 0 ? (
         <div className="empty-state">
           <p className="empty-state__text">
-            このアーカイブにはまだ曲が登録されていません。
+            {T('editSong.noSongs')}
           </p>
           <Link href="/songs/new" className="btn btn--primary">
-            歌を登録する
+            {T('archive.registerSong')}
           </Link>
         </div>
       ) : (
@@ -255,24 +275,24 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                 )}
                 <div className="edit-songs__info">
                   <span className="edit-songs__title">
-                    {item.song.master_songs?.title || '(不明)'}
+                    {t(item.song.master_songs?.title || '(不明)', item.song.master_songs?.title_en || item.song.master_songs?.title || '(Unknown)')}
                   </span>
                   <span className="edit-songs__artist">
-                    {item.song.master_songs?.artist || '-'}
+                    {t(item.song.master_songs?.artist || '-', item.song.master_songs?.artist_en || item.song.master_songs?.artist || '-')}
                   </span>
                 </div>
                 <div className="edit-songs__actions">
                   <button
                     onClick={() => toggleEdit(index)}
                     className="edit-songs__btn"
-                    title={item.isEditing ? 'キャンセル' : '編集'}
+                    title={item.isEditing ? T('common.cancel') : T('common.edit')}
                   >
                     {item.isEditing ? <X size={16} /> : <Pencil size={16} />}
                   </button>
                   <button
                     onClick={() => handleDelete(index)}
                     className="edit-songs__btn edit-songs__btn--danger"
-                    title="削除"
+                    title={T('common.delete')}
                     disabled={isPending}
                   >
                     <Trash2 size={16} />
@@ -289,7 +309,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                     className="edit-songs__change-song-btn"
                   >
                     <Music size={14} />
-                    {item.isChangingSong ? '曲の変更をキャンセル' : '曲を変更する'}
+                    {item.isChangingSong ? T('editSong.cancelChange') : T('editSong.changeSong')}
                   </button>
 
                   {item.isChangingSong && (
@@ -305,7 +325,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                               handleSearchSong(index);
                             }
                           }}
-                          placeholder="曲名で検索..."
+                          placeholder={T('editSong.searchPlaceholder')}
                           className="form-input"
                           disabled={item.isSearching}
                         />
@@ -347,7 +367,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                   {/* 区間編集 */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">開始時間</label>
+                      <label className="form-label">{T('newSong.startTime')}</label>
                       <input
                         type="text"
                         value={item.startTime}
@@ -358,7 +378,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">終了時間</label>
+                      <label className="form-label">{T('newSong.endTime')}</label>
                       <input
                         type="text"
                         value={item.endTime}
@@ -376,7 +396,7 @@ export default function EditSongsClient({ video, songs: initialSongs }: Props) {
                     className="btn btn--primary btn--full"
                   >
                     <Save size={16} />
-                    {isPending ? '保存中...' : '区間を保存'}
+                    {isPending ? T('editSong.saving') : T('editSong.save')}
                   </button>
                 </div>
               )}

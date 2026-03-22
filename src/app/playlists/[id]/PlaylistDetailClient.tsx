@@ -8,6 +8,7 @@ import { formatTime } from '@/lib/utils';
 import { Play, Trash2, ListMusic, Globe, Lock, Loader2, ExternalLink, Pencil, Save, X, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
   playlist: Playlist & { items: any[] };
@@ -15,6 +16,7 @@ interface Props {
 
 export default function PlaylistDetailClient({ playlist }: Props) {
   const { playWithSource, state } = usePlayer();
+  const { T } = useLocale();
   const [items, setItems] = useState(playlist.items);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
@@ -33,6 +35,8 @@ export default function PlaylistDetailClient({ playlist }: Props) {
       id: song.id,
       title: song.master_songs.title,
       artist: song.master_songs.artist,
+      title_en: song.master_songs.title_en,
+      artist_en: song.master_songs.artist_en,
       artworkUrl: song.master_songs.artwork_url,
       videoId: song.video.video_id,
       startSec: song.start_sec,
@@ -58,7 +62,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
   };
 
   const handleRemove = async (itemId: number) => {
-    if (!confirm('この楽曲をプレイリストから削除しますか？')) return;
+    if (!confirm(T('playlist.removeConfirm'))) return;
 
     startTransition(async () => {
       const result = await removeSongFromPlaylist(playlist.id, itemId);
@@ -123,19 +127,19 @@ export default function PlaylistDetailClient({ playlist }: Props) {
               <div className="flex items-center justify-center md:justify-start gap-3 mb-2 text-xs font-bold text-[var(--text-tertiary)]">
                 {playlist.is_public ? (
                   <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 rounded-lg border border-green-500/20">
-                    <Globe size={14} /> 公開プレイリスト
+                    <Globe size={14} /> {T('playlist.publicLabel')}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 px-2 py-1 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20">
-                    <Lock size={14} /> 非公開プレイリスト
+                    <Lock size={14} /> {T('playlist.privateLabel')}
                   </div>
                 )}
                 <span>•</span>
-                <span>{items.length} 曲</span>
+                <span>{items.length} {T('playlist.songCount')}</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">{playlist.name}</h1>
               <p className="text-[var(--text-secondary)] text-lg mb-6 max-w-2xl font-medium leading-relaxed">
-                {playlist.description || '説明はありません'}
+                {playlist.description || T('playlist.noDescription')}
               </p>
             </>
           ) : (
@@ -145,13 +149,13 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--text-primary)]"
-                  placeholder="プレイリスト名"
+                  placeholder={T('playlist.name')}
                 />
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none h-24"
-                  placeholder="プレイリストの説明"
+                  placeholder={T('playlist.description')}
                 />
               <label className="flex items-center gap-3 cursor-pointer select-none group/toggle w-fit">
                 <div className="relative">
@@ -164,7 +168,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   <div className="w-10 h-6 bg-[var(--bg-hover)] rounded-full peer peer-checked:bg-[var(--accent)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
                 </div>
                 <span className="text-sm font-bold text-[var(--text-tertiary)] group-hover/toggle:text-[var(--text-primary)] transition-colors">
-                  プレイリストを公開する
+                  {T('playlist.makePublic')}
                 </span>
               </label>
             </div>
@@ -179,14 +183,14 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   className="flex items-center gap-2 px-8 py-3 bg-[#ff4e8e] hover:bg-[#ff4e8e]/90 text-white font-bold rounded-full shadow-lg shadow-[#ff4e8e]/20 transition-all active:scale-95 disabled:opacity-50"
                 >
                   <Play fill="currentColor" size={20} />
-                  すべて再生
+                  {T('playlist.playAll')}
                 </button>
                 <button
                   onClick={() => setIsEditing(true)}
                   className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold rounded-full border border-[var(--border)] transition-all active:scale-95"
                 >
                   <Pencil size={18} />
-                  編集
+                  {T('common.edit')}
                 </button>
               </>
             ) : (
@@ -197,7 +201,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   className="flex items-center gap-2 px-8 py-3 bg-[#ff4e8e] hover:bg-[#ff4e8e]/90 text-white font-bold rounded-full shadow-lg shadow-[#ff4e8e]/20 transition-all active:scale-95 disabled:opacity-50"
                 >
                   {isPending ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                  変更を保存
+                  {T('common.save')}
                 </button>
                 <button
                   onClick={handleCancelEdit}
@@ -205,7 +209,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   className="flex items-center gap-2 px-6 py-3 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold rounded-full transition-all disabled:opacity-50"
                 >
                   <X size={20} />
-                  キャンセル
+                  {T('common.cancel')}
                 </button>
               </>
             )}
@@ -218,11 +222,11 @@ export default function PlaylistDetailClient({ playlist }: Props) {
         <div className="px-8 py-5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-tertiary)]/30">
           <h2 className="font-bold flex items-center gap-2 text-[var(--text-secondary)] text-sm">
             <ListMusic size={18} />
-            楽曲リスト
+            {T('playlist.songs')}
           </h2>
           {isEditing && (
             <span className="text-xs font-bold text-[var(--accent)] animate-pulse">
-              ドラッグして順序を入れ替えられます
+              {T('playlist.dragToReorder')}
             </span>
           )}
         </div>
@@ -232,7 +236,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
             <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center">
               <ListMusic size={32} />
             </div>
-            <p className="font-medium">楽曲が登録されていません</p>
+            <p className="font-medium">{T('playlist.noSongs')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -240,9 +244,9 @@ export default function PlaylistDetailClient({ playlist }: Props) {
               {/* ヘッダー行 */}
               <div className="grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 border-b border-[var(--border)] text-[var(--text-tertiary)] text-xs font-bold uppercase tracking-widest gap-4">
                 <div className="text-center">#</div>
-                <div>曲名 / アーティスト</div>
-                <div>アーカイブ</div>
-                <div className="text-right">長さ</div>
+                <div>{T('playlist.songAndArtist')}</div>
+                <div>{T('playlist.video')}</div>
+                <div className="text-right">{T('playlist.length')}</div>
                 <div></div>
               </div>
 
@@ -292,7 +296,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                           }}
                           disabled={isPending}
                           className="p-2.5 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
-                          title="削除"
+                          title={T('common.delete')}
                         >
                           <Trash2 size={18} />
                         </button>

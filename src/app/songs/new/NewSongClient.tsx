@@ -11,6 +11,7 @@ import { updateSong, deleteSong, updateSongMaster, searchSongForEdit } from '@/a
 import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLocale } from '@/components/LocaleProvider';
 
 
 interface EditableSong {
@@ -59,6 +60,7 @@ export default function NewSongClient() {
   const [success, setSuccess] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const { locale, t: tl, T } = useLocale();
 
   // モーダル管理
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,10 +73,10 @@ export default function NewSongClient() {
     cancelText: string;
     type: 'warning' | 'danger' | 'info';
   }>({
-    title: '変更を破棄しますか？',
-    message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
-    confirmText: '移動する',
-    cancelText: 'キャンセル',
+    title: T('newSong.confirmDiscard'),
+    message: T('newSong.discardMessage'),
+    confirmText: T('newSong.move'),
+    cancelText: T('common.cancel'),
     type: 'warning',
   });
   const [step, setStep] = useState<1 | 2>(1);
@@ -84,7 +86,7 @@ export default function NewSongClient() {
   const [productions, setProductions] = useState<Production[]>([]);
   const [vtuberForm, setVtuberForm] = useState({
     name: '',
-    gender: '不明' as any,
+    gender: T('vtuber.genders.unknown') as any,
     link: '',
     productionId: '',
     newProductionName: '',
@@ -135,10 +137,10 @@ export default function NewSongClient() {
 
     if (hasChanges) {
       setModalConfig({
-        title: '変更を破棄しますか？',
-        message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
-        confirmText: '移動する',
-        cancelText: 'キャンセル',
+        title: T('newSong.confirmDiscard'),
+        message: T('newSong.discardMessage'),
+        confirmText: T('newSong.move'),
+        cancelText: T('common.cancel'),
         type: 'warning',
       });
       setOnConfirmAction(() => () => {
@@ -247,7 +249,7 @@ export default function NewSongClient() {
       }
 
       if (result.data.existingSongs.length > 0) {
-        setSuccess('登録済みのアーカイブを取得しました。変更を加えられます。');
+        setSuccess(T('newSong.fetchExisting'));
       }
 
       // チャンネル未登録の場合はモーダルを表示
@@ -289,7 +291,7 @@ export default function NewSongClient() {
         const csvData = parseCsv(text);
         const processed = processImportedData(csvData);
         if (processed.length === 0) {
-          setError('有効なデータが見つかりませんでした。CSVのフォーマットを確認してください。');
+          setError(T('newSong.error'));
           return;
         }
         setBatchArchives(processed);
@@ -297,7 +299,7 @@ export default function NewSongClient() {
         setUrl(processed[0].url);
         handleFetchVideo(processed[0].url, 0, processed);
       } catch (err: any) {
-        setError(err.message || 'CSVの読み込みに失敗しました。');
+        setError(err.message || T('newSong.csvLoadError'));
       }
     };
     reader.readAsText(file);
@@ -315,7 +317,7 @@ export default function NewSongClient() {
         const csvData = parseCsv(text);
         const processed = processImportedData(csvData);
         if (processed.length === 0) {
-          setError('有効なデータが見つかりませんでした。スプレッドシートの内容を確認してください。');
+          setError(T('newSong.error'));
           return;
         }
         setBatchArchives(processed);
@@ -323,7 +325,7 @@ export default function NewSongClient() {
         setUrl(processed[0].url);
         handleFetchVideo(processed[0].url, 0, processed);
       } catch (err: any) {
-        setError(err.message || 'スプレッドシートの読み込みに失敗しました。');
+        setError(err.message || T('newSong.gsLoadError'));
       }
     });
   };
@@ -347,7 +349,7 @@ export default function NewSongClient() {
       }
 
       setIsVtuberModalOpen(false);
-      setSuccess(`${vtuberForm.name} さんのチャンネルを登録しました！`);
+      setSuccess(T('vtuber.registerSuccess', { name: vtuberForm.name }));
 
       // 改めて動画を登録
       if (metadata) {
@@ -366,11 +368,13 @@ export default function NewSongClient() {
     setIsSearching(true);
     setError('');
     try {
-      const result = await searchSongAction(searchQuery);
+      const country = locale === 'en' ? 'us' : 'jp';
+      const lang = locale === 'en' ? 'en_us' : 'ja_jp';
+      const result = await searchSongAction(searchQuery, country, lang);
       if (result.success) {
         setSearchResults(result.data);
         if (result.data.length === 0) {
-          setError('楽曲が見つかりませんでした。手動で入力してください。');
+          setError(T('newSong.noSongsFound'));
           setIsManualInput(true);
           setManualTitle(searchQuery);
         }
@@ -392,8 +396,8 @@ export default function NewSongClient() {
   const handleManualSongSelect = () => {
     const manualSong: ITunesSearchResult = {
       trackId: -1,
-      title: manualTitle || searchQuery || '不明な楽曲',
-      artist: manualArtist || '不明なアーティスト',
+      title: manualTitle || searchQuery || T('common.unknown'),
+      artist: manualArtist || T('common.unknown'),
       albumName: '手動登録',
       artworkUrl: '', // 空文字にしておく（プレースホルダー表示用）
       durationSec: 0,
@@ -412,14 +416,14 @@ export default function NewSongClient() {
     if (!selectedSong || !startTime || !endTime) return;
 
     if (isCoverVideo && allSongs.filter(s => !s.isDeleted).length > 0) {
-      setError('歌ってみた動画モードでは、1つの動画に1曲しか登録できません。');
+      setError(T('newSong.isCoverError'));
       return;
     }
 
     const startSec = parseTime(startTime);
     const endSec = parseTime(endTime);
     if (startSec === null || endSec === null || startSec >= endSec) {
-      setError('時間の形式が正しくないか、終了時間が開始時間以前です');
+      setError(T('newSong.timeError'));
       return;
     }
 
@@ -446,8 +450,11 @@ export default function NewSongClient() {
       isConfirmed: true,
     };
 
+    // クライアント側での管理用に検索時のロケールを保存
+    (newSong as any).searchLocale = locale;
+
     setAllSongs((prev) => [...prev, newSong]);
-    setSuccess(`「${selectedSong.title}」をリストに追加しました。最後に一括保存してください。`);
+    setSuccess(T('newSong.addToListSuccess'));
 
     setSelectedSong(null);
     setSearchQuery('');
@@ -478,6 +485,7 @@ export default function NewSongClient() {
             startSec: parseTime(item.startTime) || 0,
             endSec: parseTime(item.endTime) || 0,
             isDeleted: item.isDeleted,
+            searchLocale: (item as any).searchLocale || locale,
           }));
 
         const result = await registerFullArchive({
@@ -505,16 +513,16 @@ export default function NewSongClient() {
           isConfirmed: true,
         }));
         setAllSongs(updatedSongs);
-        setSuccess('全ての変更を保存しました！' + (unconfirmedCount > 0 ? `（未確定の ${unconfirmedCount} 曲はスキップされました）` : ''));
+        setSuccess(T('newSong.saveSuccess') + (unconfirmedCount > 0 ? T('newSong.skippedUnconfirmed', { count: unconfirmedCount }) : ''));
       });
     };
 
     if (unconfirmedCount > 0) {
       setModalConfig({
-        title: '未確定の楽曲があります',
-        message: `まだ曲が確定されていないデータが ${unconfirmedCount} 件あります。これらは保存されませんが、よろしいですか？`,
-        confirmText: '保存する',
-        cancelText: '戻って確認',
+        title: T('newSong.unconfirmedTitle'),
+        message: T('newSong.unconfirmedMessage', { count: unconfirmedCount }),
+        confirmText: T('newSong.confirmSave'),
+        cancelText: T('newSong.backToConfirm'),
         type: 'warning',
       });
       setOnConfirmAction(() => performSave);
@@ -554,7 +562,7 @@ export default function NewSongClient() {
     const e = parseTime(item.endTime);
 
     if (s === null || e === null || s >= e) {
-      setError('時間の形式が正しくありません');
+      setError(T('newSong.timeFormatError'));
       return;
     }
 
@@ -601,7 +609,9 @@ export default function NewSongClient() {
       prev.map((it, i) => (i === index ? { ...it, isSearching: true } : it))
     );
 
-    const result = await searchSongForEdit(item.searchQuery);
+    const country = locale === 'en' ? 'us' : 'jp';
+    const lang = locale === 'en' ? 'en_us' : 'ja_jp';
+    const result = await searchSongForEdit(item.searchQuery, country, lang);
 
     setAllSongs((prev) =>
       prev.map((it, i) =>
@@ -694,10 +704,10 @@ export default function NewSongClient() {
     if (hasChanges) {
       e.preventDefault();
       setModalConfig({
-        title: '変更を破棄しますか？',
-        message: '未保存の変更があります。このまま移動すると、編集した内容は失われます。',
-        confirmText: '移動する',
-        cancelText: 'キャンセル',
+        title: T('newSong.confirmDiscard'),
+        message: T('newSong.discardMessage'),
+        confirmText: T('newSong.move'),
+        cancelText: T('common.cancel'),
         type: 'warning',
       });
       setOnConfirmAction(() => () => {
@@ -710,10 +720,9 @@ export default function NewSongClient() {
   return (
     <>
       <div className="page-container">
-        <h1 className="page-title">歌を登録</h1>
+        <h1 className="page-title">{T('newSong.pageTitle')}</h1>
         <p className="page-description">
-          YouTube 歌枠アーカイブから曲の区間を登録します。
-          1つのアーカイブから複数の曲を連続で登録できます。
+          {T('newSong.pageDescription')}
         </p>
 
         {/* エラー・成功メッセージ */}
@@ -726,7 +735,7 @@ export default function NewSongClient() {
             <div className="card__body py-3 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-[13px] font-bold text-white px-3 py-1 bg-[var(--accent)]/20 rounded-full border border-[var(--accent)]/30">
-                  一括登録モード
+                  {T('newSong.batchMode')}
                 </span>
                 <span className="text-[13px] text-[var(--text-secondary)] font-medium">
                   アーカイブ {currentBatchIndex + 1} / {batchArchives.length}
@@ -738,14 +747,14 @@ export default function NewSongClient() {
                   disabled={currentBatchIndex === 0}
                   onClick={() => navigateToBatchItem(currentBatchIndex - 1)}
                 >
-                  <ChevronLeft size={16} /> 前のアーカイブ
+                  <ChevronLeft size={16} /> {T('newSong.prevArchive')}
                 </button>
                 <button
                   className="btn btn--secondary btn--sm flex items-center gap-1"
                   disabled={currentBatchIndex === batchArchives.length - 1}
                   onClick={() => navigateToBatchItem(currentBatchIndex + 1)}
                 >
-                  次のアーカイブ <ChevronRight size={16} />
+                  {T('newSong.nextArchive')} <ChevronRight size={16} />
                 </button>
               </div>
             </div>
@@ -756,10 +765,10 @@ export default function NewSongClient() {
         <div className={`card ${step === 1 ? '' : 'card--completed'}`}>
           <div className="card__header">
             <span className="card__step">1</span>
-            <h2 className="card__title">アーカイブ URL</h2>
+            <h2 className="card__title">{T('newSong.youtubeUrl')}</h2>
             {step === 2 && (
               <button onClick={handleReset} className="card__change-btn">
-                変更
+                {T('common.edit')}
               </button>
             )}
           </div>
@@ -768,7 +777,7 @@ export default function NewSongClient() {
             <div className="card__body">
               <div className="form-group">
                 <label htmlFor="youtube-url" className="form-label">
-                  YouTube URL
+                  {T('newSong.youtubeUrl')}
                 </label>
                 <div className="form-input-group">
                   <input
@@ -785,21 +794,21 @@ export default function NewSongClient() {
                     disabled={isPending || !url.trim()}
                     className="btn btn--primary"
                   >
-                    {isPending ? '取得中...' : '取得'}
+                    {isPending ? T('newSong.fetching') : T('newSong.fetch')}
                   </button>
                 </div>
               </div>
 
               <div className="mt-6 pt-6 border-t border-[var(--border)]">
                 <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                  <Table size={16} className="text-[var(--accent)]" /> 一括インポート
+                  <Table size={16} className="text-[var(--accent)]" /> {T('newSong.bulkImport')}
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-[var(--bg-tertiary)]/50 border border-[var(--border)] rounded-xl p-4 hover:bg-[var(--bg-hover)] transition-all group">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[13px] font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <FileUp size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> CSVから追加
+                        <FileUp size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> {T('newSong.fromCsv')}
                       </span>
                       <input
                         type="file"
@@ -812,18 +821,18 @@ export default function NewSongClient() {
                         htmlFor="csv-upload"
                         className="text-[11px] font-bold text-[var(--accent)] cursor-pointer hover:underline"
                       >
-                        ファイルを選択
+                        {T('newSong.selectFile')}
                       </label>
                     </div>
                     <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                      アーカイブURL, 曲名, アーティスト, 開始, 終了の順に含まれるCSVを読み込みます。
+                      {T('newSong.csvDescription')}
                     </p>
                   </div>
 
                   <div className="bg-[var(--bg-tertiary)]/50 border border-[var(--border)] rounded-xl p-4 hover:bg-[var(--bg-hover)] transition-all group">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[13px] font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Table size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> Googleスプレッドシートから追加
+                        <Table size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> {T('newSong.fromGoogleSheet')}
                       </span>
                     </div>
                     <div className="flex gap-2">
@@ -831,7 +840,7 @@ export default function NewSongClient() {
                         type="text"
                         value={gsUrl}
                         onChange={(e) => setGsUrl(e.target.value)}
-                        placeholder="共有用リンクを入力"
+                        placeholder={T('newSong.enterGsUrl')}
                         className="form-input text-[11px] py-1.5 h-auto"
                       />
                       <button
@@ -839,7 +848,7 @@ export default function NewSongClient() {
                         disabled={isPending || !gsUrl.trim()}
                         className="btn btn--primary btn--sm text-[11px] px-3 whitespace-nowrap"
                       >
-                        取得
+                        {T('newSong.fetch')}
                       </button>
                     </div>
                   </div>
@@ -875,10 +884,10 @@ export default function NewSongClient() {
               <div className="card">
                 <div className="card__header">
                   <span className="card__step">2</span>
-                  <h2 className="card__title">曲を検索</h2>
+                  <h2 className="card__title">{T('newSong.searchSong')}</h2>
                   {allSongs.length > 0 && (
                     <span className="card__badge">
-                      {allSongs.length} 曲登録済み
+                      {allSongs.length} {T('newSong.registeredCount')}
                     </span>
                   )}
                 </div>
@@ -896,12 +905,12 @@ export default function NewSongClient() {
                         />
                         <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff4e8e]"></div>
                       </div>
-                      <span className="text-[13px] font-bold text-[#e0e0e0]">歌ってみた動画として登録</span>
+                      <span className="text-[13px] font-bold text-[#e0e0e0]">{T('newSong.isCover')}</span>
                     </label>
                     <div className="group relative">
                       <Info size={14} className="text-[#666]" />
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-[11px] text-[#999] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl leading-relaxed">
-                        歌ってみた等、1曲のみの動画に適したモードです。ONにすると開始・終了時間が自動セットされ、登録数が1曲に制限されます。
+                        {T('newSong.coverTooltip')}
                       </div>
                     </div>
                   </div>
@@ -927,7 +936,7 @@ export default function NewSongClient() {
                       <button
                         onClick={handleClearSelection}
                         className="selected-song__clear"
-                        title="選択を解除"
+                        title={T('common.clear')}
                       >
                         <X size={18} />
                       </button>
@@ -937,7 +946,7 @@ export default function NewSongClient() {
                       {/* 検索バー */}
                       <div className="form-group">
                         <label htmlFor="song-search" className="form-label">
-                          曲名で検索 <span className="form-required">*</span>
+                          {T('newSong.searchByName')} <span className="form-required">*</span>
                         </label>
                         <div className="form-input-group">
                           <input
@@ -951,7 +960,7 @@ export default function NewSongClient() {
                                 handleSearch();
                               }
                             }}
-                            placeholder="例: 夜に駆ける"
+                            placeholder={T('newSong.searchPlaceholder')}
                             className="form-input"
                             disabled={isSearching}
                           />
@@ -960,7 +969,7 @@ export default function NewSongClient() {
                             disabled={isSearching || !searchQuery.trim()}
                             className="btn btn--primary"
                           >
-                            {isSearching ? '検索中...' : <Search size={18} />}
+                            {isSearching ? T('newSong.searching') : <Search size={18} />}
                           </button>
                         </div>
                       </div>
@@ -1001,30 +1010,30 @@ export default function NewSongClient() {
                           className="btn btn--sm"
                           style={{ fontSize: '12px' }}
                         >
-                          {isManualInput ? '検索に戻る' : '見つからないので手動で入力する'}
+                          {isManualInput ? T('newSong.backToSearch') : T('newSong.manualInput')}
                         </button>
                       </div>
 
                       {isManualInput && (
                         <div className="manual-input-form" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
                           <div className="form-group">
-                            <label className="form-label">曲名</label>
+                            <label className="form-label">{T('archive.title')}</label>
                             <input
                               type="text"
                               value={manualTitle}
                               onChange={(e) => setManualTitle(e.target.value)}
                               className="form-input"
-                              placeholder="曲名を入力"
+                              placeholder={T('archive.title')}
                             />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">アーティスト</label>
+                            <label className="form-label">{T('archive.artist')}</label>
                             <input
                               type="text"
                               value={manualArtist}
                               onChange={(e) => setManualArtist(e.target.value)}
                               className="form-input"
-                              placeholder="アーティスト名を入力"
+                              placeholder={T('archive.artist')}
                             />
                           </div>
                           <button
@@ -1032,7 +1041,7 @@ export default function NewSongClient() {
                             className="btn btn--secondary btn--full btn--sm"
                             disabled={!manualTitle.trim()}
                           >
-                            この内容で決定
+                            {T('newSong.confirmManual')}
                           </button>
                         </div>
                       )}
@@ -1043,7 +1052,7 @@ export default function NewSongClient() {
                   <div className="form-row" style={{ marginTop: '1rem' }}>
                     <div className="form-group">
                       <label htmlFor="start-time" className="form-label">
-                        開始時間 <span className="form-required">*</span>
+                        {T('newSong.startTime')} <span className="form-required">*</span>
                       </label>
                       <input
                         id="start-time"
@@ -1058,7 +1067,7 @@ export default function NewSongClient() {
 
                     <div className="form-group">
                       <label htmlFor="end-time" className="form-label">
-                        終了時間 <span className="form-required">*</span>
+                        {T('newSong.endTime')} <span className="form-required">*</span>
                       </label>
                       <input
                         id="end-time"
@@ -1077,7 +1086,7 @@ export default function NewSongClient() {
                     disabled={isPending || !selectedSong || !startTime || !endTime}
                     className="btn btn--primary btn--full"
                   >
-                    {isPending ? '登録中...' : 'リストに追加'}
+                    {isPending ? T('newSong.adding') : T('newSong.addToList')}
                   </button>
                 </div>
               </div>
@@ -1088,7 +1097,7 @@ export default function NewSongClient() {
               <div className="batch-save-banner">
                 <div className="batch-save-banner__content">
                   <AlertCircle size={20} className="batch-save-banner__icon" />
-                  <span className="batch-save-banner__text">未保存の変更があります</span>
+                  <span className="batch-save-banner__text">{T('newSong.unsavedChanges')}</span>
                 </div>
                 <button
                   onClick={handleSaveBatch}
@@ -1096,10 +1105,10 @@ export default function NewSongClient() {
                   className="btn btn--success btn--sm"
                   style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  {isPending ? '保存中...' : (
+                  {isPending ? T('newSong.saving') : (
                     <>
                       <Save size={16} />
-                      全ての変更を保存
+                      {T('newSong.saveAll')}
                     </>
                   )}
                 </button>
@@ -1112,7 +1121,7 @@ export default function NewSongClient() {
                 <div className="card__header">
                   <span className="card__step">✓</span>
                   <h2 className="card__title">
-                    曲リスト（{allSongs.length} 曲）
+                    {T('newSong.songList')}（{allSongs.length} {T('archive.songs')}）
                   </h2>
                 </div>
                 <div className="card__body" style={{ padding: 0 }}>
@@ -1138,28 +1147,28 @@ export default function NewSongClient() {
                             </div>
                           )}
                           <div className="edit-songs__info" style={{ flex: 1 }}>
-                            <span className="edit-songs__title" style={{ fontSize: '14px' }}>
-                              {item.song.master_songs?.title || '(不明)'}
+                            <span className="edit-songs__title" style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                              {tl(item.song.master_songs?.title || '(不明)', item.song.master_songs?.title_en || item.song.master_songs?.title || '(Unknown)')}
                             </span>
                             <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
-                              {item.song.master_songs?.artist || '-'}
+                              {tl(item.song.master_songs?.artist || '-', item.song.master_songs?.artist_en || item.song.master_songs?.artist || '-')}
                             </span>
                           </div>
                           {!isBatchMode && (
                             <div className="edit-songs__actions">
-                              <button
-                                onClick={() => toggleEdit(index)}
-                                className="edit-songs__btn"
-                                title={item.isEditing ? 'キャンセル' : '編集'}
-                              >
+                                <button
+                                  onClick={() => toggleEdit(index)}
+                                  className="edit-songs__btn"
+                                  title={item.isEditing ? T('common.cancel') : T('common.edit')}
+                                >
                                 {item.isEditing ? <X size={14} /> : <Pencil size={14} />}
                               </button>
-                              <button
-                                onClick={() => handleDeleteSong(index)}
-                                className={`edit-songs__btn ${item.isDeleted ? 'edit-songs__btn--active' : 'edit-songs__btn--danger'}`}
-                                title={item.isDeleted ? '削除を取り消す' : '削除'}
-                                disabled={isPending}
-                              >
+                                <button
+                                  onClick={() => handleDeleteSong(index)}
+                                  className={`edit-songs__btn ${item.isDeleted ? 'edit-songs__btn--active' : 'edit-songs__btn--danger'}`}
+                                  title={item.isDeleted ? T('common.cancel') : T('common.delete')}
+                                  disabled={isPending}
+                                >
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -1176,7 +1185,7 @@ export default function NewSongClient() {
                                 style={{ marginBottom: '12px' }}
                               >
                                 <Music size={14} />
-                                {item.isChangingSong ? '曲の変更をキャンセル' : '曲を変更する'}
+                                {item.isChangingSong ? T('newSong.cancelChange') : T('newSong.changeSong')}
                               </button>
                             )}
 
@@ -1193,7 +1202,7 @@ export default function NewSongClient() {
                                         handleSearchSongForEditInPlace(index);
                                       }
                                     }}
-                                    placeholder="曲名で検索..."
+                                    placeholder={T('newSong.searchByName') + '...'}
                                     className="form-input"
                                     disabled={item.isSearching}
                                   />
@@ -1236,8 +1245,8 @@ export default function NewSongClient() {
                                         const manualResult: ITunesSearchResult = {
                                           trackId: -1,
                                           title: item.searchQuery,
-                                          artist: '不明なアーティスト',
-                                          albumName: '手動登録',
+                                          artist: T('common.unknown'),
+                                          albumName: T('newSong.manualLabel'),
                                           artworkUrl: '',
                                           durationSec: 0,
                                         };
@@ -1246,16 +1255,16 @@ export default function NewSongClient() {
                                       className="btn btn--sm"
                                       style={{ fontSize: '11px' }}
                                     >
-                                      手動で登録する
+                                      {T('newSong.manualInput')}
                                     </button>
                                   </div>
                                 )}
                               </div>
                             )}
 
-                            <div className="form-row" style={{ gap: '8px' }}>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '12px' }}>開始</label>
+                             <div className="form-row" style={{ gap: '8px' }}>
+                               <div className="form-group" style={{ marginBottom: 0 }}>
+                                 <label className="form-label" style={{ fontSize: '12px' }}>{T('common.start')}</label>
                                 <input
                                   type="text"
                                   value={item.startTime}
@@ -1265,8 +1274,8 @@ export default function NewSongClient() {
                                   disabled={isPending}
                                 />
                               </div>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '12px' }}>終了</label>
+                               <div className="form-group" style={{ marginBottom: 0 }}>
+                                 <label className="form-label" style={{ fontSize: '12px' }}>{T('common.end')}</label>
                                 <input
                                   type="text"
                                   value={item.endTime}
@@ -1281,12 +1290,12 @@ export default function NewSongClient() {
                                   <button
                                     onClick={() => handleSaveSongLocal(index)}
                                     disabled={isPending}
-                                    className="btn btn--primary btn--full btn--sm"
-                                    style={{ height: '36px' }}
-                                  >
-                                    <Music size={14} />
-                                    保存
-                                  </button>
+                                     className="btn btn--primary btn--full btn--sm"
+                                     style={{ height: '36px' }}
+                                   >
+                                     <Music size={14} />
+                                     {T('common.save')}
+                                   </button>
                                 </div>
                               )}
                             </div>
@@ -1315,7 +1324,7 @@ export default function NewSongClient() {
                         className="btn btn--secondary btn--full"
                         onClick={(e) => handleNavigationClick(e, `/videos/${video.video_id}`)}
                       >
-                        アーカイブページで確認する →
+                        {T('newSong.checkOnArchive')} →
                       </Link>
                     </div>
                   )}
@@ -1332,59 +1341,59 @@ export default function NewSongClient() {
         <div className="modal-overlay">
           <div className="modal-container" style={{ maxWidth: '500px' }}>
             <div className="modal-body" style={{ alignItems: 'flex-start', textAlign: 'left' }}>
-              <div className="modal-icon" style={{ alignSelf: 'center' }}>
-                <UserPlus size={32} />
-              </div>
-              <h3 className="modal-title" style={{ alignSelf: 'center' }}>VTuber情報を登録</h3>
-              <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
-                このチャンネルは未登録です。VTuber情報を入力してください。
-              </p>
+                <div className="modal-icon" style={{ alignSelf: 'center' }}>
+                  <UserPlus size={32} />
+                </div>
+                <h3 className="modal-title" style={{ alignSelf: 'center' }}>{T('vtuber.registerTitle')}</h3>
+                <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
+                  {T('vtuber.description')}
+                </p>
 
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">VTuber名 <span className="form-required">*</span></label>
+                  <label className="form-label">{T('vtuber.name')} <span className="form-required">*</span></label>
                   <input
                     type="text"
                     value={vtuberForm.name}
                     onChange={e => setVtuberForm(p => ({ ...p, name: e.target.value }))}
                     className="form-input"
-                    placeholder="例: 博衣こより"
+                    placeholder={T('vtuber.name')}
                   />
                 </div>
 
                 <div className="form-row">
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">性別</label>
+                    <label className="form-label">{T('vtuber.gender')}</label>
                     <select
                       value={vtuberForm.gender}
                       onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as any }))}
                       className="form-input"
                     >
-                      <option value="女性">女性</option>
-                      <option value="男性">男性</option>
-                      <option value="その他">その他</option>
-                      <option value="不明">不明</option>
+                      <option value="女性">{T('vtuber.genders.female')}</option>
+                      <option value="男性">{T('vtuber.genders.male')}</option>
+                      <option value="その他">{T('vtuber.genders.other')}</option>
+                      <option value="不明">{T('vtuber.genders.unknown')}</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">所属事務所</label>
+                    <label className="form-label">{T('vtuber.production')}</label>
                     <select
                       value={vtuberForm.productionId}
                       onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
                       className="form-input"
                     >
-                      <option value="">(選択なし / 個人勢)</option>
+                      <option value="">{T('vtuber.noProduction')}</option>
                       {productions.map(p => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
-                      <option value="new">+ 新規作成...</option>
+                      <option value="new">+ {T('vtuber.createNew')}...</option>
                     </select>
                   </div>
                 </div>
 
                 {vtuberForm.productionId === 'new' && (
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">新規事務所名</label>
+                    <label className="form-label">{T('vtuber.newProduction')}</label>
                     <div className="form-input-group">
                       <Building2 size={18} className="form-input-icon" />
                       <input
@@ -1392,14 +1401,14 @@ export default function NewSongClient() {
                         value={vtuberForm.newProductionName}
                         onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
                         className="form-input"
-                        placeholder="事務所名を入力"
+                        placeholder={T('vtuber.newProduction')}
                       />
                     </div>
                   </div>
                 )}
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">X (Twitter) リンク</label>
+                  <label className="form-label">{T('vtuber.twitter')}</label>
                   <input
                     type="text"
                     value={vtuberForm.link}
@@ -1414,7 +1423,7 @@ export default function NewSongClient() {
                     <img src={channelDataForReg.image} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="" />
                   )}
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600 }}>紐付けられるチャンネル</p>
+                    <p style={{ fontSize: '13px', fontWeight: 600 }}>{T('vtuber.linkedChannel')}</p>
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{channelDataForReg?.name}</p>
                   </div>
                 </div>
@@ -1424,13 +1433,13 @@ export default function NewSongClient() {
               <button className="btn btn--secondary" onClick={() => {
                 setIsVtuberModalOpen(false);
                 setStep(1);
-              }} disabled={isPending}>キャンセル</button>
+              }} disabled={isPending}>{T('common.cancel')}</button>
               <button
                 className="btn btn--primary"
                 onClick={handleRegisterVtuber}
                 disabled={isPending || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
               >
-                {isPending ? '登録中...' : '登録して進む'}
+                {isPending ? T('newSong.adding') : T('vtuber.registerAndProceed')}
               </button>
             </div>
           </div>

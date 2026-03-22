@@ -9,6 +9,7 @@ import { Play, Trash2, History, ExternalLink, Calendar, Clock } from 'lucide-rea
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import SongMenu from '@/components/song/SongMenu';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
   initialHistory: any[];
@@ -16,6 +17,7 @@ interface Props {
 
 export default function HistoryClient({ initialHistory }: Props) {
   const { playWithSource, state } = usePlayer();
+  const { t, locale, T } = useLocale();
   const [history, setHistory] = useState(initialHistory);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -25,6 +27,8 @@ export default function HistoryClient({ initialHistory }: Props) {
       id: song.id,
       title: song.master_songs.title,
       artist: song.master_songs.artist,
+      title_en: song.master_songs.title_en || null,
+      artist_en: song.master_songs.artist_en || null,
       artworkUrl: song.master_songs.artwork_url,
       videoId: song.videos.video_id,
       startSec: song.start_sec,
@@ -41,7 +45,7 @@ export default function HistoryClient({ initialHistory }: Props) {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('再生履歴をすべて削除しますか？')) return;
+    if (!confirm(T('history.clearConfirm'))) return;
     
     setIsClearing(true);
     const result = await clearPlayHistory();
@@ -55,7 +59,7 @@ export default function HistoryClient({ initialHistory }: Props) {
 
   // 日付ごとにグループ化
   const groupedHistory = history.reduce((groups: any, item: any) => {
-    const date = new Date(item.played_at).toLocaleDateString('ja-JP', {
+    const date = new Date(item.played_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -69,11 +73,11 @@ export default function HistoryClient({ initialHistory }: Props) {
   }, {});
 
   const formatDateLabel = (dateStr: string) => {
-    const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    const today = new Date().toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
     
-    if (dateStr === today) return '今日';
-    if (dateStr === yesterday) return '昨日';
+    if (dateStr === today) return T('history.today');
+    if (dateStr === yesterday) return T('history.yesterday');
     return dateStr;
   };
 
@@ -85,8 +89,8 @@ export default function HistoryClient({ initialHistory }: Props) {
             <History size={40} />
           </div>
           <div>
-            <h1 className="text-4xl font-black mb-2 tracking-tight">再生履歴</h1>
-            <p className="text-[#666] font-medium">あなたが最近聴いた楽曲のリストです</p>
+            <h1 className="text-4xl font-black mb-2 tracking-tight">{T('history.pageTitle')}</h1>
+            <p className="text-[#666] font-medium">{T('history.pageDescription')}</p>
           </div>
         </div>
         
@@ -97,7 +101,7 @@ export default function HistoryClient({ initialHistory }: Props) {
             className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
           >
             <Trash2 size={18} />
-            履歴を消去
+            {T('history.clearAll')}
           </button>
         )}
       </div>
@@ -108,11 +112,11 @@ export default function HistoryClient({ initialHistory }: Props) {
             <Clock size={40} />
           </div>
           <div>
-            <p className="text-xl font-bold text-[var(--text-primary)] mb-2">履歴がありません</p>
-            <p className="text-[var(--text-secondary)]">たくさんの曲を聴いて、好みの履歴を作りましょう</p>
+            <p className="text-xl font-bold text-[var(--text-primary)] mb-2">{T('history.empty')}</p>
+            <p className="text-[var(--text-secondary)]">{T('history.emptySub')}</p>
           </div>
           <Link href="/" className="mt-4 px-8 py-3 bg-[var(--accent)] text-white font-bold rounded-full hover:bg-[var(--accent-hover)] transition-all active:scale-95">
-            曲を聴きにいく
+            {T('history.explore')}
           </Link>
         </div>
       ) : (
@@ -128,7 +132,7 @@ export default function HistoryClient({ initialHistory }: Props) {
               <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden divide-y divide-[var(--border)] shadow-xl">
                 {items.map((item: any) => {
                   const song = item.songs;
-                  const playedTime = new Date(item.played_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                  const playedTime = new Date(item.played_at).toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit' });
                   
                   return (
                     <div 
@@ -152,8 +156,12 @@ export default function HistoryClient({ initialHistory }: Props) {
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">{song.master_songs.title}</div>
-                          <div className="text-sm text-[var(--text-secondary)] truncate">{song.master_songs.artist}</div>
+                          <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">
+                            {t(song.master_songs.title, song.master_songs.title_en || song.master_songs.title)}
+                          </div>
+                          <div className="text-sm text-[var(--text-secondary)] truncate">
+                            {t(song.master_songs.artist || '-', song.master_songs.artist_en || song.master_songs.artist || '-')}
+                          </div>
                         </div>
                       </div>
 

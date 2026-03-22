@@ -14,6 +14,7 @@ import { usePlayer } from '@/components/player/PlayerContext';
 import type { PlayerSong } from '@/types';
 import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
 import ShareModal from './ShareModal';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface SongMenuProps {
   song: PlayerSong;
@@ -22,6 +23,7 @@ interface SongMenuProps {
 
 export default function SongMenu({ song, trigger }: SongMenuProps) {
   const { addSongNext, addSongLast } = usePlayer();
+  const { t, T } = useLocale();
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -76,8 +78,8 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
               onSelect={handleAddNext}
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-colors outline-none cursor-pointer group"
             >
-              <Play size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)]" />
-              次に再生
+              <Play size={16} className="text-[var(--text-tertiary)] group-hover:text(--accent)]" />
+              {T('songMenu.playNext')}
             </DropdownMenu.Item>
             
             <DropdownMenu.Item 
@@ -85,7 +87,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
               <ListPlus size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
-              再生リストの最後に追加
+              {T('songMenu.addToQueue')}
             </DropdownMenu.Item>
 
             <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
@@ -95,7 +97,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
               <Plus size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
-              プレイリストに追加
+              {T('songMenu.addToPlaylist')}
             </DropdownMenu.Item>
 
             <DropdownMenu.Item 
@@ -103,7 +105,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
               <Share2 size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
-              共有
+              {T('songMenu.share')}
             </DropdownMenu.Item>
 
             <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
@@ -113,7 +115,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
               <ExternalLink size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
-              YouTubeで開く
+              {T('songMenu.openInYoutube')}
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

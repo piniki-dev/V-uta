@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import type { PlayerSong } from '@/types';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
   song: PlayerSong;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function ShareModal({ song, onClose }: Props) {
+  const { T } = useLocale();
   const [copied, setCopied] = useState(false);
 
   // YouTubeのタイムスタンプ付きURL
@@ -32,7 +34,7 @@ export default function ShareModal({ song, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-[var(--border-light)] flex items-center justify-between">
-          <h3 className="font-bold text-lg text-[var(--text-primary)]">共有する</h3>
+          <h3 className="font-bold text-lg text-[var(--text-primary)]">{T('share.title')}</h3>
           <button 
             onClick={onClose} 
             className="p-2 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
@@ -68,7 +70,7 @@ export default function ShareModal({ song, onClose }: Props) {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
-              X にポストする
+              {T('share.postToX')}
             </a>
 
             {/* URLコピー */}
@@ -86,12 +88,12 @@ export default function ShareModal({ song, onClose }: Props) {
                   {copied ? (
                     <>
                       <Check size={14} />
-                      コピー完了
+                      {T('share.copied')}
                     </>
                   ) : (
                     <>
                       <Copy size={14} />
-                      コピー
+                      {T('share.copy')}
                     </>
                   )}
                 </button>
@@ -106,7 +108,7 @@ export default function ShareModal({ song, onClose }: Props) {
               rel="noopener noreferrer"
               className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] flex items-center gap-1.5 transition-colors"
             >
-              YouTube で実際に開く
+              {T('share.openOnYoutube')}
               <ExternalLink size={12} />
             </a>
           </div>

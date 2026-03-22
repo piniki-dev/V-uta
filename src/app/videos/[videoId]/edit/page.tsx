@@ -26,14 +26,11 @@ export default async function EditSongsPage({ params }: Props) {
 
   if (videoError || !video) {
     return (
-      <div className="page-container">
-        <div className="empty-state">
-          <h1 className="empty-state__title">アーカイブが見つかりません</h1>
-          <p className="empty-state__text">
-            このアーカイブはまだ登録されていないか、URLが正しくありません。
-          </p>
-        </div>
-      </div>
+      <EditSongsClient
+        video={null}
+        songs={[]}
+        error={videoError?.message || null}
+      />
     );
   }
 

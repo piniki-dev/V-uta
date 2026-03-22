@@ -15,38 +15,52 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "V-uta | VTuber 歌枠プレイヤー",
-  description:
-    "VTuber の YouTube 歌枠アーカイブから歌っている区間だけを再生できる音楽ストリーミング風 Web アプリ",
-};
+import { translations } from "@/lib/translations";
+import { cookies } from "next/headers";
+
+export async function generateMetadata() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
+
+  return {
+    title: `${t.common.siteTitle} | ${t.home.title}`,
+    description: t.home.description,
+  };
+}
 
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { LocaleProvider } from "@/components/LocaleProvider";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+
   return (
-    <html lang="ja" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.variable}`}>
-        <ThemeProvider>
-          <PlayerProvider>
-            <SidebarProvider>
-              <Header />
-              <div className="app-layout">
-                <Sidebar />
-                <LayoutWrapper>
-                  <main className="main-content">{children}</main>
-                </LayoutWrapper>
-              </div>
-              <MiniPlayer />
-              <FullPlayer />
-              <PersistentPlayer />
-            </SidebarProvider>
-          </PlayerProvider>
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider>
+            <PlayerProvider>
+              <SidebarProvider>
+                <Header />
+                <div className="app-layout">
+                  <Sidebar />
+                  <LayoutWrapper>
+                    <main className="main-content">{children}</main>
+                  </LayoutWrapper>
+                </div>
+                <MiniPlayer />
+                <FullPlayer />
+                <PersistentPlayer />
+              </SidebarProvider>
+            </PlayerProvider>
+          </ThemeProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

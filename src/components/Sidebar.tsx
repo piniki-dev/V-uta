@@ -13,12 +13,14 @@ import type { Playlist } from '@/types';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useSidebar } from './SidebarContext';
+import { useLocale } from './LocaleProvider';
 
 export default function Sidebar() {
   const { isOpen, close, toggle } = useSidebar();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const { T } = useLocale();
   const router = useRouter();
   const supabase = createClient();
 
@@ -108,13 +110,13 @@ export default function Sidebar() {
                   <div className="sidebar__avatar-placeholder"><User size={20} /></div>
                 )}
                 <div className="truncate">
-                  <div className="sidebar__username truncate">{user.user_metadata?.full_name || 'ゲスト'}</div>
+                  <div className="sidebar__username truncate">{user.user_metadata?.full_name || T('auth.guest')}</div>
                   <div className="text-xs text-[#666] truncate">{user.email}</div>
                 </div>
               </div>
             ) : (
               <button className="sidebar__login-btn" onClick={handleLogin}>
-                Google でログイン
+                {T('auth.signInWithGoogle')}
               </button>
             )}
           </div>
@@ -122,17 +124,17 @@ export default function Sidebar() {
           <nav className="sidebar__nav">
             <Link href="/" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><Home size={22} /></div>
-              <span>ホーム</span>
+              <span>{T('sidebar.home')}</span>
             </Link>
 
             <Link href="/songs/new" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><PlusSquare size={22} /></div>
-              <span>曲の追加</span>
+              <span>{T('sidebar.addSong')}</span>
             </Link>
 
             <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><History size={22} /></div>
-              <span>再生履歴</span>
+              <span>{T('sidebar.history')}</span>
             </Link>
 
             <div className="sidebar__divider" />
@@ -144,7 +146,7 @@ export default function Sidebar() {
                 onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
               >
                 <div className="sidebar__icon-box"><ListMusic size={22} /></div>
-                <span className="flex-1 text-left">プレイリスト</span>
+                <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
                 {isPlaylistOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
               </button>
               
@@ -160,7 +162,7 @@ export default function Sidebar() {
                   >
                     <div className="sidebar__sublink-container">
                       <Link href="/playlists" className="sidebar__sublink font-bold text-[#ff4e8e]" onClick={handleLinkClick}>
-                        すべてのリスト
+                        {T('sidebar.allPlaylists')}
                       </Link>
                     </div>
                     {playlists.map(playlist => (
@@ -175,10 +177,10 @@ export default function Sidebar() {
                       </div>
                     ))}
                     {user && playlists.length === 0 && (
-                      <div className="sidebar__empty">リストがありません</div>
+                      <div className="sidebar__empty">{T('sidebar.noPlaylists')}</div>
                     )}
                     {!user && (
-                      <div className="sidebar__empty">ログインして表示</div>
+                      <div className="sidebar__empty">{T('sidebar.signInToView')}</div>
                     )}
                   </motion.div>
                 )}
@@ -190,11 +192,11 @@ export default function Sidebar() {
             <div className="sidebar__section">
               <div className="sidebar__link opacity-40 cursor-not-allowed">
                 <div className="sidebar__icon-box"><Search size={22} /></div>
-                <span>検索</span>
+                <span>{T('sidebar.search')}</span>
               </div>
               <div className="sidebar__link opacity-40 cursor-not-allowed">
                 <div className="sidebar__icon-box"><Settings size={22} /></div>
-                <span>設定</span>
+                <span>{T('sidebar.settings')}</span>
               </div>
             </div>
           </nav>
@@ -203,7 +205,7 @@ export default function Sidebar() {
             <div className="sidebar__footer md:hidden mt-auto pt-4">
               <button className="sidebar__logout" onClick={handleLogout}>
                 <LogOut size={20} />
-                <span>ログアウト</span>
+                <span>{T('auth.signOut')}</span>
               </button>
             </div>
           )}

@@ -5,6 +5,7 @@ import { getPlaylists, createPlaylist, addSongToPlaylist } from './actions';
 import type { Playlist } from '@/types';
 import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { useLocale } from '@/components/LocaleProvider';
 
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) {
+  const { T } = useLocale();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -83,7 +85,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-md bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
-          <h3 className="font-bold text-lg">プレイリストに追加</h3>
+          <h3 className="font-bold text-lg">{T('playlist.add')}</h3>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
             <X size={20} />
           </button>
@@ -106,12 +108,9 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                   href={`/playlists/${createdPlaylistId}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-xs font-bold transition-colors"
                 >
-                  詳細を見る
+                  {T('common.details')}
                   <ExternalLink size={12} />
                 </Link>
-              )}
-              {(!createdPlaylistId && success) && (
-                 <div className="text-xs opacity-80">このまま追加を続けるか、閉じてください。</div>
               )}
             </div>
           )}
@@ -119,7 +118,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center text-[var(--text-tertiary)] gap-3">
               <Loader2 className="animate-spin" />
-              <p className="text-sm">ロード中...</p>
+              <p className="text-sm">{T('common.loading')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -136,14 +135,14 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate text-[var(--text-primary)]">{playlist.name}</p>
-                      <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? '公開' : '非公開'}</p>
+                      <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? T('playlist.public') : T('playlist.private')}</p>
                     </div>
                     <Plus size={18} className="text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 ))
               ) : (
                 <div className="py-8 text-center text-[var(--text-tertiary)]">
-                  <p className="text-sm">プレイリストがありません</p>
+                  <p className="text-sm">{T('playlist.noPlaylists')}</p>
                 </div>
               )}
             </div>
@@ -157,7 +156,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
               className="w-full p-3 flex items-center justify-center gap-2 bg-[var(--accent)] hover:opacity-90 text-white font-bold rounded-xl transition-all"
             >
               <Plus size={18} />
-              新しいプレイリストを作成
+              {T('playlist.createAndAdd')}
             </button>
           ) : (
             <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-200">
@@ -165,7 +164,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 type="text"
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="プレイリスト名を入力"
+                placeholder={T('playlist.enterName')}
                 className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
                 autoFocus
               />
@@ -180,21 +179,21 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                     />
                     <div className="w-9 h-5 bg-[var(--bg-hover)] rounded-full peer peer-checked:bg-[var(--accent)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
                   </div>
-                  <span className="text-xs font-bold text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors">公開する</span>
+                  <span className="text-xs font-bold text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors">{T('playlist.makePublic')}</span>
                 </label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsCreating(false)}
                     className="px-4 py-2 text-sm font-bold text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                   >
-                    キャンセル
+                    {T('common.cancel')}
                   </button>
                   <button
                     onClick={handleCreateAndAdd}
                     disabled={!newPlaylistName.trim() || isPending}
                     className="px-4 py-2 bg-[var(--accent)] disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all"
                   >
-                    作成して追加
+                    {T('playlist.createAndAdd')}
                   </button>
                 </div>
               </div>

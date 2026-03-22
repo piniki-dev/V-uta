@@ -64,6 +64,8 @@ CREATE TABLE public.master_songs (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   title text NOT NULL,
   artist text NOT NULL,
+  title_en text,
+  artist_en text,
   duration_sec integer,
   artwork_url text,
   itunes_id text,
