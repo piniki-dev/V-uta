@@ -57,11 +57,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       </header>
 
       {!hasResults && (
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-20 text-center flex flex-col items-center gap-6">
-          <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center text-[#333]">
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center flex flex-col items-center gap-6">
+          <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center text-[var(--text-tertiary)]">
             <Music size={40} />
           </div>
-          <p className="text-[#666]">別のキーワードで試してみてください。</p>
+          <p className="text-[var(--text-secondary)]">別のキーワードで試してみてください。</p>
         </div>
       )}
 
@@ -69,9 +69,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {songsData && songsData.length > 0 && (
         <section className="mb-16">
           <div className="flex items-center gap-3 mb-6">
-            <Music size={20} className="text-[#ff4e8e]" />
-            <h2 className="text-2xl font-black text-white/90">楽曲</h2>
-            <div className="h-px bg-white/5 flex-1 ml-2" />
+            <Music size={20} className="text-[var(--accent)]" />
+            <h2 className="text-2xl font-black text-[var(--text-primary)]">楽曲</h2>
+            <div className="h-px bg-[var(--border)] flex-1 ml-2" />
           </div>
           
           <SearchSongs songs={songsData} />
@@ -82,26 +82,26 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {channelsData && channelsData.length > 0 && (
         <section>
           <div className="flex items-center gap-3 mb-6">
-            <Tv size={20} className="text-[#ff4e8e]" />
-            <h2 className="text-2xl font-black text-white/90">チャンネル</h2>
-            <div className="h-px bg-white/5 flex-1 ml-2" />
+            <Tv size={20} className="text-[var(--accent)]" />
+            <h2 className="text-2xl font-black text-[var(--text-primary)]">チャンネル</h2>
+            <div className="h-px bg-[var(--border)] flex-1 ml-2" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {channelsData.map((channel) => (
               <Link
                 key={channel.id}
                 href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
-                className="group bg-white/5 border border-white/10 p-4 flex items-center gap-4 hover:bg-white/10 transition-all rounded-3xl"
+                className="group bg-[var(--bg-secondary)] border border-[var(--border)] p-4 flex items-center gap-4 hover:bg-[var(--bg-hover)] transition-all rounded-3xl"
               >
                 {channel.image ? (
                   <img src={channel.image} alt="" className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
                 ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-2xl">📺</div>
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg-tertiary)] flex items-center justify-center text-2xl">📺</div>
                 )}
                 <div className="min-w-0">
-                  <div className="font-bold text-[#e0e0e0] group-hover:text-[#ff4e8e] transition-colors truncate">{channel.name}</div>
+                  <div className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">{channel.name}</div>
                   {channel.handle && (
-                    <div className="text-xs text-[#666] truncate">@{channel.handle.replace(/^@/, '')}</div>
+                    <div className="text-xs text-[var(--text-secondary)] truncate">@{channel.handle.replace(/^@/, '')}</div>
                   )}
                 </div>
               </Link>

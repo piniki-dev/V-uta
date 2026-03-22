@@ -21,28 +21,32 @@ export const metadata: Metadata = {
     "VTuber の YouTube 歌枠アーカイブから歌っている区間だけを再生できる音楽ストリーミング風 Web アプリ",
 };
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body className={`${inter.variable}`}>
-        <PlayerProvider>
-          <SidebarProvider>
-            <Header />
-            <div className="app-layout">
-              <Sidebar />
-              <LayoutWrapper>
-                <main className="main-content">{children}</main>
-              </LayoutWrapper>
-            </div>
-            <MiniPlayer />
-            <FullPlayer />
-            <PersistentPlayer />
-          </SidebarProvider>
-        </PlayerProvider>
+        <ThemeProvider>
+          <PlayerProvider>
+            <SidebarProvider>
+              <Header />
+              <div className="app-layout">
+                <Sidebar />
+                <LayoutWrapper>
+                  <main className="main-content">{children}</main>
+                </LayoutWrapper>
+              </div>
+              <MiniPlayer />
+              <FullPlayer />
+              <PersistentPlayer />
+            </SidebarProvider>
+          </PlayerProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -110,8 +110,8 @@ export default function PlaylistDetailClient({ playlist }: Props) {
   return (
     <div className="container mx-auto px-4 py-8 pb-32">
       {/* プレイリストヘッダー */}
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 flex flex-col md:flex-row gap-8 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#ff4e8e]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-8 mb-8 flex flex-col md:flex-row gap-8 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         
         <div className="w-48 h-48 bg-gradient-to-br from-[#ff4e8e] to-[#ff8e4e] rounded-2xl flex items-center justify-center text-white shadow-2xl shrink-0 mx-auto md:mx-0 relative z-10">
           <ListMusic size={80} />
@@ -120,7 +120,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
         <div className="flex-1 flex flex-col justify-end text-center md:text-left relative z-10">
           {!isEditing ? (
             <>
-              <div className="flex items-center justify-center md:justify-start gap-3 mb-2 text-xs font-bold text-[#666]">
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-2 text-xs font-bold text-[var(--text-tertiary)]">
                 {playlist.is_public ? (
                   <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 rounded-lg border border-green-500/20">
                     <Globe size={14} /> 公開プレイリスト
@@ -133,26 +133,26 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                 <span>•</span>
                 <span>{items.length} 曲</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">{playlist.name}</h1>
-              <p className="text-[#999] text-lg mb-6 max-w-2xl font-medium leading-relaxed">
+              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">{playlist.name}</h1>
+              <p className="text-[var(--text-secondary)] text-lg mb-6 max-w-2xl font-medium leading-relaxed">
                 {playlist.description || '説明はありません'}
               </p>
             </>
           ) : (
             <div className="space-y-4 mb-6">
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:border-[#ff4e8e] transition-colors"
-                placeholder="プレイリスト名"
-              />
-              <textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[#999] focus:outline-none focus:border-[#ff4e8e] transition-colors resize-none h-24"
-                placeholder="プレイリストの説明"
-              />
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--text-primary)]"
+                  placeholder="プレイリスト名"
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none h-24"
+                  placeholder="プレイリストの説明"
+                />
               <label className="flex items-center gap-3 cursor-pointer select-none group/toggle w-fit">
                 <div className="relative">
                   <input
@@ -161,9 +161,9 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                     onChange={(e) => setEditIsPublic(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-10 h-6 bg-[#333] rounded-full peer peer-checked:bg-[#ff4e8e] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
+                  <div className="w-10 h-6 bg-[var(--bg-hover)] rounded-full peer peer-checked:bg-[var(--accent)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
                 </div>
-                <span className="text-sm font-bold text-[#888] group-hover/toggle:text-white transition-colors">
+                <span className="text-sm font-bold text-[var(--text-tertiary)] group-hover/toggle:text-[var(--text-primary)] transition-colors">
                   プレイリストを公開する
                 </span>
               </label>
@@ -183,7 +183,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                 </button>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-full border border-white/10 transition-all active:scale-95"
+                  className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold rounded-full border border-[var(--border)] transition-all active:scale-95"
                 >
                   <Pencil size={18} />
                   編集
@@ -202,7 +202,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                 <button
                   onClick={handleCancelEdit}
                   disabled={isPending}
-                  className="flex items-center gap-2 px-6 py-3 bg-transparent hover:bg-white/5 text-[#999] hover:text-white font-bold rounded-full transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-3 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold rounded-full transition-all disabled:opacity-50"
                 >
                   <X size={20} />
                   キャンセル
@@ -214,22 +214,22 @@ export default function PlaylistDetailClient({ playlist }: Props) {
       </div>
 
       {/* 楽曲リスト */}
-      <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-xl">
-        <div className="px-8 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-          <h2 className="font-bold flex items-center gap-2 text-white/60 text-sm">
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-xl">
+        <div className="px-8 py-5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-tertiary)]/30">
+          <h2 className="font-bold flex items-center gap-2 text-[var(--text-secondary)] text-sm">
             <ListMusic size={18} />
             楽曲リスト
           </h2>
           {isEditing && (
-            <span className="text-xs font-bold text-[#ff4e8e] animate-pulse">
+            <span className="text-xs font-bold text-[var(--accent)] animate-pulse">
               ドラッグして順序を入れ替えられます
             </span>
           )}
         </div>
 
         {items.length === 0 ? (
-          <div className="p-20 text-center text-[#666] flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-white/[0.02] rounded-full flex items-center justify-center">
+          <div className="p-20 text-center text-[var(--text-tertiary)] flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center">
               <ListMusic size={32} />
             </div>
             <p className="font-medium">楽曲が登録されていません</p>
@@ -238,7 +238,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               {/* ヘッダー行 */}
-              <div className="grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 border-b border-white/5 text-[#666] text-xs font-bold uppercase tracking-widest gap-4">
+              <div className="grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 border-b border-[var(--border)] text-[var(--text-tertiary)] text-xs font-bold uppercase tracking-widest gap-4">
                 <div className="text-center">#</div>
                 <div>曲名 / アーティスト</div>
                 <div>アーカイブ</div>
@@ -256,31 +256,31 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                       value={item}
                       dragListener={isEditing}
                       className={`relative grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 gap-4 items-center transition-colors ${
-                        isEditing ? 'hover:bg-white/[0.02] cursor-grab active:cursor-grabbing' : 'hover:bg-white/5 cursor-pointer'
+                        isEditing ? 'hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing' : 'hover:bg-[var(--bg-hover)] cursor-pointer'
                       }`}
                       onClick={() => handlePlaySong(item)}
                     >
-                      <div className="flex items-center justify-center text-[#666] font-bold text-sm tabular-nums">
-                        {isEditing ? <GripVertical size={16} className="text-[#444]" /> : index + 1}
+                      <div className="flex items-center justify-center text-[var(--text-tertiary)] font-bold text-sm tabular-nums">
+                        {isEditing ? <GripVertical size={16} className="text-[var(--text-tertiary)]" /> : index + 1}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="font-bold text-[#e0e0e0] truncate group-hover:text-[#ff4e8e] transition-colors">{song.master_songs.title}</div>
-                        <div className="text-sm text-[#666] truncate">{song.master_songs.artist}</div>
+                        <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">{song.master_songs.title}</div>
+                        <div className="text-sm text-[var(--text-secondary)] truncate">{song.master_songs.artist}</div>
                       </div>
 
                       <div className="min-w-0">
                         <Link 
                           href={`/videos/${song.video.video_id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-[#666] hover:text-[#ff4e8e] transition-colors flex items-center gap-1.5"
+                          className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors flex items-center gap-1.5"
                         >
                           <span className="truncate">{song.video.title}</span>
                           <ExternalLink size={12} className="shrink-0 opacity-40" />
                         </Link>
                       </div>
 
-                      <div className="text-right text-[#666] font-bold text-sm tabular-nums">
+                      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums">
                         {formatTime(song.end_sec - song.start_sec)}
                       </div>
 
@@ -291,7 +291,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                             handleRemove(item.id);
                           }}
                           disabled={isPending}
-                          className="p-2.5 text-[#444] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
+                          className="p-2.5 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
                           title="削除"
                         >
                           <Trash2 size={18} />

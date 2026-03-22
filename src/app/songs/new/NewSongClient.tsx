@@ -725,10 +725,10 @@ export default function NewSongClient() {
           <div className="card mb-6" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--accent-subtle)' }}>
             <div className="card__body py-3 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-[13px] font-bold text-white px-3 py-1 bg-[#ff4e8e]/20 rounded-full border border-[#ff4e8e]/30">
+                <span className="text-[13px] font-bold text-white px-3 py-1 bg-[var(--accent)]/20 rounded-full border border-[var(--accent)]/30">
                   一括登録モード
                 </span>
-                <span className="text-[13px] text-[#999] font-medium">
+                <span className="text-[13px] text-[var(--text-secondary)] font-medium">
                   アーカイブ {currentBatchIndex + 1} / {batchArchives.length}
                 </span>
               </div>
@@ -790,16 +790,16 @@ export default function NewSongClient() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-white/[0.06]">
-                <h3 className="text-[14px] font-bold text-[#e0e0e0] mb-4 flex items-center gap-2">
-                  <Table size={16} className="text-[#ff4e8e]" /> 一括インポート
+              <div className="mt-6 pt-6 border-t border-[var(--border)]">
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                  <Table size={16} className="text-[var(--accent)]" /> 一括インポート
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
+                  <div className="bg-[var(--bg-tertiary)]/50 border border-[var(--border)] rounded-xl p-4 hover:bg-[var(--bg-hover)] transition-all group">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
-                        <FileUp size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> CSVから追加
+                      <span className="text-[13px] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <FileUp size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> CSVから追加
                       </span>
                       <input
                         type="file"
@@ -810,20 +810,20 @@ export default function NewSongClient() {
                       />
                       <label
                         htmlFor="csv-upload"
-                        className="text-[11px] font-bold text-[#ff4e8e] cursor-pointer hover:underline"
+                        className="text-[11px] font-bold text-[var(--accent)] cursor-pointer hover:underline"
                       >
                         ファイルを選択
                       </label>
                     </div>
-                    <p className="text-[11px] text-[#666] leading-relaxed">
+                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
                       アーカイブURL, 曲名, アーティスト, 開始, 終了の順に含まれるCSVを読み込みます。
                     </p>
                   </div>
 
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.05] transition-all group">
+                  <div className="bg-[var(--bg-tertiary)]/50 border border-[var(--border)] rounded-xl p-4 hover:bg-[var(--bg-hover)] transition-all group">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[13px] font-bold text-[#e0e0e0] flex items-center gap-2">
-                        <Table size={16} className="text-[#999] group-hover:text-[#ff4e8e] transition-colors" /> Googleスプレッドシートから追加
+                      <span className="text-[13px] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <Table size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" /> Googleスプレッドシートから追加
                       </span>
                     </div>
                     <div className="flex gap-2">

@@ -18,9 +18,5 @@ export default async function HistoryPage() {
 
   const result = await getPlayHistory(100);
 
-  return (
-    <div className="bg-black text-white min-h-screen">
-      <HistoryClient initialHistory={result.success ? result.data || [] : []} />
-    </div>
-  );
+  return <HistoryClient initialHistory={result.success ? result.data || [] : []} />;
 }

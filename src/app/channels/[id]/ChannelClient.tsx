@@ -69,11 +69,13 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* チャンネルヘッダー */}
       <motion.section
-        className="relative overflow-hidden border-b border-white/[0.06] py-10"
-        style={{ background: 'linear-gradient(180deg, #0d0d14 0%, #111118 50%, #0f0f0f 100%)' }}
+        className="relative overflow-hidden border-b border-[var(--border)] py-10"
+        style={{ 
+          background: 'var(--theme-header-gradient)' 
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
@@ -81,7 +83,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
         {/* 背景のアクセント光 */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <motion.div
-            className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-[#ff4e8e]/[0.05] rounded-full blur-[120px]"
+            className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-[var(--accent)]/[0.05] rounded-full blur-[120px]"
             animate={{
               x: [0, 50, 0],
               y: [0, 30, 0],
@@ -111,7 +113,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
               {/* アバター背後のグロー */}
               <div className="absolute inset-0 bg-[#ff4e8e]/20 rounded-full blur-2xl -z-10 animate-pulse" />
 
-              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-2 ring-white/10 ring-offset-2 ring-offset-[#0d0d14]">
+              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-2 ring-[var(--border)] ring-offset-2 ring-offset-[var(--bg-primary)]">
                 {channel.image ? (
                   <img src={channel.image} alt={channel.name} className="w-full h-full object-cover" />
                 ) : (
@@ -124,7 +126,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
 
             <div className="flex-1 min-w-0 w-full">
               <motion.h1
-                className="text-3xl sm:text-4xl font-extrabold mb-3 tracking-tight text-white break-words"
+                className="text-3xl sm:text-4xl font-extrabold mb-3 tracking-tight text-[var(--text-primary)] break-words"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
@@ -145,12 +147,12 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                 )}
                 {channel.vtuber && (
                   <>
-                    <span className="text-[#333] select-none">•</span>
-                    <span className="text-[#ccc] text-sm font-medium">
+                    <span className="text-[var(--text-tertiary)] select-none">•</span>
+                    <span className="text-[var(--text-secondary)] text-sm font-medium">
                       {channel.vtuber.name}
                     </span>
                     {channel.vtuber.production && (
-                      <span className="text-[11px] font-semibold text-[#888] bg-white/[0.05] px-2.5 py-0.5 rounded-full border border-white/[0.06]">
+                      <span className="text-[11px] font-semibold text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] px-2.5 py-0.5 rounded-full border border-[var(--border)]">
                         {channel.vtuber.production.name}
                       </span>
                     )}
@@ -190,9 +192,9 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
             viewport={{ once: true }}
           >
             <div className="w-1.5 h-8 bg-gradient-to-b from-[#ff4e8e] to-[#6366f1] rounded-full shadow-[0_0_15px_rgba(255,78,142,0.4)]" />
-            <h2 className="text-2xl font-black tracking-wider text-white flex items-center gap-3">
+            <h2 className="text-2xl font-black tracking-wider text-[var(--text-primary)] flex items-center gap-3">
               登録済みアーカイブ
-              <span className="text-xs font-bold bg-white/[0.05] text-[#888] px-2.5 py-1 rounded-full border border-white/[0.05] shadow-inner">
+              <span className="text-xs font-bold bg-[var(--bg-secondary)] text-[var(--text-tertiary)] px-2.5 py-1 rounded-full border border-[var(--border)] shadow-inner">
                 {channel.videos.length} ARCHIVES
               </span>
             </h2>
@@ -209,12 +211,12 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                   <React.Fragment key={video.id}>
                     <motion.div
                       className={`group/card rounded-2xl overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-300 ${isExpanded
-                        ? 'ring-2 ring-[#ff4e8e]/60 shadow-lg shadow-[#ff4e8e]/10 border border-transparent'
-                        : 'border border-white/[0.06] hover:shadow-xl hover:shadow-black/40'
+                        ? 'ring-2 ring-[var(--accent)] shadow-lg shadow-[var(--accent-glow)] border border-transparent'
+                        : 'border border-[var(--border)] hover:shadow-xl hover:shadow-black/10'
                         }`}
                       style={{
                         order: index,
-                        background: 'linear-gradient(180deg, #1a1a22 0%, #151518 100%)',
+                        background: 'var(--bg-secondary)',
                       }}
                       initial={{ opacity: 0 }}
                       whileInView={{ opacity: 1 }}
@@ -244,19 +246,19 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                         </Link>
 
                         <div className="mt-auto">
-                          <div className="flex justify-between text-[11px] text-[#666] mb-4 font-medium">
+                          <div className="flex justify-between text-[11px] text-[var(--text-tertiary)] mb-4 font-medium">
                             <span className="flex items-center gap-1.5">
-                              <Calendar size={12} className="text-[#555]" /> {video.published_at ? new Date(video.published_at).toLocaleDateString() : 'N/A'}
+                              <Calendar size={12} className="text-[var(--text-tertiary)]" /> {video.published_at ? new Date(video.published_at).toLocaleDateString() : 'N/A'}
                             </span>
                             <span className="flex items-center gap-1.5">
-                              <Music size={12} className="text-[#555]" /> {video.songs.length} 曲
+                              <Music size={12} className="text-[var(--text-tertiary)]" /> {video.songs.length} 曲
                             </span>
                           </div>
 
                           <button
                             className={`w-full py-2.5 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all duration-300 ${isExpanded
-                              ? 'bg-[#ff4e8e] text-white shadow-md shadow-[#ff4e8e]/30'
-                              : 'bg-white/[0.04] text-[#999] border border-white/[0.06] hover:bg-[#ff4e8e]/10 hover:text-[#ff4e8e] hover:border-[#ff4e8e]/20'
+                              ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent-glow)]'
+                              : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] hover:border-[var(--accent-subtle)]'
                               }`}
                             onClick={() => toggleExpand(video.id)}
                           >
@@ -291,19 +293,19 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                             }}
                           />
 
-                          <div className="rounded-2xl border border-white/[0.06] shadow-2xl shadow-black/30 overflow-hidden" style={{ background: 'linear-gradient(180deg, #1a1a22 0%, #151518 100%)' }}>
+                          <div className="rounded-2xl border border-[var(--border)] shadow-2xl shadow-black/10 overflow-hidden bg-[var(--bg-secondary)]">
                             {/* ヘッダーバー */}
-                            <div className="px-6 sm:px-8 pt-6 pb-5 flex items-center justify-between border-b border-white/[0.04]">
-                              <h4 className="text-base font-bold flex items-center gap-2.5 text-white">
-                                <div className="w-8 h-8 rounded-lg bg-[#ff4e8e]/10 flex items-center justify-center">
-                                  <Music className="text-[#ff4e8e]" size={16} />
+                            <div className="px-6 sm:px-8 pt-6 pb-5 flex items-center justify-between border-b border-[var(--border)]">
+                              <h4 className="text-base font-bold flex items-center gap-2.5 text-[var(--text-primary)]">
+                                <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center">
+                                  <Music className="text-[var(--accent)]" size={16} />
                                 </div>
                                 曲リスト
-                                <span className="text-xs font-semibold text-[#666] bg-white/[0.04] px-2 py-0.5 rounded-full">{video.songs.length}</span>
+                                <span className="text-xs font-semibold text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">{video.songs.length}</span>
                               </h4>
                               <button
                                 onClick={() => setExpandedVideoId(null)}
-                                className="p-1.5 rounded-lg hover:bg-white/[0.06] text-[#666] hover:text-white transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                               >
                                 <X size={18} />
                               </button>
@@ -367,7 +369,7 @@ export default function ChannelClient({ initialData }: { initialData: any }) {
                                               e.stopPropagation();
                                               setSelectedSongId(song.id);
                                             }}
-                                            className="song-list__col-add p-2 hover:bg-white/10 rounded-lg transition-colors text-[#666] hover:text-[#ff4e8e] relative z-10 flex items-center justify-center"
+                                            className="song-list__col-add p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors text-[var(--text-tertiary)] hover:text-[var(--accent)] relative z-10 flex items-center justify-center"
                                             title="メニュー"
                                           >
                                             <MoreVertical size={16} />

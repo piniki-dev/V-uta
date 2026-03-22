@@ -80,11 +80,11 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
           <h3 className="font-bold text-lg">プレイリストに追加</h3>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors text-[#999] hover:text-white">
+          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
             <X size={20} />
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
           )}
 
           {isLoading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-[#666] gap-3">
+            <div className="py-12 flex flex-col items-center justify-center text-[var(--text-tertiary)] gap-3">
               <Loader2 className="animate-spin" />
               <p className="text-sm">ロード中...</p>
             </div>
@@ -129,20 +129,20 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                     key={playlist.id}
                     onClick={() => handleAddToPlaylist(playlist.id)}
                     disabled={isPending}
-                    className="w-full p-3 flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-left group disabled:opacity-50"
+                    className="w-full p-3 flex items-center gap-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-xl transition-all text-left group disabled:opacity-50"
                   >
-                    <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-[#ff4e8e] group-hover:bg-[#ff4e8e]/20 transition-colors">
+                    <div className="w-10 h-10 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-center text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
                       {playlist.is_public ? <Globe size={18} /> : <Lock size={18} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{playlist.name}</p>
-                      <p className="text-xs text-[#666]">{playlist.is_public ? '公開' : '非公開'}</p>
+                      <p className="font-medium truncate text-[var(--text-primary)]">{playlist.name}</p>
+                      <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? '公開' : '非公開'}</p>
                     </div>
-                    <Plus size={18} className="text-[#666] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Plus size={18} className="text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 ))
               ) : (
-                <div className="py-8 text-center text-[#666]">
+                <div className="py-8 text-center text-[var(--text-tertiary)]">
                   <p className="text-sm">プレイリストがありません</p>
                 </div>
               )}
@@ -150,11 +150,11 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
           )}
         </div>
 
-        <div className="p-4 bg-white/5 border-t border-white/10">
+        <div className="p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border)]">
           {!isCreating ? (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full p-3 flex items-center justify-center gap-2 bg-[#ff4e8e] hover:bg-[#ff4e8e]/90 text-white font-bold rounded-xl transition-all"
+              className="w-full p-3 flex items-center justify-center gap-2 bg-[var(--accent)] hover:opacity-90 text-white font-bold rounded-xl transition-all"
             >
               <Plus size={18} />
               新しいプレイリストを作成
@@ -166,7 +166,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 placeholder="プレイリスト名を入力"
-                className="w-full bg-[#333] border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#ff4e8e] transition-colors"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
                 autoFocus
               />
               <div className="flex items-center justify-between px-1">
@@ -178,21 +178,21 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                       onChange={(e) => setIsPublic(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-[#444] rounded-full peer peer-checked:bg-[#ff4e8e] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                    <div className="w-9 h-5 bg-[var(--bg-hover)] rounded-full peer peer-checked:bg-[var(--accent)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
                   </div>
-                  <span className="text-xs font-bold text-[#999] group-hover:text-[#ccc] transition-colors">公開する</span>
+                  <span className="text-xs font-bold text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors">公開する</span>
                 </label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsCreating(false)}
-                    className="px-4 py-2 text-sm font-bold text-[#999] hover:text-white transition-colors"
+                    className="px-4 py-2 text-sm font-bold text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                   >
                     キャンセル
                   </button>
                   <button
                     onClick={handleCreateAndAdd}
                     disabled={!newPlaylistName.trim() || isPending}
-                    className="px-4 py-2 bg-[#ff4e8e] disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all"
+                    className="px-4 py-2 bg-[var(--accent)] disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all"
                   >
                     作成して追加
                   </button>

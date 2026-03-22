@@ -56,7 +56,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
         <DropdownMenu.Trigger asChild>
           {trigger || (
             <button 
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-[#666] hover:text-[#ff4e8e] flex items-center justify-center outline-none"
+              className="p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors text-[var(--text-tertiary)] hover:text-[var(--accent)] flex items-center justify-center outline-none"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical size={18} />
@@ -66,7 +66,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
 
         <DropdownMenu.Portal>
           <DropdownMenu.Content 
-            className="z-[500] min-w-[200px] bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
+            className="z-[500] min-w-[200px] bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
             sideOffset={5}
             align="end"
             collisionPadding={80}
@@ -74,45 +74,45 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
           >
             <DropdownMenu.Item 
               onSelect={handleAddNext}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[#ff4e8e]/10 hover:text-[#ff4e8e] transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-colors outline-none cursor-pointer group"
             >
-              <Play size={16} className="text-[#666] group-hover:text-[#ff4e8e]" />
+              <Play size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)]" />
               次に再生
             </DropdownMenu.Item>
             
             <DropdownMenu.Item 
               onSelect={handleAddLast}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
-              <ListPlus size={16} className="text-[#666] group-hover:text-white" />
+              <ListPlus size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
               再生リストの最後に追加
             </DropdownMenu.Item>
 
-            <DropdownMenu.Separator className="h-px bg-white/5 my-1" />
+            <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
 
             <DropdownMenu.Item 
               onSelect={handleOpenPlaylistModal}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
-              <Plus size={16} className="text-[#666] group-hover:text-white" />
+              <Plus size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
               プレイリストに追加
             </DropdownMenu.Item>
 
             <DropdownMenu.Item 
               onSelect={handleOpenShareModal}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
-              <Share2 size={16} className="text-[#666] group-hover:text-white" />
+              <Share2 size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
               共有
             </DropdownMenu.Item>
 
-            <DropdownMenu.Separator className="h-px bg-white/5 my-1" />
+            <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
 
             <DropdownMenu.Item 
               onSelect={openYouTube}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
             >
-              <ExternalLink size={16} className="text-[#666] group-hover:text-white" />
+              <ExternalLink size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
               YouTubeで開く
             </DropdownMenu.Item>
           </DropdownMenu.Content>

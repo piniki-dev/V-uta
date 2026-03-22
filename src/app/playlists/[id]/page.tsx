@@ -13,9 +13,5 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  return (
-    <div className="bg-black text-white min-h-screen">
-      <PlaylistDetailClient playlist={result.data} />
-    </div>
-  );
+  return <PlaylistDetailClient playlist={result.data} />;
 }

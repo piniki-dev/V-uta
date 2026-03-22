@@ -4,13 +4,15 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { LogIn, User as UserIcon, LogOut } from 'lucide-react';
+import { LogIn, User as UserIcon, LogOut, Sun, Moon } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useTheme } from 'next-themes';
 
 export default function AuthButton({ user: initialUser }: { user: User | null }) {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(initialUser);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -52,7 +54,7 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
     return (
       <DropdownMenu.Root modal={false}>
         <DropdownMenu.Trigger asChild>
-          <button className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden hover:opacity-80 transition-opacity outline-none bg-white/5 border border-white/10">
+          <button className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden hover:opacity-80 transition-opacity outline-none bg-[var(--bg-elevated)] border border-[var(--border)]">
             {user.user_metadata?.avatar_url ? (
               <img
                 src={user.user_metadata.avatar_url}
@@ -60,29 +62,39 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
                 className="w-full h-full object-cover"
               />
             ) : (
-              <UserIcon size={20} className="text-white/60" />
+              <UserIcon size={20} className="text-[var(--text-tertiary)]" />
             )}
           </button>
         </DropdownMenu.Trigger>
 
         <DropdownMenu.Portal>
           <DropdownMenu.Content 
-            className="z-[500] min-w-[200px] bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
+            className="z-[500] min-w-[200px] bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
             sideOffset={8}
             align="end"
           >
-            <div className="px-3 py-2 border-bottom border-white/5 mb-1">
-              <p className="text-xs text-[#666] font-medium mb-0.5">ログイン中</p>
-              <p className="text-sm font-semibold text-white truncate">
+            <div className="px-3 py-2 border-bottom border-[var(--border)] mb-1">
+              <p className="text-xs text-[var(--text-tertiary)] font-medium mb-0.5">ログイン中</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
                 {user.user_metadata?.full_name || user.email || 'User'}
               </p>
             </div>
 
-            <DropdownMenu.Separator className="h-px bg-white/5 my-1" />
+            <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
+
+            <DropdownMenu.Item 
+              onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors outline-none cursor-pointer group"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Separator className="h-px bg-[var(--border)] my-1" />
 
             <DropdownMenu.Item 
               onSelect={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-white/5 text-[#ff4e8e] transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] text-[#ff4e8e] transition-colors outline-none cursor-pointer group"
             >
               <LogOut size={16} />
               ログアウト
@@ -94,12 +106,21 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
   }
 
   return (
-    <button
-      onClick={handleLogin}
-      className="bg-white text-black border-none rounded-full px-4 py-2 text-sm font-semibold cursor-pointer flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-    >
-      <LogIn size={18} />
-      Google でログイン
-    </button>
+    <div className="flex items-center gap-3">
+      <button 
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors"
+        title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+      >
+        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+      <button
+        onClick={handleLogin}
+        className="bg-[var(--text-primary)] text-[var(--bg-primary)] border-none rounded-full px-4 py-2 text-sm font-semibold cursor-pointer flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+      >
+        <LogIn size={18} />
+        Google でログイン
+      </button>
+    </div>
   );
 }
