@@ -73,7 +73,7 @@ export default function SearchClient({ query, songs, channels }: SearchClientPro
                   {channels.map(channel => (
                     <Link 
                       key={channel.id}
-                      href={`/channels/${Strings(channel.id)}`}
+                      href={`/channels/${channel.handle || channel.id}`}
                       className="flex items-center gap-4 p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl hover:bg-[var(--bg-hover)] transition-all group"
                     >
                       <img 
@@ -115,7 +115,3 @@ export default function SearchClient({ query, songs, channels }: SearchClientPro
   );
 }
 
-// 修正: String() を Strings() と誤植していたので修正
-function Strings(val: any) {
-  return String(val);
-}

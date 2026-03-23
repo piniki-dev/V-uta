@@ -3,6 +3,7 @@
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
+import FavoriteButton from '@/components/song/FavoriteButton';
 import * as Slider from '@radix-ui/react-slider';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { 
@@ -72,9 +73,21 @@ export default function MiniPlayer() {
               alt=""
               className="mini-player__thumbnail"
             />
+          ) || (
+            <div className="mini-player__thumbnail-placeholder flex items-center justify-center bg-[var(--bg-tertiary)] rounded">
+              <span className="text-[var(--text-tertiary)]">♪</span>
+            </div>
           )}
           <div className="mini-player__text">
-            <span className="mini-player__title">{t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}</span>
+            <div className="flex items-center gap-2">
+              <span className="mini-player__title truncate max-w-[200px] md:max-w-[400px]">
+                {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
+              </span>
+              <FavoriteButton 
+                songId={state.currentSong.id} 
+                className="scale-90 opacity-60 hover:opacity-100 transition-opacity"
+              />
+            </div>
             <span className="mini-player__meta">
               {state.currentSong.channelName}
               {state.currentSong.videoTitle && (

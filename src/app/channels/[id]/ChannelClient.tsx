@@ -10,6 +10,7 @@ import { formatTime } from '@/lib/utils';
 import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
 import { useLocale } from '@/components/LocaleProvider';
 import SongMenu from '@/components/song/SongMenu';
+import SongList from '@/components/song/SongList';
 
 interface ChannelWithVideos extends Channel {
   vtuber?: Vtuber & { production?: Production };
@@ -330,80 +331,26 @@ export default function ChannelClient({ initialData, error }: { initialData: any
 
                             <div className="p-6 sm:p-8">
                               {video.songs.length > 0 ? (
-                                <div className="song-list overflow-x-auto overflow-y-hidden">
-                                  <div className="song-list__header hidden md:grid min-w-[500px]">
-                                    <span className="song-list__col-num">#</span>
-                                    <span className="song-list__col-title">{T('archive.title')}</span>
-                                    <span className="song-list__col-artist">{T('archive.artist')}</span>
-                                    <span className="song-list__col-time">{T('archive.time')}</span>
-                                    <span className="song-list__col-duration">{T('archive.duration')}</span>
-                                    <span className="song-list__col-add"></span>
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    {video.songs.map((song, sIndex) => {
-                                      const isCurrentSong = state.currentSong?.id === song.id;
-                                      return (
-                                        <motion.div
-                                          key={song.id}
-                                          role="button"
-                                          tabIndex={0}
-                                          className={`song-list__item ${isCurrentSong ? 'active' : ''} group/item !rounded-xl !border-0 hover:bg-white/[0.05] cursor-pointer`}
-                                          onClick={() => handlePlaySong(video, song, video.songs)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                              e.preventDefault();
-                                              handlePlaySong(video, song, video.songs);
-                                            }
-                                          }}
-                                          initial={{ x: -15, opacity: 0 }}
-                                          animate={{ x: 0, opacity: 1 }}
-                                          transition={{ delay: Math.min(sIndex * 0.05, 0.3) }}
-                                        >
-                                          <span className="song-list__col-num">
-                                            {isCurrentSong && state.isPlaying ? (
-                                              <span className="song-list__playing-icon text-[#ff4e8e]">♪</span>
-                                            ) : (
-                                              sIndex + 1
-                                            )}
-                                          </span>
-                                          <div className="song-list__col-title">
-                                            <div className="flex items-center gap-3">
-                                              <div className="relative w-8 h-8 rounded-md overflow-hidden shrink-0 shadow-sm md:hidden">
-                                                <img src={video.thumbnail_url || video.thumbnail || undefined} alt={song.master_songs?.title} className="w-full h-full object-cover" />
-                                              </div>
-                                              <span className="truncate">{t(song.master_songs?.title || T('common.unknown'), song.master_songs?.title_en || song.master_songs?.title || T('common.unknown'))}</span>
-                                            </div>
-                                          </div>
-                                          <span className="song-list__col-artist truncate">{t(song.master_songs?.artist || '-', song.master_songs?.artist_en || song.master_songs?.artist || '-')}</span>
-                                          <span className="song-list__col-time text-xs opacity-60">
-                                            {formatTime(song.start_sec)} - {formatTime(song.end_sec)}
-                                          </span>
-                                          <span className="song-list__col-duration text-xs opacity-60">
-                                            {formatTime(song.end_sec - song.start_sec)}
-                                          </span>
-                                          <div className="song-list__col-add">
-                                            <SongMenu 
-                                              song={{
-                                                id: song.id,
-                                                title: song.master_songs?.title || T('common.unknown'),
-                                                artist: song.master_songs?.artist || T('common.unknown'),
-                                                title_en: song.master_songs?.title_en || null,
-                                                artist_en: song.master_songs?.artist_en || null,
-                                                artworkUrl: song.master_songs?.artwork_url || null,
-                                                videoId: video.video_id,
-                                                startSec: song.start_sec,
-                                                endSec: song.end_sec,
-                                                channelName: channel.name,
-                                                thumbnailUrl: video.thumbnail_url,
-                                                videoTitle: video.title,
-                                              }} 
-                                            />
-                                          </div>
-                                        </motion.div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
+                                <SongList 
+                                  items={video.songs}
+                                  mapToPlayerSong={(s) => ({
+                                    id: s.id,
+                                    title: s.master_songs?.title || T('common.unknown'),
+                                    artist: s.master_songs?.artist || T('common.unknown'),
+                                    title_en: s.master_songs?.title_en || null,
+                                    artist_en: s.master_songs?.artist_en || null,
+                                    artworkUrl: s.master_songs?.artwork_url || null,
+                                    videoId: video.video_id,
+                                    startSec: s.start_sec,
+                                    endSec: s.end_sec,
+                                    channelName: channel.name,
+                                    thumbnailUrl: video.thumbnail_url,
+                                    videoTitle: video.title,
+                                  })}
+                                  sourceType="channel"
+                                  sourceId={channel.id.toString()}
+                                  showTimeInfo={true}
+                                />
                               ) : (
                                   <div className="py-16 flex flex-col items-center justify-center text-center">
                                     <div className="w-16 h-16 rounded-full bg-white/[0.02] flex items-center justify-center mb-4 border border-white/[0.05]">

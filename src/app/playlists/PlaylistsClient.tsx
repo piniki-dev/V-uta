@@ -93,10 +93,10 @@ export default function PlaylistsClient() {
                 </div>
               </div>
               <h2 className="text-xl font-bold mb-2 group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-[var(--text-primary)]">
-                {playlist.name}
+                {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
               </h2>
               <p className="text-[var(--text-secondary)] text-sm line-clamp-2 h-10 mb-4">
-                {playlist.description || T('playlist.noDescription')}
+                {playlist.is_favorites ? T('playlist.favoritesDescription') : (playlist.description || T('playlist.noDescription'))}
               </p>
               <div className="flex items-center justify-between pt-4 border-t border-[var(--border)] text-xs text-[var(--text-tertiary)]">
                 <span>{new Date(playlist.created_at).toLocaleDateString()}</span>

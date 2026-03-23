@@ -9,6 +9,7 @@ import PersistentPlayer from "@/components/player/PersistentPlayer";
 import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import { FavoritesProvider } from "@/components/FavoritesProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -45,20 +46,22 @@ export default async function RootLayout({
       <body className={`${inter.variable}`}>
         <LocaleProvider>
           <ThemeProvider>
-            <PlayerProvider>
-              <SidebarProvider>
-                <Header />
-                <div className="app-layout">
-                  <Sidebar />
-                  <LayoutWrapper>
-                    <main className="main-content">{children}</main>
-                  </LayoutWrapper>
-                </div>
-                <MiniPlayer />
-                <FullPlayer />
-                <PersistentPlayer />
-              </SidebarProvider>
-            </PlayerProvider>
+            <FavoritesProvider>
+              <PlayerProvider>
+                <SidebarProvider>
+                  <Header />
+                  <div className="app-layout">
+                    <Sidebar />
+                    <LayoutWrapper>
+                      <main className="main-content">{children}</main>
+                    </LayoutWrapper>
+                  </div>
+                  <MiniPlayer />
+                  <FullPlayer />
+                  <PersistentPlayer />
+                </SidebarProvider>
+              </PlayerProvider>
+            </FavoritesProvider>
           </ThemeProvider>
         </LocaleProvider>
       </body>

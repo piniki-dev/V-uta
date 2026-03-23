@@ -37,7 +37,7 @@ export default function FullPlayer() {
           <div className="full-player__playlist-list">
             {state.playlist.map((song, index) => (
               <button
-                key={song.id}
+                key={`${song.id}-${index}`}
                 onClick={() => play(song, state.playlist)}
                 className={`full-player__playlist-item ${
                   index === state.currentIndex ? 'active' : ''

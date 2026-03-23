@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
 import Link from 'next/link';
-import { Pencil, ListPlus, MoreVertical, Globe, ExternalLink } from 'lucide-react';
+import { Pencil, ListPlus, MoreVertical, Globe, ExternalLink, Music, Youtube } from 'lucide-react';
 import SongMenu from '@/components/song/SongMenu';
+import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
@@ -51,56 +52,76 @@ export default function ArchiveClient({ video, songs }: Props) {
   return (
     <div className="page-container">
       {/* 動画情報ヘッダー */}
-      <div className="archive-header">
-        <div className="archive-header__thumbnail-wrap">
-          {video.thumbnail_url && (
-            <img
-              src={video.thumbnail_url}
-              alt={video.title}
-              className="archive-header__thumbnail"
-            />
-          )}
-          <div className="archive-header__overlay">
-            <button
+      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-8 relative overflow-hidden shadow-lg">
+        <div className="w-full md:w-64 aspect-video rounded-xl overflow-hidden shadow-md shrink-0 relative group/thumb">
+          <img
+            src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'}
+            alt={video.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
+          />
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+             <button
               onClick={handlePlayAll}
-              className="archive-header__play-all"
+              className="w-12 h-12 bg-[var(--accent)] text-white rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover/thumb:scale-100 transition-all duration-300 hover:bg-[var(--accent-hover)]"
               disabled={songs.length === 0}
             >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
           </div>
         </div>
 
-        <div className="archive-header__info">
-          <h1 className="archive-header__title">{video.title}</h1>
-          {video.channels ? (
-            <Link href={`/channels/${video.channels.handle || video.channels.id}`} className="archive-header__channel hover:underline">
-              {video.channels.name}
-            </Link>
-          ) : (
-            <p className="archive-header__channel">{T('common.unknown')}</p>
-          )}
-          <div className="archive-header__meta">
-            <span>{songs.length} {T('archive.songs')}</span>
-            <a
-              href={`https://www.youtube.com/watch?v=${video.video_id}`}
+        <div className="flex-1 flex flex-col justify-center min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] bg-[var(--accent-subtle)] px-2 py-0.5 rounded">
+              Archive
+            </span>
+            <span className="text-[var(--text-tertiary)] text-[11px] font-medium flex items-center gap-1 opacity-70">
+              <Music size={12} /> {songs.length} {T('archive.songs')}
+            </span>
+          </div>
+          
+          <h1 className="text-xl md:text-2xl font-bold mb-2 text-[var(--text-primary)] leading-tight truncate">
+            {video.title}
+          </h1>
+          
+          <div className="mb-6">
+            {video.channels ? (
+              <Link href={`/channels/${video.channels.handle || video.channels.id}`} className="text-[var(--text-secondary)] text-sm font-medium hover:text-[var(--accent)] transition-colors inline-flex items-center gap-2 group/ch">
+                <div className="w-6 h-6 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-[8px] font-bold text-[var(--text-tertiary)] group-hover/ch:bg-[var(--accent-subtle)] group-hover/ch:text-[var(--accent)] transition-colors overflow-hidden border border-[var(--border)]">
+                  {video.channels.image ? (
+                    <img src={video.channels.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    video.channels.name[0]
+                  )}
+                </div>
+                {video.channels.name}
+              </Link>
+            ) : (
+              <p className="text-[var(--text-secondary)] text-sm font-medium">{T('common.unknown')}</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+             <a 
+              href={`https://youtube.com/watch?v=${video.video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="archive-header__youtube-link"
+              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-tertiary)] hover:bg-[#ff0000]/10 text-[var(--text-secondary)] hover:text-[#ff0000] font-bold rounded-xl border border-[var(--border)] transition-all duration-300 active:scale-95 group/yt text-sm"
             >
-              <ExternalLink size={16} />
+              <Youtube size={16} />
               {T('archive.watchOnYoutube')}
             </a>
+            
+            <Link 
+              href={`/songs/new?url=https://www.youtube.com/watch?v=${video.video_id}`}
+              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] font-bold rounded-xl transition-all duration-300 active:scale-95 text-sm"
+            >
+              <Pencil size={16} />
+              {T('archive.editSongs')}
+            </Link>
           </div>
-          <Link 
-            href={`/songs/new?url=https://www.youtube.com/watch?v=${video.video_id}`} 
-            className="btn btn--secondary btn--sm"
-          >
-            <Pencil size={14} />
-            {T('archive.editSongs')}
-          </Link>
         </div>
       </div>
 
@@ -115,58 +136,13 @@ export default function ArchiveClient({ video, songs }: Props) {
           </Link>
         </div>
       ) : (
-        <div className="song-list">
-          <div className="song-list__header">
-            <span className="song-list__col-num">#</span>
-            <span className="song-list__col-title">{T('archive.title')}</span>
-            <span className="song-list__col-artist">{T('archive.artist')}</span>
-            <span className="song-list__col-time">{T('archive.time')}</span>
-            <span className="song-list__col-duration">{T('archive.duration')}</span>
-            <span className="song-list__col-add"></span>
-          </div>
-
-          {songs.map((song, index) => {
-            const isCurrentSong = state.currentSong?.id === song.id;
-            return (
-              <div
-                key={song.id}
-                onClick={() => handlePlaySong(song)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handlePlaySong(song);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className={`song-list__item ${isCurrentSong ? 'active' : ''} cursor-pointer`}
-              >
-                 <span className="song-list__col-num">
-                   {isCurrentSong && state.isPlaying ? (
-                     <span className="song-list__playing-icon">♪</span>
-                   ) : (
-                     index + 1
-                   )}
-                 </span>
-                 <span className="song-list__col-title">
-                   {t(song.master_songs?.title || T('common.unknown'), song.master_songs?.title_en || song.master_songs?.title || T('common.unknown'))}
-                 </span>
-                 <span className="song-list__col-artist">
-                   {t(song.master_songs?.artist || '-', song.master_songs?.artist_en || song.master_songs?.artist || '-')}
-                 </span>
-                <span className="song-list__col-time">
-                  {formatTime(song.start_sec)} - {formatTime(song.end_sec)}
-                </span>
-                <span className="song-list__col-duration">
-                  {formatTime(song.end_sec - song.start_sec)}
-                </span>
-                <div className="song-list__col-add">
-                  <SongMenu song={toPlayerSong(song, video, T)} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <SongList 
+          items={playerSongs}
+          mapToPlayerSong={(s) => s}
+          sourceType="video"
+          sourceId={video.video_id}
+          showTimeInfo={true}
+        />
       )}
     </div>
   );

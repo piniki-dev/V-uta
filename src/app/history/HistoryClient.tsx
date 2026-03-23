@@ -9,6 +9,7 @@ import { Play, Trash2, History, ExternalLink, Calendar, Clock } from 'lucide-rea
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import SongMenu from '@/components/song/SongMenu';
+import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
@@ -34,7 +35,7 @@ export default function HistoryClient({ initialHistory }: Props) {
       startSec: song.start_sec,
       endSec: song.end_sec,
       channelName: song.videos.channels?.name || null,
-      thumbnailUrl: null,
+      thumbnailUrl: song.videos.thumbnail_url || null,
       videoTitle: song.videos.title
     };
   };
@@ -129,69 +130,14 @@ export default function HistoryClient({ initialHistory }: Props) {
                 <div className="h-px bg-[var(--border)] flex-1 ml-2" />
               </div>
 
-              <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden divide-y divide-[var(--border)] shadow-xl">
-                {items.map((item: any) => {
-                  const song = item.songs;
-                  const playedTime = new Date(item.played_at).toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-                  
-                  return (
-                    <div 
-                      key={item.id}
-                      onClick={() => handlePlayHistory(item)}
-                      className="group grid grid-cols-[60px_1fr_1fr_40px] md:grid-cols-[80px_1fr_1fr_100px_40px] px-6 py-4 gap-4 items-center hover:bg-[var(--bg-hover)] transition-all cursor-pointer relative"
-                    >
-                      <div className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] font-bold text-sm tabular-nums text-center transition-colors">
-                        {playedTime}
-                      </div>
-
-                      <div className="min-w-0 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative">
-                          {song.master_songs.artwork_url ? (
-                            <img src={song.master_songs.artwork_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Play size={16} fill="var(--text-tertiary)" className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Play size={20} fill="white" />
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">
-                            {t(song.master_songs.title, song.master_songs.title_en || song.master_songs.title)}
-                          </div>
-                          <div className="text-sm text-[var(--text-secondary)] truncate">
-                            {t(song.master_songs.artist || '-', song.master_songs.artist_en || song.master_songs.artist || '-')}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="hidden md:block min-w-0">
-                        <Link 
-                          href={`/videos/${song.videos.video_id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors flex flex-col gap-0.5 w-fit max-w-full group/video"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate">{song.videos.title}</span>
-                            <ExternalLink size={12} className="shrink-0 opacity-40 group-hover/video:opacity-100 transition-opacity" />
-                          </div>
-                          {song.videos.channels && (
-                            <span className="text-[11px] text-[var(--text-tertiary)] truncate opacity-80">{song.videos.channels.name}</span>
-                          )}
-                        </Link>
-                      </div>
-
-                      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums">
-                        {formatTime(song.end_sec - song.start_sec)}
-                      </div>
-
-                      <div className="flex justify-end">
-                        <SongMenu song={toPlayerSong(item)} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <SongList 
+                items={items}
+                mapToPlayerSong={toPlayerSong}
+                sourceType="history"
+                sourceId="history"
+                showVideoInfo={true}
+                onItemClick={(item) => handlePlayHistory(item)}
+              />
             </section>
           ))}
         </div>

@@ -8,7 +8,9 @@ import { formatTime } from '@/lib/utils';
 import { Play, Trash2, ListMusic, Globe, Lock, Loader2, ExternalLink, Pencil, Save, X, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import { Reorder, motion, AnimatePresence } from 'framer-motion';
+import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
+import { useFavorites } from '@/components/FavoritesProvider';
 
 interface Props {
   playlist: Playlist & { items: any[] };
@@ -17,12 +19,18 @@ interface Props {
 export default function PlaylistDetailClient({ playlist }: Props) {
   const { playWithSource, state } = usePlayer();
   const { T } = useLocale();
+  const { isFavorited, favoriteIds } = useFavorites();
   const [items, setItems] = useState(playlist.items);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
   const [editDescription, setEditDescription] = useState(playlist.description || '');
   const [editIsPublic, setEditIsPublic] = useState(playlist.is_public);
   const [isPending, startTransition] = useTransition();
+
+  // お気に入りプレイリストの場合、同期された favoriteIds に基づいて表示をフィルタリング
+  const displayItems = playlist.is_favorites
+    ? items.filter(item => favoriteIds.has(item.songs.id))
+    : items;
 
   // 外部からの更新（追加など）があった場合に同期
   useEffect(() => {
@@ -137,9 +145,11 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                 <span>•</span>
                 <span>{items.length} {T('playlist.songCount')}</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">{playlist.name}</h1>
+              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">
+                {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
+              </h1>
               <p className="text-[var(--text-secondary)] text-lg mb-6 max-w-2xl font-medium leading-relaxed">
-                {playlist.description || T('playlist.noDescription')}
+                {playlist.is_favorites ? T('playlist.favoritesDescription') : (playlist.description || T('playlist.noDescription'))}
               </p>
             </>
           ) : (
@@ -185,13 +195,15 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   <Play fill="currentColor" size={20} />
                   {T('playlist.playAll')}
                 </button>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold rounded-full border border-[var(--border)] transition-all active:scale-95"
-                >
-                  <Pencil size={18} />
-                  {T('common.edit')}
-                </button>
+                {!playlist.is_favorites && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold rounded-full border border-[var(--border)] transition-all active:scale-95"
+                  >
+                    <Pencil size={18} />
+                    {T('common.edit')}
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -218,97 +230,37 @@ export default function PlaylistDetailClient({ playlist }: Props) {
       </div>
 
       {/* 楽曲リスト */}
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-xl">
-        <div className="px-8 py-5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-tertiary)]/30">
-          <h2 className="font-bold flex items-center gap-2 text-[var(--text-secondary)] text-sm">
-            <ListMusic size={18} />
-            {T('playlist.songs')}
-          </h2>
-          {isEditing && (
-            <span className="text-xs font-bold text-[var(--accent)] animate-pulse">
-              {T('playlist.dragToReorder')}
-            </span>
-          )}
+      {displayItems.length === 0 ? (
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center text-[var(--text-tertiary)] flex flex-col items-center gap-4 shadow-xl">
+          <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center">
+            <ListMusic size={32} />
+          </div>
+          <p className="font-medium">{T('playlist.noSongs')}</p>
         </div>
-
-        {items.length === 0 ? (
-          <div className="p-20 text-center text-[var(--text-tertiary)] flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center">
-              <ListMusic size={32} />
-            </div>
-            <p className="font-medium">{T('playlist.noSongs')}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              {/* ヘッダー行 */}
-              <div className="grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 border-b border-[var(--border)] text-[var(--text-tertiary)] text-xs font-bold uppercase tracking-widest gap-4">
-                <div className="text-center">#</div>
-                <div>{T('playlist.songAndArtist')}</div>
-                <div>{T('playlist.video')}</div>
-                <div className="text-right">{T('playlist.length')}</div>
-                <div></div>
-              </div>
-
-              <Reorder.Group axis="y" values={items} onReorder={setItems} className="divide-y divide-white/5">
-                {items.map((item, index) => {
-                  const song = item.songs;
-                  if (!song) return null;
-                  return (
-                    <Reorder.Item 
-                      key={item.id} 
-                      value={item}
-                      dragListener={isEditing}
-                      className={`relative grid grid-cols-[60px_1fr_1fr_100px_80px] px-8 py-4 gap-4 items-center transition-colors ${
-                        isEditing ? 'hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing' : 'hover:bg-[var(--bg-hover)] cursor-pointer'
-                      }`}
-                      onClick={() => handlePlaySong(item)}
-                    >
-                      <div className="flex items-center justify-center text-[var(--text-tertiary)] font-bold text-sm tabular-nums">
-                        {isEditing ? <GripVertical size={16} className="text-[var(--text-tertiary)]" /> : index + 1}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent)] transition-colors">{song.master_songs.title}</div>
-                        <div className="text-sm text-[var(--text-secondary)] truncate">{song.master_songs.artist}</div>
-                      </div>
-
-                      <div className="min-w-0">
-                        <Link 
-                          href={`/videos/${song.video.video_id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors flex items-center gap-1.5"
-                        >
-                          <span className="truncate">{song.video.title}</span>
-                          <ExternalLink size={12} className="shrink-0 opacity-40" />
-                        </Link>
-                      </div>
-
-                      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums">
-                        {formatTime(song.end_sec - song.start_sec)}
-                      </div>
-
-                      <div className="flex justify-end">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemove(item.id);
-                          }}
-                          disabled={isPending}
-                          className="p-2.5 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
-                          title={T('common.delete')}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </Reorder.Item>
-                  );
-                })}
-              </Reorder.Group>
-            </div>
-          </div>
-        )}
-      </div>
+      ) : (
+        <SongList 
+          items={displayItems}
+          mapToPlayerSong={toPlayerSong}
+          sourceType="playlist"
+          sourceId={playlist.id.toString()}
+          showVideoInfo={true}
+          isReorderable={isEditing}
+          onReorder={setItems}
+          renderActions={playlist.is_favorites ? undefined : (item) => (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemove(item.id);
+              }}
+              disabled={isPending}
+              className="p-2.5 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
+              title={T('common.delete')}
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+        />
+      )}
     </div>
   );
 }

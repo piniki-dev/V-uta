@@ -22,6 +22,7 @@ export async function getPlaylists(): Promise<ActionResult<Playlist[]>> {
   let query = supabase
     .from('playlists')
     .select('*')
+    .order('is_favorites', { ascending: false })
     .order('created_at', { ascending: false });
 
   if (user) {

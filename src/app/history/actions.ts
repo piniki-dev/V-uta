@@ -136,6 +136,7 @@ export async function getPlayHistory(limit = 50) {
         videos (
           video_id,
           title,
+          thumbnail_url,
           channels (
             name
           )

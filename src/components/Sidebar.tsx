@@ -172,7 +172,7 @@ export default function Sidebar() {
                           className="sidebar__sublink"
                           onClick={handleLinkClick}
                         >
-                          {playlist.name}
+                          {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
                         </Link>
                       </div>
                     ))}

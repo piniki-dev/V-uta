@@ -46,21 +46,21 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     startTransition(async () => {
       const createRes = await createPlaylist(newPlaylistName, '', isPublic);
       if (!createRes.success) {
-        setError(createRes.error || 'プレイリストの作成に失敗しました');
+        setError(createRes.error || T('playlist.createError'));
         return;
       }
 
       if (createRes.data) {
         const addRes = await addSongToPlaylist(createRes.data.id, songId);
         if (addRes.success) {
-          setSuccess('プレイリストを作成し、楽曲を追加しました');
+          setSuccess(T('playlist.createSuccess'));
           setCreatedPlaylistId(createRes.data.id);
           // リンクを表示するため、自動で閉じないようにするか時間を延ばす
           setTimeout(() => {
             onSuccess?.();
           }, 3000);
         } else {
-          setError(addRes.error || '楽曲の追加に失敗しました');
+          setError(addRes.error || T('playlist.addError'));
         }
       }
     });
@@ -70,13 +70,13 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     startTransition(async () => {
       const result = await addSongToPlaylist(playlistId, songId);
       if (result.success) {
-        setSuccess('プレイリストに楽曲を追加しました');
+        setSuccess(T('playlist.addSuccess'));
         setTimeout(() => {
           onSuccess?.();
           onClose();
         }, 1500);
       } else {
-        setError(result.error || '追加に失敗しました');
+        setError(result.error || T('playlist.addError'));
       }
     });
   };

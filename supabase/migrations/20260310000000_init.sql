@@ -115,8 +115,12 @@ CREATE TABLE public.playlists (
   created_by uuid REFERENCES auth.users(id) NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_by uuid REFERENCES auth.users(id),
-  updated_at timestamptz DEFAULT now()
+  updated_at timestamptz DEFAULT now(),
+  is_favorites boolean DEFAULT false -- お気に入りプレイリストフラグ
 );
+
+-- ユーザーごとに最大1つのお気に入りプレイリストを保証
+CREATE UNIQUE INDEX unique_favorite_playlist ON public.playlists (created_by) WHERE (is_favorites = true);
 
 -- 9. playlist_items (プレイリスト内の楽曲)
 CREATE TABLE public.playlist_items (
@@ -189,6 +193,36 @@ CREATE TRIGGER trigger_songs_history
   FOR EACH ROW EXECUTE FUNCTION public.handle_song_history();
 
 CREATE TRIGGER trigger_playlists_updated_at BEFORE UPDATE ON public.playlists FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- お気に入りプレイリストの自動作成関数
+CREATE OR REPLACE FUNCTION public.handle_new_user_favorites()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.playlists (name, description, is_favorites, created_by, is_public)
+  VALUES ('お気に入りした曲', 'お気に入りした楽曲がここに表示されます', true, NEW.id, false);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 削除防止関数
+CREATE OR REPLACE FUNCTION public.prevent_favorite_playlist_deletion()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.is_favorites = true THEN
+    RAISE EXCEPTION 'お気に入りプレイリストは削除できません。';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- トリガー設定
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_favorites();
+
+CREATE TRIGGER trigger_prevent_favorite_playlist_deletion
+  BEFORE DELETE ON public.playlists
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_favorite_playlist_deletion();
 
 -- ==========================================
 -- RLS (Row Level Security)
