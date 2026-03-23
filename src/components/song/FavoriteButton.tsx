@@ -41,15 +41,15 @@ export default function FavoriteButton({
       disabled={isPending}
       className={`relative group/fav p-2 rounded-full transition-all duration-300 ${
         isFavorited 
-          ? 'text-[#ff4e8e] hover:bg-[#ff4e8e]/5' 
-          : 'text-[var(--text-tertiary)] hover:text-[#ff4e8e] hover:bg-[#ff4e8e]/10'
+          ? 'text-[var(--accent)] hover:bg-[var(--accent)]/5' 
+          : 'text-[var(--text-tertiary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'
       } ${className}`}
       title={isFavorited ? T('songMenu.removeFromFavorites') : T('songMenu.addToFavorites')}
     >
       <div className="relative flex items-center justify-center">
         {/* Glow effect when favorited */}
         {isFavorited && (
-          <div className="absolute inset-0 bg-[#ff4e8e]/20 blur-md rounded-full -z-10 animate-pulse" />
+          <div className="absolute inset-0 bg-[var(--accent)]/20 blur-md rounded-full -z-10 animate-pulse" />
         )}
         <Heart 
           size={size} 
@@ -59,7 +59,7 @@ export default function FavoriteButton({
               ? 'scale-90 opacity-50' 
               : isFavorited 
                 ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,78,142,0.4)]' 
-                : 'group-hover/fav:scale-120 group-hover/fav:text-[#ff4e8e] active:scale-90'
+                : 'group-hover/fav:scale-120 group-hover/fav:text-[var(--accent)] active:scale-90'
           }`}
         />
       </div>

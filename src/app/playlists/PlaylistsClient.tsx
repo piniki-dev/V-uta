@@ -31,8 +31,8 @@ export default function PlaylistsClient() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="animate-spin text-[#ff4e8e]" size={32} />
-        <p className="text-[#666]">{T('common.loading')}</p>
+        <Loader2 className="animate-spin text-[var(--accent)]" size={32} />
+        <p className="text-[var(--text-tertiary)]">{T('common.loading')}</p>
       </div>
     );
   }
@@ -42,10 +42,10 @@ export default function PlaylistsClient() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <ListMusic className="text-[#ff4e8e]" size={32} />
+            <ListMusic className="text-[var(--accent)]" size={32} />
             {T('playlist.manage')}
           </h1>
-          <p className="text-[#666] mt-2">{T('playlist.subtitle')}</p>
+          <p className="text-[var(--text-tertiary)] mt-2">{T('playlist.subtitle')}</p>
         </div>
       </div>
 

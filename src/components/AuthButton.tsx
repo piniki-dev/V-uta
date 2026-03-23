@@ -104,7 +104,7 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
 
             <DropdownMenu.Item 
               onSelect={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] text-[#ff4e8e] transition-colors outline-none cursor-pointer group"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] text-[var(--accent)] transition-colors outline-none cursor-pointer group"
             >
               <LogOut size={16} />
               {T('auth.signOut')}

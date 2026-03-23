@@ -111,7 +111,7 @@ export default function Sidebar() {
                 )}
                 <div className="truncate">
                   <div className="sidebar__username truncate">{user.user_metadata?.full_name || T('auth.guest')}</div>
-                  <div className="text-xs text-[#666] truncate">{user.email}</div>
+                  <div className="text-xs text-[var(--text-tertiary)] truncate">{user.email}</div>
                 </div>
               </div>
             ) : (
@@ -161,7 +161,7 @@ export default function Sidebar() {
                     style={{ display: 'flex', flexDirection: 'column' }}
                   >
                     <div className="sidebar__sublink-container">
-                      <Link href="/playlists" className="sidebar__sublink font-bold text-[#ff4e8e]" onClick={handleLinkClick}>
+                      <Link href="/playlists" className="sidebar__sublink font-bold text-[var(--accent)]" onClick={handleLinkClick}>
                         {T('sidebar.allPlaylists')}
                       </Link>
                     </div>

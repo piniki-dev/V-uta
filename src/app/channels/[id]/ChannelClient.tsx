@@ -129,13 +129,13 @@ export default function ChannelClient({ initialData, error }: { initialData: any
               transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
             >
               {/* アバター背後のグロー */}
-              <div className="absolute inset-0 bg-[#ff4e8e]/20 rounded-full blur-2xl -z-10 animate-pulse" />
+              <div className="absolute inset-0 bg-[var(--accent)]/20 rounded-full blur-2xl -z-10 animate-pulse" />
 
               <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-2 ring-[var(--border)] ring-offset-2 ring-offset-[var(--bg-primary)]">
                 {channel.image ? (
                   <img src={channel.image} alt={channel.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center w-full h-full text-4xl text-[#aaaaaa] bg-[#1a1a1a]">
+                  <div className="flex items-center justify-center w-full h-full text-4xl text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
                     {channel.name ? channel.name[0] : '?'}
                   </div>
                 )}
@@ -159,7 +159,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                 transition={{ delay: 0.4 }}
               >
                 {channel.handle && (
-                  <span className="text-[#ff4e8e] text-sm font-semibold">
+                  <span className="text-[var(--accent)] text-sm font-semibold">
                     @{channel.handle.replace('@', '')}
                   </span>
                 )}
@@ -185,12 +185,12 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                 transition={{ delay: 0.5 }}
               >
                 <a href={`https://youtube.com/channel/${channel.yt_channel_id}`} target="_blank" rel="noopener noreferrer"
-                  className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[#ff0000]/15 text-[#ff6666] border border-[#ff0000]/25 hover:bg-[#ff0000]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[#ff0000]/20">
+                  className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[var(--youtube-red)]/15 text-[var(--youtube-red-light)] border border-[var(--youtube-red)]/25 hover:bg-[var(--youtube-red)]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--youtube-red)]/20">
                   <Youtube size={15} /> YouTube
                 </a>
                 {channel.vtuber?.link && (
                   <a href={channel.vtuber.link} target="_blank" rel="noopener noreferrer"
-                    className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[#1d9bf0]/15 text-[#60b8f6] border border-[#1d9bf0]/25 hover:bg-[#1d9bf0]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[#1d9bf0]/20">
+                    className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[var(--twitter-blue)]/15 text-[var(--twitter-blue-light)] border border-[var(--twitter-blue)]/25 hover:bg-[var(--twitter-blue)]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--twitter-blue)]/20">
                     <Twitter size={15} /> X (Twitter)
                   </a>
                 )}
@@ -209,7 +209,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
-            <div className="w-1.5 h-8 bg-gradient-to-b from-[#ff4e8e] to-[#6366f1] rounded-full shadow-[0_0_15px_rgba(255,78,142,0.4)]" />
+            <div className="w-1.5 h-8 bg-gradient-to-b from-[var(--accent)] to-[var(--accent-dark)] rounded-full shadow-[0_0_15px_var(--accent-glow)]" />
             <h2 className="text-2xl font-black tracking-wider text-[var(--text-primary)] flex items-center gap-3">
               {T('archive.registeredArchives')}
               <span className="text-xs font-bold bg-[var(--bg-secondary)] text-[var(--text-tertiary)] px-2.5 py-1 rounded-full border border-[var(--border)] shadow-inner">
@@ -244,7 +244,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                       <Link href={`/videos/${video.video_id}`} className="relative aspect-video overflow-hidden block">
                         <img src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'} alt={video.title}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/20 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                           <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center translate-y-2 group-hover/card:translate-y-0 transition-transform duration-300">
                             <ExternalLink size={20} className="text-white" />
                           </div>
@@ -258,7 +258,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
 
                       <div className="p-5 flex flex-col flex-1">
                         <Link href={`/videos/${video.video_id}`}>
-                          <h3 className="text-[14px] font-bold leading-snug mb-3 text-[#e0e0e0] line-clamp-3 hover:text-[#ff4e8e] transition-colors min-h-[3.6em]">
+                          <h3 className="text-[14px] font-bold leading-snug mb-3 text-[var(--text-primary)] line-clamp-3 hover:text-[var(--accent)] transition-colors min-h-[3.6em]">
                             {video.title}
                           </h3>
                         </Link>
@@ -305,9 +305,9 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                             className="absolute -top-3 w-6 h-6 rotate-45 z-20"
                             style={{
                               left: arrowLeft,
-                              background: 'linear-gradient(135deg, #1a1a22 50%, transparent 50%)',
-                              borderLeft: '1px solid rgba(255,255,255,0.06)',
-                              borderTop: '1px solid rgba(255,255,255,0.06)',
+                              background: 'linear-gradient(135deg, var(--bg-secondary) 50%, transparent 50%)',
+                              borderLeft: '1px solid var(--border)',
+                              borderTop: '1px solid var(--border)',
                             }}
                           />
 
@@ -353,10 +353,10 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                                 />
                               ) : (
                                   <div className="py-16 flex flex-col items-center justify-center text-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/[0.02] flex items-center justify-center mb-4 border border-white/[0.05]">
-                                      <Music className="text-[#333]" size={24} />
+                                    <div className="w-16 h-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4 border border-[var(--border)]">
+                                      <Music className="text-[var(--text-tertiary)]" size={24} />
                                     </div>
-                                    <p className="text-[#555] text-sm font-medium">{T('archive.noSongs')}</p>
+                                    <p className="text-[var(--text-tertiary)] text-sm font-medium">{T('archive.noSongs')}</p>
                                   </div>
                               )}
                             </div>
@@ -368,10 +368,10 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                 );
               })
             ) : (
-               <div className="col-span-full py-20 text-center text-[#555] bg-white/[0.02] rounded-2xl border border-dashed border-white/[0.06]">
-                 <Music size={32} className="mx-auto mb-3 text-[#444]" />
-                 <p className="text-sm font-medium">{T('archive.noArchives')}</p>
-               </div>
+                <div className="col-span-full py-20 text-center text-[var(--text-tertiary)] bg-white/[0.02] rounded-2xl border border-dashed border-white/[0.06]">
+                  <Music size={32} className="mx-auto mb-3 text-[var(--text-tertiary)]" />
+                  <p className="text-sm font-medium">{T('archive.noArchives')}</p>
+                </div>
             )}
           </div>
         </div>

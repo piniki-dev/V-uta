@@ -104,11 +104,11 @@ export default function ArchiveClient({ video, songs }: Props) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-             <a 
+            <a 
               href={`https://youtube.com/watch?v=${video.video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-tertiary)] hover:bg-[#ff0000]/10 text-[var(--text-secondary)] hover:text-[#ff0000] font-bold rounded-xl border border-[var(--border)] transition-all duration-300 active:scale-95 group/yt text-sm"
+              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--youtube-red)]/10 text-[var(--text-secondary)] hover:text-[var(--youtube-red)] font-bold rounded-xl border border-[var(--border)] transition-all duration-300 active:scale-95 group/yt text-sm"
             >
               <Youtube size={16} />
               {T('archive.watchOnYoutube')}
