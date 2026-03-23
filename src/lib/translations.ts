@@ -97,6 +97,7 @@ export const translations = {
       tryAnother: '別のキーワードで試してみてください。',
       songs: '楽曲',
       channels: 'チャンネル',
+      archives: 'アーカイブ',
     },
     newSong: {
       pageTitle: '歌を登録',
@@ -370,6 +371,7 @@ export const translations = {
       tryAnother: 'Please try another keyword.',
       songs: 'Songs',
       channels: 'Channels',
+      archives: 'Archives',
     },
     newSong: {
       pageTitle: 'Register Song',

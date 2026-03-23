@@ -25,26 +25,76 @@ export default async function SearchPage({
   const supabase = await createClient();
 
   let songs: any[] = [];
+  let videos: any[] = [];
   let channels: any[] = [];
 
   if (query) {
     const decodedQuery = decodeURIComponent(query);
     
-    // 楽曲検索 (RPCを使用)
-    const { data: songsData } = await supabase.rpc('search_songs', {
-      search_query: decodedQuery
-    });
-    
-    // チャンネル検索
-    const { data: channelsData } = await supabase
-      .from('channels')
-      .select('*')
-      .or(`name.ilike.%${decodedQuery}%,handle.ilike.%${decodedQuery}%`)
-      .limit(10);
+    // 楽曲検索 (master_songs と videos をそれぞれ検索してマージ)
+    // Supabaseの .or() を複数つなげると AND 扱いになるため、個別に取得する
+    const queryFields = `
+      id,
+      start_sec,
+      end_sec,
+      master_songs (
+        title,
+        artist,
+        title_en,
+        artist_en,
+        artwork_url
+      ),
+      videos (
+        video_id,
+        title,
+        thumbnail_url,
+        channels (
+          name
+        )
+      )
+    `;
 
-    songs = songsData || [];
-    channels = channelsData || [];
+    const [songsByMaster, videosData, channelsData] = await Promise.all([
+      // 1. 楽曲検索 (master_songs のみ対象)
+      supabase
+        .from('songs')
+        .select(`
+          id, start_sec, end_sec,
+          master_songs!inner (title, artist, title_en, artist_en, artwork_url),
+          videos (video_id, title, thumbnail_url, channels (name))
+        `)
+        .or(`title.ilike.%${decodedQuery}%,artist.ilike.%${decodedQuery}%,title_en.ilike.%${decodedQuery}%,artist_en.ilike.%${decodedQuery}%`, { foreignTable: 'master_songs' })
+        .limit(50),
+      
+      // 2. アーカイブ検索
+      supabase
+        .from('videos')
+        .select(`
+          *,
+          channels (name)
+        `)
+        .ilike('title', `%${decodedQuery}%`)
+        .limit(20),
+
+      // 3. チャンネル検索
+      supabase
+        .from('channels')
+        .select('*')
+        .or(`name.ilike.%${decodedQuery}%,handle.ilike.%${decodedQuery}%`)
+        .limit(10)
+    ]);
+
+    songs = songsByMaster.data || [];
+    videos = videosData.data || [];
+    channels = channelsData.data || [];
   }
 
-  return <SearchClient query={query ? decodeURIComponent(query) : ''} songs={songs} channels={channels} />;
+  return (
+    <SearchClient 
+      query={query ? decodeURIComponent(query) : ''} 
+      songs={songs} 
+      videos={videos}
+      channels={channels} 
+    />
+  );
 }

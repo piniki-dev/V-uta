@@ -20,17 +20,17 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
   const toPlayerSong = (item: any): PlayerSong => {
     return {
       id: item.id,
-      title: item.master_songs.title,
-      artist: item.master_songs.artist,
-      title_en: item.master_songs.title_en || null,
-      artist_en: item.master_songs.artist_en || null,
-      artworkUrl: item.master_songs.artwork_url,
-      videoId: item.videos.video_id,
+      title: item.master_songs?.title || '',
+      artist: item.master_songs?.artist || null,
+      title_en: item.master_songs?.title_en || null,
+      artist_en: item.master_songs?.artist_en || null,
+      artworkUrl: item.master_songs?.artwork_url || null,
+      videoId: item.videos?.video_id || '',
       startSec: item.start_sec,
       endSec: item.end_sec,
-      channelName: item.videos.channels?.name || null,
-      thumbnailUrl: item.videos.thumbnail_url || null,
-      videoTitle: item.videos.title
+      channelName: item.videos?.channels?.name || null,
+      thumbnailUrl: item.videos?.thumbnail_url || null,
+      videoTitle: item.videos?.title || ''
     };
   };
 
