@@ -29,7 +29,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
 
   // お気に入りプレイリストの場合、同期された favoriteIds に基づいて表示をフィルタリング
   const displayItems = playlist.is_favorites
-    ? items.filter(item => favoriteIds.has(item.songs.id))
+    ? items.filter(item => item.songs && favoriteIds.has(item.songs.id))
     : items;
 
   // 外部からの更新（追加など）があった場合に同期
@@ -40,18 +40,18 @@ export default function PlaylistDetailClient({ playlist }: Props) {
   const toPlayerSong = (item: any): PlayerSong => {
     const song = item.songs;
     return {
-      id: song.id,
-      title: song.master_songs.title,
-      artist: song.master_songs.artist,
-      title_en: song.master_songs.title_en,
-      artist_en: song.master_songs.artist_en,
-      artworkUrl: song.master_songs.artwork_url,
-      videoId: song.video.video_id,
-      startSec: song.start_sec,
-      endSec: song.end_sec,
-      channelName: song.video.channels?.name || null,
-      thumbnailUrl: song.video.thumbnail_url,
-      videoTitle: song.video.title
+      id: song?.id || 0,
+      title: song?.master_songs?.title || 'Unknown',
+      artist: song?.master_songs?.artist || null,
+      title_en: song?.master_songs?.title_en || null,
+      artist_en: song?.master_songs?.artist_en || null,
+      artworkUrl: song?.master_songs?.artwork_url || null,
+      videoId: song?.video?.video_id || '',
+      startSec: song?.start_sec || 0,
+      endSec: song?.end_sec || 0,
+      channelName: song?.video?.channels?.name || null,
+      thumbnailUrl: song?.video?.thumbnail_url || null,
+      videoTitle: song?.video?.title || null
     };
   };
 
