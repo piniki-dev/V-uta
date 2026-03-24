@@ -19,6 +19,7 @@ interface SongListProps<T> {
   // 追加: 行ごとのカスタムアクション（削除ボタンなど）
   renderActions?: (item: T, song: PlayerSong) => React.ReactNode;
   onItemClick?: (item: T, song: PlayerSong) => void;
+  showPlayedAt?: boolean;
 }
 
 export default function SongList<T extends { id: any }>({
@@ -32,7 +33,8 @@ export default function SongList<T extends { id: any }>({
   onReorder,
   className = '',
   renderActions,
-  onItemClick
+  onItemClick,
+  showPlayedAt = false
 }: SongListProps<T>) {
   const { T } = useLocale();
 
@@ -41,10 +43,10 @@ export default function SongList<T extends { id: any }>({
   const renderHeader = () => (
     <div className={`hidden md:grid gap-4 px-6 py-3 border-b border-[var(--border)] bg-[var(--bg-tertiary)]/30 text-[11px] font-black uppercase tracking-widest text-[var(--text-tertiary)] ${
       showVideoInfo 
-        ? 'grid-cols-[40px_1fr_1fr_80px_100px]' 
-        : 'grid-cols-[40px_1fr_120px_80px_100px]'
+        ? 'grid-cols-[56px_1fr_1fr_80px_100px]' 
+        : 'grid-cols-[56px_1fr_120px_80px_100px]'
     }`}>
-      <div className="text-center">#</div>
+      <div className="text-center">{showPlayedAt ? T('history.playedAt') : '#'}</div>
       <div>{T('archive.title')}</div>
       <div>{showVideoInfo ? T('playlist.video') : T('archive.time')}</div>
       <div className="text-right">{T('archive.duration')}</div>
@@ -74,6 +76,7 @@ export default function SongList<T extends { id: any }>({
                   sourceId={sourceId}
                   showVideoInfo={showVideoInfo}
                   showTimeInfo={showTimeInfo}
+                  showPlayedAt={showPlayedAt}
                   className="bg-[var(--bg-secondary)]" 
                   renderActions={renderActions?.(item, song)}
                   rowId={item.id}
@@ -102,6 +105,7 @@ export default function SongList<T extends { id: any }>({
                 sourceId={sourceId}
                 showVideoInfo={showVideoInfo}
                 showTimeInfo={showTimeInfo}
+                showPlayedAt={showPlayedAt}
                 renderActions={renderActions?.(item, song)}
                 rowId={item.id}
                 onClick={onItemClick ? () => onItemClick(item, song) : undefined}

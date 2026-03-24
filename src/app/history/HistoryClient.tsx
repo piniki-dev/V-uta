@@ -78,7 +78,8 @@ export default function HistoryClient({ initialHistory }: Props) {
       endSec: song.end_sec,
       channelName: song.videos.channels?.name || null,
       thumbnailUrl: song.videos.thumbnail_url || null,
-      videoTitle: song.videos.title
+      videoTitle: song.videos.title,
+      playedAt: item.played_at
     };
   };
 
@@ -178,6 +179,7 @@ export default function HistoryClient({ initialHistory }: Props) {
                 sourceType="history"
                 sourceId="history"
                 showVideoInfo={true}
+                showPlayedAt={true}
                 onItemClick={(item) => handlePlayHistory(item)}
               />
             </section>

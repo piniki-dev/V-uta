@@ -131,6 +131,7 @@ export interface PlayerSong {
   channelName: string | null;
   thumbnailUrl: string | null;
   videoTitle: string | null;
+  playedAt?: string;    // ISO string for history
 }
 
 export interface PlayerState {

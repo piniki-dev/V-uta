@@ -19,6 +19,7 @@ export interface SongRowProps {
   showVideoInfo?: boolean;
   showTimeInfo?: boolean;
   showIndex?: boolean;
+  showPlayedAt?: boolean;
   active?: boolean;
   className?: string;
   renderActions?: React.ReactNode;
@@ -36,6 +37,7 @@ export default function SongRow({
   showVideoInfo = false,
   showTimeInfo = false,
   showIndex = true,
+  showPlayedAt = false,
   active = false,
   className = '',
   renderActions,
@@ -93,8 +95,8 @@ export default function SongRow({
         isCurrentSong ? 'bg-[var(--bg-hover)]' : ''
       } ${
         showVideoInfo 
-          ? 'grid-cols-[40px_1fr_40px] md:grid-cols-[40px_1fr_1fr_80px_100px]' 
-          : 'grid-cols-[40px_1fr_40px] md:grid-cols-[40px_1fr_120px_80px_100px]'
+          ? 'grid-cols-[56px_1fr_40px] md:grid-cols-[56px_1fr_1fr_80px_100px]' 
+          : 'grid-cols-[56px_1fr_40px] md:grid-cols-[56px_1fr_120px_80px_100px]'
       } ${className}`}
     >
       {/* 1. Index / Playing Icon */}
@@ -107,7 +109,13 @@ export default function SongRow({
               <span className="w-0.5 h-full bg-[var(--accent)] animate-[music-bar_0.7s_ease-in-out_infinite_0.2s]" />
             </div>
           ) : (
-            String(index + 1).padStart(2, '0')
+            showPlayedAt && song.playedAt ? (
+              <span className="text-[11px] font-medium opacity-80">
+                {new Date(song.playedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+              </span>
+            ) : (
+              String(index + 1).padStart(2, '0')
+            )
           )}
         </div>
       )}
