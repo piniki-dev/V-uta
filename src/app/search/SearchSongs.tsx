@@ -29,6 +29,7 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
       startSec: item.start_sec,
       endSec: item.end_sec,
       channelName: item.videos?.channels?.name || null,
+      channelThumbnailUrl: item.videos?.channels?.image || null,
       thumbnailUrl: item.videos?.thumbnail_url || null,
       videoTitle: item.videos?.title || ''
     };

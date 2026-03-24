@@ -77,6 +77,7 @@ export default function HistoryClient({ initialHistory }: Props) {
       startSec: song.start_sec,
       endSec: song.end_sec,
       channelName: song.videos.channels?.name || null,
+      channelThumbnailUrl: song.videos.channels?.image || null,
       thumbnailUrl: song.videos.thumbnail_url || null,
       videoTitle: song.videos.title,
       playedAt: item.played_at

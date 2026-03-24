@@ -50,6 +50,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
       startSec: song?.start_sec || 0,
       endSec: song?.end_sec || 0,
       channelName: song?.video?.channels?.name || null,
+      channelThumbnailUrl: song?.video?.channels?.image || null,
       thumbnailUrl: song?.video?.thumbnail_url || null,
       videoTitle: song?.video?.title || null
     };

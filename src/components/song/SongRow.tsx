@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Music, Play, ExternalLink, Clock } from 'lucide-react';
+import { Music, Play, ExternalLink, Clock, User } from 'lucide-react';
 import Link from 'next/link';
 import type { PlayerSong } from '@/types';
 import { formatTime } from '@/lib/utils';
@@ -141,23 +141,48 @@ export default function SongRow({
           <div className="text-sm text-[var(--text-secondary)] truncate">
             {t(song.artist || '-', song.artist_en || song.artist || '-')}
           </div>
+          {/* Mobile only archive info for history/playlist */}
+          {(showVideoInfo && (sourceType === 'playlist' || sourceType === 'history')) && (
+            <div className="md:hidden flex flex-col gap-0.5 mt-1.5 text-[10px] text-[var(--text-tertiary)] opacity-80 min-w-0">
+              <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full overflow-hidden shrink-0 border border-[var(--border)] bg-[var(--bg-tertiary)] flex items-center justify-center">
+                {song.channelThumbnailUrl ? (
+                  <img src={song.channelThumbnailUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={10} className="text-[var(--text-tertiary)]" />
+                )}
+              </div>
+                <span className="truncate">{song.videoTitle}</span>
+              </div>
+              {song.channelName && (
+                <span className="truncate pl-5">{song.channelName}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* 3. Conditional: Video Info OR Time Info */}
       {showVideoInfo ? (
-        <div className="hidden md:block min-w-0">
+        <div className="hidden md:flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--border)] shadow-sm bg-[var(--bg-tertiary)] flex items-center justify-center">
+            {song.channelThumbnailUrl ? (
+              <img src={song.channelThumbnailUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <User size={16} className="text-[var(--text-tertiary)]" />
+            )}
+          </div>
           <Link 
             href={`/videos/${song.videoId}`}
             onClick={(e) => e.stopPropagation()}
-            className="text-sm text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors flex flex-col gap-0.5 w-fit max-w-full group/video"
+            className="text-sm text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors flex flex-col gap-0.5 min-w-0 group/video justify-center"
           >
             <div className="flex items-center gap-1.5 overflow-hidden">
-              <span className="truncate">{song.videoTitle}</span>
+              <span className="truncate leading-tight font-medium">{song.videoTitle}</span>
               <ExternalLink size={12} className="shrink-0 opacity-40 group-hover/video:opacity-100 transition-opacity" />
             </div>
             {song.channelName && (
-              <span className="text-[11px] text-[var(--text-tertiary)] truncate opacity-80">{song.channelName}</span>
+              <span className="text-[11px] text-[var(--text-tertiary)] truncate opacity-70 leading-tight">{song.channelName}</span>
             )}
           </Link>
         </div>

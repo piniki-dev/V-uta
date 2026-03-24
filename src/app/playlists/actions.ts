@@ -93,7 +93,7 @@ export async function getPlaylistDetail(id: number): Promise<ActionResult<Playli
         songs:songs (
           *,
           master_songs (*),
-          video:videos (*)
+          video:videos (*, channels (*))
         )
       )
     `)

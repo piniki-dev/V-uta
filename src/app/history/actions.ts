@@ -138,7 +138,8 @@ export async function getPlayHistory(limit = 50, offset = 0) {
           title,
           thumbnail_url,
           channels (
-            name
+            name,
+            image
           )
         )
       )

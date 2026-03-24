@@ -27,6 +27,7 @@ function toPlayerSong(song: Song, video: Video, T: (key: string) => string): Pla
     startSec: song.start_sec,
     endSec: song.end_sec,
     channelName: video.channels?.name || T('common.unknown'),
+    channelThumbnailUrl: video.channels?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
   };

@@ -129,6 +129,7 @@ export interface PlayerSong {
   startSec: number;
   endSec: number;
   channelName: string | null;
+  channelThumbnailUrl: string | null;
   thumbnailUrl: string | null;
   videoTitle: string | null;
   playedAt?: string;    // ISO string for history
