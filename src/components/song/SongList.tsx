@@ -76,6 +76,7 @@ export default function SongList<T extends { id: any }>({
                   showTimeInfo={showTimeInfo}
                   className="bg-[var(--bg-secondary)]" 
                   renderActions={renderActions?.(item, song)}
+                  rowId={item.id}
                 />
               </Reorder.Item>
             );
@@ -102,6 +103,7 @@ export default function SongList<T extends { id: any }>({
                 showVideoInfo={showVideoInfo}
                 showTimeInfo={showTimeInfo}
                 renderActions={renderActions?.(item, song)}
+                rowId={item.id}
                 onClick={onItemClick ? () => onItemClick(item, song) : undefined}
               />
             </div>

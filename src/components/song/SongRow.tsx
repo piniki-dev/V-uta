@@ -22,6 +22,7 @@ export interface SongRowProps {
   active?: boolean;
   className?: string;
   renderActions?: React.ReactNode;
+  rowId?: string | number;
   // Events
   onClick?: () => void;
 }
@@ -38,12 +39,40 @@ export default function SongRow({
   active = false,
   className = '',
   renderActions,
+  rowId,
   onClick
 }: SongRowProps) {
   const { playWithSource, state } = usePlayer();
   const { t } = useLocale();
 
-  const isCurrentSong = state.currentSong?.id === song.id;
+  const isCurrentSong = (() => {
+    if (state.currentSong?.id !== song.id) return false;
+
+    // 1. 履歴ページの場合: 行単位の一致を確認（同じ曲が複数ある場合に対応）
+    if (sourceType === 'history' && rowId) {
+      if (state.sourceType === 'history' && state.sourceId === String(rowId)) return true;
+      if (state.currentHistoryId === Number(rowId)) return true;
+      return false;
+    }
+
+    // 2. ソースが一致する場合: インデックスで厳密に判定（すべてのリスト形式で共通）
+    // これにより、同じ曲がリスト内に複数ある場合でも正しい行だけにインジケーターが出る
+    if (state.sourceType === sourceType && state.sourceId === sourceId) {
+      return state.currentIndex === index;
+    }
+
+    // 3. ソースが一致しない場合:
+    // プレイリスト、アーカイブ（動画詳細）、チャンネル等の構造化されたリストでは、
+    // 他の場所から再生している場合は表示しない（重複表示の防止）
+    const strictSources = ['playlist', 'video', 'channel', 'vtuber'];
+    if (sourceType && strictSources.includes(sourceType)) {
+      return false;
+    }
+
+    // 4. それ以外（検索結果、ホーム画面等）は、IDが合えば表示する
+    return true;
+  })();
+
   const isPlaying = isCurrentSong && state.isPlaying;
 
   const handlePlay = (e: React.MouseEvent) => {
