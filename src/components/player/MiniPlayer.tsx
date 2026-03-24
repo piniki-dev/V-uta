@@ -13,6 +13,9 @@ import {
   Maximize2, 
   Minimize2, 
   PictureInPicture,
+  Crop,
+  Smartphone,
+  Monitor,
   LayoutPanelLeft,
   ArrowUpLeft,
   ArrowUpRight,
@@ -33,6 +36,8 @@ export default function MiniPlayer() {
     seekTo,
     toggleFullPlayer,
     setPipPosition,
+    toggleZoom,
+    setVideoRatioMode,
   } = usePlayer();
   const { t, T } = useLocale();
 
@@ -184,6 +189,57 @@ export default function MiniPlayer() {
           </Slider.Root>
 
           <div className="mini-player__divider" />
+
+          {/* ズーム切り替え (フルプレーヤー中のみ) */}
+          {state.isFullPlayerOpen && (
+            <button
+              onClick={toggleZoom}
+              className={`mini-player__btn ${state.isZoomed ? 'active' : ''}`}
+              title={state.isZoomed ? T('player.zoomOff') : T('player.zoomOn')}
+            >
+              <Crop size={18} />
+            </button>
+          )}
+
+          {/* アスペクト比切り替え (フルプレーヤー中のみ) */}
+          {state.isFullPlayerOpen && (
+            <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Trigger asChild>
+                <button 
+                  className={`mini-player__btn ${state.videoRatioMode !== 'auto' ? 'active' : ''}`}
+                  title={T('player.aspectRatio')}
+                >
+                  {state.videoRatio === '9/16' ? <Smartphone size={18} /> : <Monitor size={18} />}
+                </button>
+              </DropdownMenu.Trigger>
+
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content className="pip-menu-content" sideOffset={10} align="end">
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.videoRatioMode === 'auto' ? 'active' : ''}`}
+                    onSelect={() => setVideoRatioMode('auto')}
+                  >
+                    <LayoutPanelLeft size={16} />
+                    <span>{T('player.ratioAuto')}</span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.videoRatioMode === '16/9' ? 'active' : ''}`}
+                    onSelect={() => setVideoRatioMode('16/9')}
+                  >
+                    <Monitor size={16} />
+                    <span>{T('player.ratio169')}</span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className={`pip-menu-item ${state.videoRatioMode === '9/16' ? 'active' : ''}`}
+                    onSelect={() => setVideoRatioMode('9/16')}
+                  >
+                    <Smartphone size={16} />
+                    <span>{T('player.ratio916')}</span>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          )}
 
           {/* PiP 位置設定 (PiP中のみ表示) */}
           {!state.isFullPlayerOpen && (

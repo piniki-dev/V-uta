@@ -140,6 +140,9 @@ CREATE TABLE public.play_history (
   play_duration integer, -- 秒数（どこまで聴いたか：リコメンデーションに重要）
   source_type text, -- 'playlist', 'channel', 'search', 'direct' など
   source_id text, -- playlist_id など
+  last_position integer DEFAULT 0,
+  completion_rate numeric(5,4) DEFAULT 0,
+  is_completed boolean DEFAULT false,
   meta_data jsonb -- 将来的な拡張性のため
 );
 

@@ -976,8 +976,8 @@ input[type="range"]:hover::-webkit-slider-thumb {
   transform: scale(1.05);
 }
 
-.mini-player__btn--toggle.active {
-  color: var(--accent);
+.mini-player__btn.active {
+  color: var(--accent) !important;
 }
 
 .mini-player__sub-controls {
@@ -1369,11 +1369,25 @@ input[type="range"]:hover::-webkit-slider-thumb {
 
 .video-window--pip {
   width: 280px;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 9 !important;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
   background: var(--bg-primary); /* Match theme instead of hardcoded black */
+  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-window--pip[data-video-ratio="9/16"] {
+  width: 160px;
+  aspect-ratio: 9 / 16 !important;
+}
+
+.video-window--pip[data-video-ratio="16/9"] {
+  width: 280px;
+  aspect-ratio: 16 / 9 !important;
 }
 
 .video-window--pip[data-pip-position="bottom-right"] {
@@ -1423,19 +1437,57 @@ input[type="range"]:hover::-webkit-slider-thumb {
 .video-window .youtube-player-container {
   width: 100% !important;
   height: 100% !important;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.video-window--full .youtube-player-container {
+  height: auto !important;
+  max-width: 1200px;
+  aspect-ratio: 16 / 9;
+}
+
+.video-window--full[data-video-ratio="9/16"] .youtube-player-container {
+  aspect-ratio: 9 / 16;
+  max-width: calc((100vh - var(--header-height) - var(--player-height) - 64px) * 9 / 16);
 }
 
 /* This targets the actual YT player inside the container in full mode */
 .video-window--full #yt-player {
-  max-width: 1200px;
   width: 100% !important;
-  aspect-ratio: 16 / 9;
+  height: 100% !important;
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Zoomed (Fill) mode to remove black margins */
+.video-window--full[data-zoomed="true"] {
+  background: black;
+}
+
+.video-window--full[data-zoomed="true"] .youtube-player-container {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto;
+}
+
+.video-window--full[data-zoomed="true"] .video-window__inner {
+  padding: 0;
+  overflow: hidden;
+}
+
+.video-window--full[data-zoomed="true"] #yt-player {
+  max-width: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {

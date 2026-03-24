@@ -13,6 +13,9 @@ export default function PersistentPlayer() {
       className={`video-window ${state.isFullPlayerOpen ? 'video-window--full' : 'video-window--pip'}`}
       data-full={state.isFullPlayerOpen}
       data-pip-position={state.pipPosition}
+      data-zoomed={state.isZoomed}
+      data-video-ratio={state.videoRatio}
+      data-video-ratio-mode={state.videoRatioMode}
     >
       <div className="video-window__inner">
         <YouTubePlayer />

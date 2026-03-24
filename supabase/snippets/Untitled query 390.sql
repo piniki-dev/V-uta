@@ -1,1 +1,0 @@
-SELECT * FROM play_history ORDER BY id DESC LIMIT 5;

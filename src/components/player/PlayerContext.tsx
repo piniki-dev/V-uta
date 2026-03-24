@@ -22,7 +22,10 @@ type PlayerAction =
   | { type: 'SET_HISTORY_ID'; id: number | null }
   | { type: 'ADD_SONG_NEXT'; song: PlayerSong }
   | { type: 'ADD_SONG_LAST'; song: PlayerSong }
-  | { type: 'SET_PIP_POSITION'; position: PipPosition };
+  | { type: 'SET_PIP_POSITION'; position: PipPosition }
+  | { type: 'TOGGLE_ZOOM' }
+  | { type: 'SET_VIDEO_RATIO'; ratio: string }
+  | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' };
 
 // ===== Reducer =====
 
@@ -41,6 +44,9 @@ const initialState: PlayerState = {
   currentHistoryId: null,
   playSessionKey: 0, // 再生セッションを一意に識別
   pipPosition: 'bottom-right',
+  isZoomed: false,
+  videoRatio: '16/9',
+  videoRatioMode: 'auto',
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -144,6 +150,12 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
     }
     case 'SET_PIP_POSITION':
       return { ...state, pipPosition: action.position };
+    case 'TOGGLE_ZOOM':
+      return { ...state, isZoomed: !state.isZoomed };
+    case 'SET_VIDEO_RATIO':
+      return { ...state, videoRatio: action.ratio };
+    case 'SET_VIDEO_RATIO_MODE':
+      return { ...state, videoRatioMode: action.mode, videoRatio: action.mode === 'auto' ? state.videoRatio : action.mode };
     default:
       return state;
   }
@@ -170,6 +182,8 @@ interface PlayerContextType {
   addSongNext: (song: PlayerSong) => void;
   addSongLast: (song: PlayerSong) => void;
   setPipPosition: (position: PipPosition) => void;
+  toggleZoom: () => void;
+  setVideoRatioMode: (mode: 'auto' | '16/9' | '9/16') => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -188,6 +202,39 @@ export function usePlayer(): PlayerContextType {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
+
+  // 自動アスペクト比検出
+  useEffect(() => {
+    if (state.videoRatioMode !== 'auto' || !state.currentSong) return;
+
+    const fetchDimensions = async () => {
+      try {
+        const videoId = state.currentSong?.videoId;
+        if (!videoId) return;
+
+        const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        const data = await response.json();
+
+        let newRatio = '16/9';
+        if (data.width && data.height) {
+          const ratio = data.width / data.height;
+          if (ratio < 1.0) newRatio = '9/16';
+        }
+
+        // oEmbed が 16:9 を返していても、タイトルに縦型を示唆するキーワードがあれば 9/16 とする
+        const videoTitle = state.currentSong?.videoTitle || "";
+        if (newRatio === '16/9' && /縦|short|vertical/i.test(videoTitle)) {
+          newRatio = '9/16';
+        }
+
+        dispatch({ type: 'SET_VIDEO_RATIO', ratio: newRatio });
+      } catch (e) {
+        console.error('Error fetching video dimensions:', e);
+      }
+    };
+
+    fetchDimensions();
+  }, [state.currentSong?.videoId, state.videoRatioMode]);
 
   // 累積再生時間の追跡
   const accumulatedTimeRef = useRef(0);
@@ -214,11 +261,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // ヘルパー: 再生完了情報の計算
   const getPlaybackMetrics = useCallback(() => {
     if (!state.currentSong) return { playDuration: 0, lastPosition: 0, completionRate: 0, isCompleted: false };
-    
+
     const duration = state.currentSong.endSec - state.currentSong.startSec;
     const accumulated = Math.floor(accumulatedTimeRef.current);
     const rate = Math.min(1, accumulated / duration);
-    
+
     return {
       playDuration: accumulated,
       lastPosition: Math.floor(state.currentTime),
@@ -240,13 +287,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const songId = state.currentSong.id;
       const sessionKey = state.playSessionKey;
       lastRecordedSessionKey.current = sessionKey;
-      
+
       // 新しい再生が始まったら累積時間をリセット
       accumulatedTimeRef.current = 0;
       if (state.isPlaying) playStartTimeRef.current = performance.now();
 
       const record = async () => {
-        const result = await recordPlayHistory({ 
+        const result = await recordPlayHistory({
           songId,
           sourceType: state.sourceType || 'direct',
           sourceId: state.sourceId || undefined,
@@ -293,14 +340,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       });
     }
     // 再生リストが現在のものと同じ場合はソース情報を引き継ぐ
-    const isContinuingContext = playlist && state.playlist && 
+    const isContinuingContext = playlist && state.playlist &&
       playlist.length === state.playlist.length &&
       playlist.every((s, i) => s.id === state.playlist[i].id);
 
-    dispatch({ 
-      type: 'PLAY', 
-      song, 
-      playlist, 
+    dispatch({
+      type: 'PLAY',
+      song,
+      playlist,
       sourceType: isContinuingContext ? (state.sourceType || undefined) : undefined,
       sourceId: isContinuingContext ? (state.sourceId || undefined) : undefined
     });
@@ -419,6 +466,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_PIP_POSITION', position });
   }, []);
 
+  const toggleZoom = useCallback(() => {
+    dispatch({ type: 'TOGGLE_ZOOM' });
+  }, []);
+
+  const setVideoRatioMode = useCallback((mode: 'auto' | '16/9' | '9/16') => {
+    dispatch({ type: 'SET_VIDEO_RATIO_MODE', mode });
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -440,6 +495,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         addSongNext,
         addSongLast,
         setPipPosition,
+        toggleZoom,
+        setVideoRatioMode,
         playerRef,
       }}
     >

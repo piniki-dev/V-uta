@@ -143,6 +143,9 @@ export interface PlayerState {
   isMuted: boolean;
   currentTime: number;     // 区間内の現在再生位置（秒）
   isFullPlayerOpen: boolean;
+  isZoomed: boolean;
+  videoRatio: string; // "16/9", "9/16" etc.
+  videoRatioMode: 'auto' | '16/9' | '9/16';
   sourceType: string | null;
   sourceId: string | null;
   currentHistoryId: number | null;
