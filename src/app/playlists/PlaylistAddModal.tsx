@@ -35,7 +35,9 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     const result = await getPlaylists();
     if (result.success && result.data) {
       // 自分のプレイリストのみ表示（追加するため）
-      setPlaylists(result.data);
+      // 「お気に入りした曲」プレイリストは自動管理なので除外する
+      const filtered = result.data.filter(p => !p.is_favorites);
+      setPlaylists(filtered);
     }
     setIsLoading(false);
   };
