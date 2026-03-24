@@ -25,7 +25,7 @@ export default async function HistoryPage() {
     redirect('/');
   }
 
-  const result = await getPlayHistory(100);
+  const result = await getPlayHistory(50, 0);
 
   return <HistoryClient initialHistory={result.success ? result.data || [] : []} />;
 }

@@ -107,7 +107,7 @@ export async function updatePlayDuration(params: {
 /**
  * 再生履歴を取得する
  */
-export async function getPlayHistory(limit = 50) {
+export async function getPlayHistory(limit = 50, offset = 0) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -145,7 +145,7 @@ export async function getPlayHistory(limit = 50) {
     `)
     .eq('user_id', user.id)
     .order('played_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error('Error fetching play history:', error);

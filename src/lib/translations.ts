@@ -231,6 +231,7 @@ export const translations = {
       explore: '曲を聴きにいく',
       title: '再生履歴',
       description: 'あなたが最近再生した楽曲の履歴です。',
+      noMore: 'これ以上の履歴はありません',
     },
     editSong: {
       pageTitle: '曲の編集',
@@ -511,6 +512,7 @@ export const translations = {
       explore: 'Explore Songs',
       title: 'Listen History',
       description: 'A list of songs you recently listened to.',
+      noMore: 'No more history',
     },
     editSong: {
       pageTitle: 'Edit Songs',

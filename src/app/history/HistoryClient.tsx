@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { clearPlayHistory } from './actions';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { clearPlayHistory, getPlayHistory } from './actions';
 import type { PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { formatTime } from '@/lib/utils';
@@ -21,6 +21,48 @@ export default function HistoryClient({ initialHistory }: Props) {
   const { t, locale, T } = useLocale();
   const [history, setHistory] = useState(initialHistory);
   const [isClearing, setIsClearing] = useState(false);
+  const [offset, setOffset] = useState(initialHistory.length);
+  const [hasMore, setHasMore] = useState(initialHistory.length === 50);
+  const [isLoading, setIsLoading] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  const loadMore = useCallback(async () => {
+    if (isLoading || !hasMore) return;
+    
+    setIsLoading(true);
+    // 取得件数を50件に固定
+    const limit = 50;
+    const result = await getPlayHistory(limit, offset);
+    
+    if (result.success && result.data) {
+      const newItems = result.data;
+      if (newItems.length < limit) {
+        setHasMore(false);
+      }
+      setHistory(prev => [...prev, ...newItems]);
+      setOffset(prev => prev + newItems.length);
+    } else {
+      setHasMore(false);
+    }
+    setIsLoading(false);
+  }, [isLoading, hasMore, offset]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore, hasMore, isLoading]);
 
   const toPlayerSong = (item: any): PlayerSong => {
     const song = item.songs;
@@ -140,6 +182,19 @@ export default function HistoryClient({ initialHistory }: Props) {
               />
             </section>
           ))}
+
+          {/* 無限スクロール用ローダー */}
+          <div ref={loaderRef} className="py-12 flex justify-center">
+            {isLoading && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-bold text-[var(--text-secondary)]">{T('common.loading')}</p>
+              </div>
+            )}
+            {!hasMore && history.length > 0 && (
+              <p className="text-[var(--text-tertiary)] font-medium">{T('history.noMore') || 'これ以上の履歴はありません'}</p>
+            )}
+          </div>
         </div>
       )}
     </div>
