@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { PlayerSong, PlayerState, PipPosition } from '@/types';
 import { recordPlayHistory, updatePlayDuration } from '@/app/history/actions';
 
@@ -202,6 +203,15 @@ export function usePlayer(): PlayerContextType {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // ページ遷移時にフルプレイヤーを閉じる
+  useEffect(() => {
+    if (state.isFullPlayerOpen) {
+      dispatch({ type: 'CLOSE_FULL_PLAYER' });
+    }
+  }, [pathname, searchParams]);
 
   // 自動アスペクト比検出
   useEffect(() => {
