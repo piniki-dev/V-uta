@@ -99,6 +99,7 @@ export async function toggleFavorite(songId: number): Promise<ActionResult<{ isF
     if (delErr) return { success: false, error: `${t.common.deleteError}: ${delErr.message}` };
     
     revalidatePath(`/playlists/${favPlaylist.id}`);
+    revalidatePath('/playlists/favorite');
     revalidatePath('/history'); // 履歴ページなどにも影響するため
     return { success: true, data: { isFavorited: false } };
   } else {
@@ -124,6 +125,7 @@ export async function toggleFavorite(songId: number): Promise<ActionResult<{ isF
     if (insErr) return { success: false, error: `${t.common.saveError}: ${insErr.message}` };
     
     revalidatePath(`/playlists/${favPlaylist.id}`);
+    revalidatePath('/playlists/favorite');
     revalidatePath('/history');
     return { success: true, data: { isFavorited: true } };
   }

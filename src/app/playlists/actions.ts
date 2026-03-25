@@ -110,6 +110,44 @@ export async function getPlaylistDetail(id: number): Promise<ActionResult<Playli
 }
 
 /**
+ * ログインユーザーのお気に入りプレイリスト詳細を取得する
+ */
+export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist & { items: any[] }>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    const t = await getLocaleT();
+    return { success: false, error: t.common.loginRequired };
+  }
+  
+  const { data, error } = await supabase
+    .from('playlists')
+    .select(`
+      *,
+      items:playlist_items (
+        *,
+        songs:songs (
+          *,
+          master_songs (*),
+          video:videos (*, channels (*))
+        )
+      )
+    `)
+    .eq('created_by', user.id)
+    .eq('is_favorites', true)
+    .order('position', { foreignTable: 'playlist_items', ascending: true })
+    .single();
+
+  if (error) {
+    const t = await getLocaleT();
+    return { success: false, error: `${t.common.searchError}: ${error.message}` };
+  }
+
+  return { success: true, data: data as any };
+}
+
+/**
  * プレイリストに楽曲を追加する
  */
 export async function addSongToPlaylist(playlistId: number, songId: number): Promise<ActionResult<PlaylistItem>> {

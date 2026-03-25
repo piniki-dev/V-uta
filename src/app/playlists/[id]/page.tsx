@@ -1,4 +1,4 @@
-import { getPlaylistDetail } from '../actions';
+import { getPlaylistDetail, getFavoritePlaylistDetail } from '../actions';
 import PlaylistDetailClient from './PlaylistDetailClient';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -6,10 +6,14 @@ import { translations } from '@/lib/translations';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await params;
-  const id = parseInt(idStr, 10);
-  if (isNaN(id)) return {};
-
-  const result = await getPlaylistDetail(id);
+  let result;
+  if (idStr === 'favorite') {
+    result = await getFavoritePlaylistDetail();
+  } else {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) return {};
+    result = await getPlaylistDetail(id);
+  }
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
@@ -24,10 +28,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PlaylistDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await params;
-  const id = parseInt(idStr, 10);
-  if (isNaN(id)) notFound();
-
-  const result = await getPlaylistDetail(id);
+  
+  let result;
+  if (idStr === 'favorite') {
+    result = await getFavoritePlaylistDetail();
+  } else {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) notFound();
+    result = await getPlaylistDetail(id);
+  }
 
   if (!result.success || !result.data) {
     notFound();

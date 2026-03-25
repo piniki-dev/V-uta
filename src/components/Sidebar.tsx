@@ -168,7 +168,7 @@ export default function Sidebar() {
                     {playlists.map(playlist => (
                       <div key={playlist.id} className="sidebar__sublink-container">
                         <Link 
-                          href={`/playlists/${playlist.id}`}
+                          href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.id}`}
                           className="sidebar__sublink"
                           onClick={handleLinkClick}
                         >
