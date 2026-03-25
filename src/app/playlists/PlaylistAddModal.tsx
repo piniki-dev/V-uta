@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import { getPlaylists, createPlaylist, addSongToPlaylist } from './actions';
 import type { Playlist } from '@/types';
-import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink } from 'lucide-react';
+import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink, ListMusic } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from '@/components/LocaleProvider';
 
@@ -134,11 +134,12 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                     className="w-full p-3 flex items-center gap-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-xl transition-all text-left group disabled:opacity-50"
                   >
                     <div className="w-10 h-10 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-center text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
-                      {playlist.is_public ? <Globe size={18} /> : <Lock size={18} />}
+                      <ListMusic size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate text-[var(--text-primary)]">{playlist.name}</p>
-                      <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? T('playlist.public') : T('playlist.private')}</p>
+                      {/* 公開設定を一時的に非表示 */}
+                      {/* <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? T('playlist.public') : T('playlist.private')}</p> */}
                     </div>
                     <Plus size={18} className="text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
@@ -172,7 +173,8 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 autoFocus
               />
               <div className="flex items-center justify-between px-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none group">
+                {/* 公開設定を一時的に非表示 */}
+                <label className="hidden items-center gap-2 cursor-pointer select-none group">
                   <div className="relative">
                     <input
                       type="checkbox"

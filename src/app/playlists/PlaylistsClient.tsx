@@ -78,7 +78,8 @@ export default function PlaylistsClient() {
                 <div className="w-12 h-12 bg-[var(--accent-glow)] rounded-2xl flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform">
                   <ListMusic size={24} />
                 </div>
-                <div className="flex items-center gap-2 text-xs font-bold px-3 py-1 bg-[var(--bg-tertiary)] rounded-full text-[var(--text-tertiary)]">
+                {/* 公開設定を一時的に非表示 */}
+                {/* <div className="flex items-center gap-2 text-xs font-bold px-3 py-1 bg-[var(--bg-tertiary)] rounded-full text-[var(--text-tertiary)]">
                   {playlist.is_public ? (
                     <>
                       <Globe size={12} />
@@ -90,7 +91,7 @@ export default function PlaylistsClient() {
                       {T('playlist.private')}
                     </>
                   )}
-                </div>
+                </div> */}
               </div>
               <h2 className="text-xl font-bold mb-2 group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-[var(--text-primary)]">
                 {playlist.is_favorites ? T('playlist.favorites') : playlist.name}

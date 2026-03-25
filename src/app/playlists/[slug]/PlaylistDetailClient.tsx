@@ -134,7 +134,8 @@ export default function PlaylistDetailClient({ playlist }: Props) {
           {!isEditing ? (
             <>
               <div className="flex items-center justify-center md:justify-start gap-3 mb-2 text-xs font-bold text-[var(--text-tertiary)]">
-                {playlist.is_public ? (
+                {/* 公開設定を一時的に非表示 */}
+                {/* {playlist.is_public ? (
                   <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 rounded-lg border border-green-500/20">
                     <Globe size={14} /> {T('playlist.publicLabel')}
                   </div>
@@ -143,7 +144,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                     <Lock size={14} /> {T('playlist.privateLabel')}
                   </div>
                 )}
-                <span>•</span>
+                <span>•</span> */}
                 <span>{items.length} {T('playlist.songCount')}</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">
@@ -168,7 +169,8 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                   className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none h-24"
                   placeholder={T('playlist.description')}
                 />
-              <label className="flex items-center gap-3 cursor-pointer select-none group/toggle w-fit">
+              {/* 公開設定を一時的に非表示 */}
+              <label className="hidden items-center gap-3 cursor-pointer select-none group/toggle w-fit">
                 <div className="relative">
                   <input
                     type="checkbox"
@@ -181,7 +183,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
                 <span className="text-sm font-bold text-[var(--text-tertiary)] group-hover/toggle:text-[var(--text-primary)] transition-colors">
                   {T('playlist.makePublic')}
                 </span>
-              </label>
+                </label>
             </div>
           )}
 
