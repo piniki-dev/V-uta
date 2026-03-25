@@ -130,7 +130,7 @@ export default function YouTubePlayer() {
         playerRef.current = null;
       }
     };
-  }, [state.currentSong?.id, state.currentSong?.videoId, playerRef]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.playSessionKey, playerRef]);
 
   // 再生位置の定期追跡
   useEffect(() => {
