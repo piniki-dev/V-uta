@@ -3,6 +3,7 @@
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
+import { useSidebar } from '@/components/SidebarContext';
 
 export default function FullPlayer() {
   const {
@@ -11,6 +12,7 @@ export default function FullPlayer() {
     seekTo,
   } = usePlayer();
   const { t, T } = useLocale();
+  const { isOpen: isSidebarOpen } = useSidebar();
 
   if (!state.currentSong) return null;
 
@@ -23,7 +25,7 @@ export default function FullPlayer() {
   };
 
   return (
-    <div className={`full-player ${state.isFullPlayerOpen ? 'open' : 'closed'}`}>
+    <div className={`full-player ${state.isFullPlayerOpen ? 'open' : 'closed'} ${isSidebarOpen ? 'sidebar-open' : ''}`}>
       <div className="full-player__body">
         {/* 左: YouTube プレイヤー (動画のみ) */}
         <div className="full-player__main">
