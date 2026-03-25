@@ -5,6 +5,17 @@ import { revalidatePath } from 'next/cache';
 import type { Playlist, PlaylistItem, ActionResult } from '@/types';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
+import crypto from 'crypto';
+
+function generateSlug() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let result = 'PL';
+  const bytes = crypto.randomBytes(32);
+  for (let i = 0; i < 32; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result;
+}
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -65,7 +76,8 @@ export async function createPlaylist(name: string, description: string, isPublic
       name: name.trim(),
       description: description.trim() || null,
       is_public: isPublic,
-      created_by: user.id
+      created_by: user.id,
+      slug: generateSlug()
     })
     .select()
     .single();
@@ -81,7 +93,7 @@ export async function createPlaylist(name: string, description: string, isPublic
 /**
  * プレイリスト詳細（楽曲含む）を取得する
  */
-export async function getPlaylistDetail(id: number): Promise<ActionResult<Playlist & { items: any[] }>> {
+export async function getPlaylistDetail(slug: string): Promise<ActionResult<Playlist & { items: any[] }>> {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -97,7 +109,7 @@ export async function getPlaylistDetail(id: number): Promise<ActionResult<Playli
         )
       )
     `)
-    .eq('id', id)
+    .eq('slug', slug)
     .order('position', { foreignTable: 'playlist_items', ascending: true })
     .single();
 
@@ -183,7 +195,12 @@ export async function addSongToPlaylist(playlistId: number, songId: number): Pro
     return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
-  revalidatePath(`/playlists/${playlistId}`);
+  // プレイリスト自体を再検証（Slugベース）
+  const { data: playlist } = await supabase.from('playlists').select('slug').eq('id', playlistId).single();
+  if (playlist) {
+    revalidatePath(`/playlists/${playlist.slug}`);
+  }
+  
   return { success: true, data: data as PlaylistItem };
 }
 
@@ -204,7 +221,11 @@ export async function removeSongFromPlaylist(playlistId: number, itemId: number)
     return { success: false, error: `${t.common.deleteError}: ${error.message}` };
   }
 
-  revalidatePath(`/playlists/${playlistId}`);
+  // プレイリスト自体を再検証（Slugベース）
+  const { data: playlist } = await supabase.from('playlists').select('slug').eq('id', playlistId).single();
+  if (playlist) {
+    revalidatePath(`/playlists/${playlist.slug}`);
+  }
   return { success: true };
 }
 
@@ -238,7 +259,7 @@ export async function updatePlaylist(
     return { success: false, error: `${t.common.updateError}: ${error.message}` };
   }
 
-  revalidatePath(`/playlists/${id}`);
+  revalidatePath(`/playlists/${updated.slug}`);
   revalidatePath('/playlists');
   return { success: true, data: updated as Playlist };
 }
@@ -270,6 +291,10 @@ export async function updatePlaylistOrder(
     }
   }
 
-  revalidatePath(`/playlists/${playlistId}`);
+  // プレイリスト自体を再検証（Slugベース）
+  const { data: playlist } = await supabase.from('playlists').select('slug').eq('id', playlistId).single();
+  if (playlist) {
+    revalidatePath(`/playlists/${playlist.slug}`);
+  }
   return { success: true };
 }

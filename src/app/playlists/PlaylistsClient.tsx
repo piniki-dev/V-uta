@@ -71,7 +71,7 @@ export default function PlaylistsClient() {
           {playlists.map((playlist) => (
             <Link
               key={playlist.id}
-              href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.id}`}
+              href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.slug}`}
               className="group bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-6 transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--accent)] hover:-translate-y-1"
             >
               <div className="flex items-start justify-between mb-4">

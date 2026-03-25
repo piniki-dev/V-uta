@@ -23,7 +23,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
   const [isPublic, setIsPublic] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [createdPlaylistId, setCreatedPlaylistId] = useState<number | null>(null);
+  const [createdPlaylistSlug, setCreatedPlaylistSlug] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
         const addRes = await addSongToPlaylist(createRes.data.id, songId);
         if (addRes.success) {
           setSuccess(T('playlist.createSuccess'));
-          setCreatedPlaylistId(createRes.data.id);
+          setCreatedPlaylistSlug(createRes.data.slug);
           // リンクを表示するため、自動で閉じないようにするか時間を延ばす
           setTimeout(() => {
             onSuccess?.();
@@ -68,11 +68,12 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     });
   };
 
-  const handleAddToPlaylist = async (playlistId: number) => {
+  const handleAddToPlaylist = async (playlist: Playlist) => {
     startTransition(async () => {
-      const result = await addSongToPlaylist(playlistId, songId);
+      const result = await addSongToPlaylist(playlist.id, songId);
       if (result.success) {
         setSuccess(T('playlist.addSuccess'));
+        setCreatedPlaylistSlug(playlist.slug);
         setTimeout(() => {
           onSuccess?.();
           onClose();
@@ -105,9 +106,9 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 <Check size={18} />
                 {success}
               </div>
-              {createdPlaylistId && (
+              {createdPlaylistSlug && (
                 <Link 
-                  href={`/playlists/${createdPlaylistId}`}
+                  href={`/playlists/${createdPlaylistSlug}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-xs font-bold transition-colors"
                 >
                   {T('common.details')}
@@ -128,7 +129,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 playlists.map((playlist) => (
                   <button
                     key={playlist.id}
-                    onClick={() => handleAddToPlaylist(playlist.id)}
+                    onClick={() => handleAddToPlaylist(playlist)}
                     disabled={isPending}
                     className="w-full p-3 flex items-center gap-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-xl transition-all text-left group disabled:opacity-50"
                   >

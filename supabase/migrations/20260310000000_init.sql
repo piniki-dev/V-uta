@@ -116,7 +116,8 @@ CREATE TABLE public.playlists (
   created_at timestamptz DEFAULT now(),
   updated_by uuid REFERENCES auth.users(id),
   updated_at timestamptz DEFAULT now(),
-  is_favorites boolean DEFAULT false -- お気に入りプレイリストフラグ
+  is_favorites boolean DEFAULT false, -- お気に入りプレイリストフラグ
+  slug text NOT NULL UNIQUE -- 外部公開用ID
 );
 
 -- ユーザーごとに最大1つのお気に入りプレイリストを保証
@@ -201,8 +202,8 @@ CREATE TRIGGER trigger_playlists_updated_at BEFORE UPDATE ON public.playlists FO
 CREATE OR REPLACE FUNCTION public.handle_new_user_favorites()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.playlists (name, description, is_favorites, created_by, is_public)
-  VALUES ('お気に入りした曲', 'お気に入りした楽曲がここに表示されます', true, NEW.id, false);
+  INSERT INTO public.playlists (name, description, is_favorites, created_by, is_public, slug)
+  VALUES ('お気に入りした曲', 'お気に入りした楽曲がここに表示されます', true, NEW.id, false, 'favorite');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

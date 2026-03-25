@@ -98,6 +98,7 @@ export interface Playlist {
   description: string | null;
   is_public: boolean;
   is_favorites: boolean;
+  slug: string;
   created_by: string;
   created_at: string;
   updated_at: string;
