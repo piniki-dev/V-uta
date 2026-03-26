@@ -2,12 +2,10 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { removeSongFromPlaylist, updatePlaylist, updatePlaylistOrder } from '../actions';
-import type { Playlist, PlaylistItem, PlayerSong } from '@/types';
+import type { Playlist, PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
-import { formatTime } from '@/lib/utils';
-import { Play, Trash2, ListMusic, Globe, Lock, Loader2, ExternalLink, Pencil, Save, X, GripVertical } from 'lucide-react';
-import Link from 'next/link';
-import { Reorder, motion, AnimatePresence } from 'framer-motion';
+import { Play, Trash2, ListMusic, Loader2, Pencil, Save, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
 import { useFavorites } from '@/components/FavoritesProvider';
@@ -17,14 +15,13 @@ interface Props {
 }
 
 export default function PlaylistDetailClient({ playlist }: Props) {
-  const { playWithSource, state } = usePlayer();
+  const { playWithSource } = usePlayer();
   const { T } = useLocale();
-  const { isFavorited, favoriteIds } = useFavorites();
+  const { favoriteIds } = useFavorites();
   const [items, setItems] = useState(playlist.items);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
   const [editDescription, setEditDescription] = useState(playlist.description || '');
-  const [editIsPublic, setEditIsPublic] = useState(playlist.is_public);
   const [isPending, startTransition] = useTransition();
 
   // お気に入りプレイリストの場合、同期された favoriteIds に基づいて表示をフィルタリング
@@ -63,13 +60,6 @@ export default function PlaylistDetailClient({ playlist }: Props) {
     }
   };
 
-  const handlePlaySong = (item: any) => {
-    if (isEditing) return; // 編集モード時は再生しない
-    const playerSongs = items.map(toPlayerSong);
-    const index = items.findIndex(i => i.id === item.id);
-    playWithSource(playerSongs[index], playerSongs, 'playlist', playlist.id.toString());
-  };
-
   const handleRemove = async (itemId: number) => {
     if (!confirm(T('playlist.removeConfirm'))) return;
 
@@ -85,11 +75,10 @@ export default function PlaylistDetailClient({ playlist }: Props) {
 
   const handleSaveChanges = async () => {
     startTransition(async () => {
-      // 1. 基本情報の更新
       const playlistRes = await updatePlaylist(playlist.id, {
         name: editName,
         description: editDescription,
-        is_public: editIsPublic
+        is_public: true // 常に公開扱い
       });
 
       if (!playlistRes.success) {
@@ -97,7 +86,6 @@ export default function PlaylistDetailClient({ playlist }: Props) {
         return;
       }
 
-      // 2. 順序の更新（もし並び順が変わっていれば）
       const hasOrderChanged = items.some((item, index) => item.position !== index);
       if (hasOrderChanged) {
         const orderRes = await updatePlaylistOrder(playlist.id, items.map(i => i.id));
@@ -108,162 +96,184 @@ export default function PlaylistDetailClient({ playlist }: Props) {
       }
 
       setIsEditing(false);
-      // 詳細ページなので再検証でデータが更新されるはず
     });
   };
 
   const handleCancelEdit = () => {
     setEditName(playlist.name);
     setEditDescription(playlist.description || '');
-    setEditIsPublic(playlist.is_public);
     setItems(playlist.items);
     setIsEditing(false);
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-32">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* プレイリストヘッダー */}
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-8 mb-8 flex flex-col md:flex-row gap-8 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      <motion.section 
+        className="relative overflow-hidden border-b border-[var(--border)] py-16 mesh-bg"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2 }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
         
-        <div className="w-48 h-48 bg-gradient-to-br from-[#ff4e8e] to-[#ff8e4e] rounded-2xl flex items-center justify-center text-white shadow-2xl shrink-0 mx-auto md:mx-0 relative z-10">
-          <ListMusic size={80} />
-        </div>
-
-        <div className="flex-1 flex flex-col justify-end text-center md:text-left relative z-10">
-          {!isEditing ? (
-            <>
-              <div className="flex items-center justify-center md:justify-start gap-3 mb-2 text-xs font-bold text-[var(--text-tertiary)]">
-                {/* 公開設定を一時的に非表示 */}
-                {/* {playlist.is_public ? (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 rounded-lg border border-green-500/20">
-                    <Globe size={14} /> {T('playlist.publicLabel')}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20">
-                    <Lock size={14} /> {T('playlist.privateLabel')}
-                  </div>
-                )}
-                <span>•</span> */}
-                <span>{items.length} {T('playlist.songCount')}</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)]">
-                {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
-              </h1>
-              <p className="text-[var(--text-secondary)] text-lg mb-6 max-w-2xl font-medium leading-relaxed">
-                {playlist.is_favorites ? T('playlist.favoritesDescription') : (playlist.description || T('playlist.noDescription'))}
-              </p>
-            </>
-          ) : (
-            <div className="space-y-4 mb-6">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--text-primary)]"
-                  placeholder={T('playlist.name')}
-                />
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none h-24"
-                  placeholder={T('playlist.description')}
-                />
-              {/* 公開設定を一時的に非表示 */}
-              <label className="hidden items-center gap-3 cursor-pointer select-none group/toggle w-fit">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={editIsPublic}
-                    onChange={(e) => setEditIsPublic(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-10 h-6 bg-[var(--bg-hover)] rounded-full peer peer-checked:bg-[var(--accent)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
-                </div>
-                <span className="text-sm font-bold text-[var(--text-tertiary)] group-hover/toggle:text-[var(--text-primary)] transition-colors">
-                  {T('playlist.makePublic')}
-                </span>
-                </label>
-            </div>
-          )}
-
-          <div className="flex items-center justify-center md:justify-start gap-4">
-            {!isEditing ? (
-              <>
-                <button
-                  onClick={handlePlayAll}
-                  disabled={items.length === 0}
-                  className="flex items-center gap-2 px-8 py-3 bg-[#ff4e8e] hover:bg-[#ff4e8e]/90 text-white font-bold rounded-full shadow-lg shadow-[#ff4e8e]/20 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  <Play fill="currentColor" size={20} />
-                  {T('playlist.playAll')}
-                </button>
-                {!playlist.is_favorites && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold rounded-full border border-[var(--border)] transition-all active:scale-95"
-                  >
-                    <Pencil size={18} />
-                    {T('common.edit')}
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleSaveChanges}
-                  disabled={isPending || !editName.trim()}
-                  className="flex items-center gap-2 px-8 py-3 bg-[#ff4e8e] hover:bg-[#ff4e8e]/90 text-white font-bold rounded-full shadow-lg shadow-[#ff4e8e]/20 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isPending ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                  {T('common.save')}
-                </button>
-                <button
-                  onClick={handleCancelEdit}
-                  disabled={isPending}
-                  className="flex items-center gap-2 px-6 py-3 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold rounded-full transition-all disabled:opacity-50"
-                >
-                  <X size={20} />
-                  {T('common.cancel')}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 楽曲リスト */}
-      {displayItems.length === 0 ? (
-        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center text-[var(--text-tertiary)] flex flex-col items-center gap-4 shadow-xl">
-          <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center">
-            <ListMusic size={32} />
-          </div>
-          <p className="font-medium">{T('playlist.noSongs')}</p>
-        </div>
-      ) : (
-        <SongList 
-          items={displayItems}
-          mapToPlayerSong={toPlayerSong}
-          sourceType="playlist"
-          sourceId={playlist.id.toString()}
-          showVideoInfo={true}
-          isReorderable={isEditing}
-          onReorder={setItems}
-          renderActions={playlist.is_favorites ? undefined : (item) => (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemove(item.id);
-              }}
-              disabled={isPending}
-              className="p-2.5 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-50"
-              title={T('common.delete')}
+        <div className="container relative z-10 w-full px-6">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-10">
+            {/* プレイリストアートワーク/アイコン */}
+            <motion.div 
+              className="relative group/artwork"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
             >
-              <Trash2 size={18} />
-            </button>
-          )}
-        />
-      )}
+              <div className="absolute inset-0 bg-[var(--accent)]/20 rounded-3xl blur-2xl opacity-0 group-hover/artwork:opacity-100 transition-opacity duration-700" />
+              <div className="w-56 h-56 bg-gradient-to-br from-[#ff4e8e] to-[#8e4eff] rounded-3xl flex items-center justify-center text-white shadow-2xl relative z-10 overflow-hidden ring-4 ring-white/10 group-hover/artwork:scale-105 transition-transform duration-500">
+                <ListMusic size={90} className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/artwork:opacity-100 transition-opacity" />
+              </div>
+            </motion.div>
+
+            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+              {!isEditing ? (
+                <>
+                  <motion.div 
+                    className="flex items-center gap-3 mb-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-[var(--bg-tertiary)] text-[var(--accent)] px-4 py-1.5 rounded-full border border-[var(--border)] shadow-sm">
+                      Playlist • {items.length} {T('playlist.songCount')}
+                    </span>
+                  </motion.div>
+
+                  <motion.h1 
+                    className="text-5xl md:text-7xl font-black mb-6 tracking-tight text-[var(--text-primary)] glow-text drop-shadow-sm"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
+                  </motion.h1>
+
+                  <motion.p 
+                    className="text-[var(--text-secondary)] text-lg md:text-xl mb-8 max-w-2xl font-medium leading-relaxed"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    {playlist.is_favorites ? T('playlist.favoritesDescription') : (playlist.description || T('playlist.noDescription'))}
+                  </motion.p>
+                </>
+              ) : (
+                <motion.div 
+                  className="w-full space-y-5 mb-8"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)]/50 backdrop-blur-md border border-[var(--border)] rounded-2xl px-6 py-4 text-3xl font-bold focus:outline-none focus:border-[var(--accent)] transition-all text-[var(--text-primary)] shadow-inner"
+                    placeholder={T('playlist.name')}
+                    autoFocus
+                  />
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)]/50 backdrop-blur-md border border-[var(--border)] rounded-2xl px-6 py-4 text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-all resize-none h-32"
+                    placeholder={T('playlist.description')}
+                  />
+                </motion.div>
+              )}
+
+              <motion.div 
+                className="flex items-center gap-5"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                {!isEditing ? (
+                  <>
+                    <button
+                      onClick={handlePlayAll}
+                      disabled={items.length === 0}
+                      className="group flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-[#ff4e8e] to-[#ff8e4e] hover:from-[#ff4e8e]/90 hover:to-[#ff8e4e]/90 text-white font-black rounded-2xl shadow-2xl shadow-[#ff4e8e]/30 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Play fill="currentColor" size={22} className="group-hover:scale-110 transition-transform" />
+                      {T('playlist.playAll')}
+                    </button>
+                    {!playlist.is_favorites && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-3 px-8 py-4 bg-[var(--bg-secondary)]/50 backdrop-blur-md hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-black rounded-2xl border border-[var(--border)] transition-all active:scale-95"
+                      >
+                        <Pencil size={20} />
+                        {T('common.edit')}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSaveChanges}
+                      disabled={isPending || !editName.trim()}
+                      className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] text-white font-black rounded-2xl shadow-2xl shadow-[var(--accent)]/30 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {isPending ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}
+                      {T('common.save')}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isPending}
+                      className="flex items-center gap-3 px-8 py-4 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-black rounded-2xl transition-all disabled:opacity-50"
+                    >
+                      <X size={22} />
+                      {T('common.cancel')}
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* 楽曲リストセクション */}
+      <div className="container py-20 pb-48 px-6">
+        {displayItems.length === 0 ? (
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center text-[var(--text-tertiary)] flex flex-col items-center gap-4 shadow-xl">
+            <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center border border-[var(--border)]">
+              <ListMusic size={32} />
+            </div>
+            <p className="font-bold">{T('playlist.noSongs')}</p>
+          </div>
+        ) : (
+          <SongList 
+            items={displayItems}
+            mapToPlayerSong={toPlayerSong}
+            sourceType="playlist"
+            sourceId={playlist.id.toString()}
+            showVideoInfo={true}
+            isReorderable={isEditing}
+            onReorder={setItems}
+            renderActions={playlist.is_favorites ? undefined : (item) => (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemove(item.id);
+                }}
+                disabled={isPending}
+                className="p-3 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all disabled:opacity-50 border border-transparent hover:border-red-500/20"
+                title={T('common.delete')}
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          />
+        )}
+      </div>
     </div>
   );
 }

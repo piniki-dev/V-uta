@@ -12,6 +12,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
+import { motion } from 'framer-motion';
 
 
 interface EditableSong {
@@ -719,11 +720,39 @@ export default function NewSongClient() {
 
   return (
     <>
-      <div className="page-container">
-        <h1 className="page-title">{T('newSong.pageTitle')}</h1>
-        <p className="page-description">
-          {T('newSong.pageDescription')}
-        </p>
+    <div className="min-h-screen bg-[var(--bg-primary)]">
+      {/* 楽曲追加ヘッダー */}
+      <motion.section 
+        className="relative overflow-hidden border-b border-[var(--border)] py-16 mesh-bg"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2 }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
+        
+        <div className="container relative z-10 w-full px-6">
+          <header>
+            <motion.h1 
+              className="text-4xl sm:text-5xl font-black mb-6 tracking-tight text-[var(--text-primary)] glow-text"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {T('newSong.pageTitle')}
+            </motion.h1>
+            <motion.p 
+              className="text-[var(--text-secondary)] text-lg md:text-xl font-medium max-w-2xl leading-relaxed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              {T('newSong.pageDescription')}
+            </motion.p>
+          </header>
+        </div>
+      </motion.section>
+
+      <div className="container py-12 pb-48 px-6 max-w-5xl mx-auto">
 
         {/* エラー・成功メッセージ */}
         {error && <div className="alert alert--error">{error}</div>}
@@ -1483,6 +1512,7 @@ export default function NewSongClient() {
           </div>
         </div>
       )}
+        </div>
     </>
   );
 }
