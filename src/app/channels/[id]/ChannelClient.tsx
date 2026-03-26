@@ -64,6 +64,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
       startSec: song.start_sec,
       endSec: song.end_sec,
       channelName: channel.name,
+      channelThumbnailUrl: channel.image || null,
       thumbnailUrl: video.thumbnail_url,
       videoTitle: video.title,
     };
@@ -79,6 +80,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
       startSec: s.start_sec,
       endSec: s.end_sec,
       channelName: channel.name,
+      channelThumbnailUrl: channel.image || null,
       thumbnailUrl: video.thumbnail_url,
       videoTitle: video.title,
     }));
@@ -86,112 +88,116 @@ export default function ChannelClient({ initialData, error }: { initialData: any
     playWithSource(playerSong, playlist, 'channel', channel.id.toString());
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.5, ease: 'easeOut' }
+    }
+  } as const;
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* チャンネルヘッダー */}
       <motion.section
-        className="relative overflow-hidden border-b border-[var(--border)] py-10"
-        style={{ 
-          background: 'var(--theme-header-gradient)' 
-        }}
+        className="relative overflow-hidden border-b border-[var(--border)] py-16 mesh-bg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
+        transition={{ duration: 1.2 }}
       >
-        {/* 背景のアクセント光 */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <motion.div
-            className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-[var(--accent)]/[0.05] rounded-full blur-[120px]"
-            animate={{
-              x: [0, 50, 0],
-              y: [0, 30, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute -bottom-48 -right-32 w-[600px] h-[600px] bg-[#6366f1]/[0.04] rounded-full blur-[140px]"
-            animate={{
-              x: [0, -60, 0],
-              y: [0, -40, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-
-        <div className="container relative z-10 w-full">
-          <div className="flex items-center gap-8 sm:gap-12 sm:flex-row flex-col sm:text-left text-center">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
+        
+        <div className="container relative z-10 w-full px-6">
+          <div className="flex items-center gap-10 sm:gap-14 flex-col md:flex-row md:text-left text-center">
             <motion.div
-              className="relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] shrink-0"
+              className="relative w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] shrink-0"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 80 }}
             >
               {/* アバター背後のグロー */}
-              <div className="absolute inset-0 bg-[var(--accent)]/20 rounded-full blur-2xl -z-10 animate-pulse" />
+              <div className="absolute inset-0 bg-[var(--accent)]/30 rounded-full blur-3xl -z-10 animate-pulse" />
 
-              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-2 ring-[var(--border)] ring-offset-2 ring-offset-[var(--bg-primary)]">
+              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-white/10 ring-offset-4 ring-offset-black/20 group cursor-pointer">
                 {channel.image ? (
-                  <img src={channel.image} alt={channel.name} className="w-full h-full object-cover" />
+                  <img 
+                    src={channel.image} 
+                    alt={channel.name} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  />
                 ) : (
-                  <div className="flex items-center justify-center w-full h-full text-4xl text-[var(--text-secondary)] bg-[var(--bg-tertiary)]">
+                  <div className="flex items-center justify-center w-full h-full text-5xl text-[var(--accent)] bg-[var(--bg-tertiary)] font-black">
                     {channel.name ? channel.name[0] : '?'}
                   </div>
                 )}
               </div>
             </motion.div>
 
-            <div className="flex-1 min-w-0 w-full">
-              <motion.h1
-                className="text-3xl sm:text-4xl font-extrabold mb-3 tracking-tight text-[var(--text-primary)] break-words"
+            <div className="flex-1 min-w-0">
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                {channel.name}
-              </motion.h1>
+                <h1 className="text-3xl sm:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)] break-words glow-text">
+                  {channel.name}
+                </h1>
 
-              <motion.div
-                className="flex flex-wrap items-center gap-3 mb-5 sm:justify-start justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                {channel.handle && (
-                  <span className="text-[var(--accent)] text-sm font-semibold">
-                    @{channel.handle.replace('@', '')}
-                  </span>
-                )}
-                {channel.vtuber && (
-                  <>
-                    <span className="text-[var(--text-tertiary)] select-none">•</span>
-                    <span className="text-[var(--text-secondary)] text-sm font-medium">
-                      {channel.vtuber.name}
+                <div className="flex flex-wrap items-center gap-4 mb-8 md:justify-start justify-center">
+                  {channel.handle && (
+                    <span className="text-[var(--accent)] text-base font-black px-4 py-1.5 bg-[var(--accent-subtle)] rounded-full border border-[var(--accent)]/20 shadow-lg shadow-[var(--accent-glow)]/10">
+                      @{channel.handle.replace('@', '')}
                     </span>
-                    {channel.vtuber.production && (
-                      <span className="text-[11px] font-semibold text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] px-2.5 py-0.5 rounded-full border border-[var(--border)]">
-                        {channel.vtuber.production.name}
+                  )}
+                  {channel.vtuber && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-[var(--text-tertiary)] select-none text-xl">•</span>
+                      <span className="text-[var(--text-secondary)] text-lg font-bold">
+                        {channel.vtuber.name}
                       </span>
-                    )}
-                  </>
-                )}
+                      {channel.vtuber.production && (
+                        <span className="text-[12px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] px-3 py-1 rounded-full shadow-lg shadow-[var(--accent-glow)]">
+                          {channel.vtuber.production.name}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </motion.div>
 
               <motion.div
-                className="flex flex-wrap gap-3 sm:justify-start justify-center items-center"
+                className="flex flex-wrap gap-4 md:justify-start justify-center items-center"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <a href={`https://youtube.com/channel/${channel.yt_channel_id}`} target="_blank" rel="noopener noreferrer"
-                  className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[var(--youtube-red)]/15 text-[var(--youtube-red-light)] border border-[var(--youtube-red)]/25 hover:bg-[var(--youtube-red)]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--youtube-red)]/20">
-                  <Youtube size={15} /> YouTube
+                <a 
+                  href={`https://youtube.com/channel/${channel.yt_channel_id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--youtube-red)] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
+                >
+                  <Youtube size={18} /> YouTube
                 </a>
                 {channel.vtuber?.link && (
-                  <a href={channel.vtuber.link} target="_blank" rel="noopener noreferrer"
-                    className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold bg-[var(--twitter-blue)]/15 text-[var(--twitter-blue-light)] border border-[var(--twitter-blue)]/25 hover:bg-[var(--twitter-blue)]/90 hover:text-white hover:border-transparent hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--twitter-blue)]/20">
-                    <Twitter size={15} /> X (Twitter)
+                  <a 
+                    href={channel.vtuber.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[#1d9bf0] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
+                  >
+                    <Twitter size={18} /> Twitter
                   </a>
                 )}
               </motion.div>
@@ -201,24 +207,30 @@ export default function ChannelClient({ initialData, error }: { initialData: any
       </motion.section>
 
       {/* アーカイブ一覧 */}
-      <section className="py-15 pb-40">
+      <section className="py-20 pb-48">
         <div className="container">
           <motion.div
             className="flex items-center gap-4 mb-14"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="w-1.5 h-8 bg-gradient-to-b from-[var(--accent)] to-[var(--accent-dark)] rounded-full shadow-[0_0_15px_var(--accent-glow)]" />
-            <h2 className="text-2xl font-black tracking-wider text-[var(--text-primary)] flex items-center gap-3">
+            <div className="w-2 h-10 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full shadow-[0_0_20px_var(--accent-glow)]" />
+            <h2 className="text-3xl font-black tracking-tight text-[var(--text-primary)] flex items-center gap-4 glow-text-subtle">
               {T('archive.registeredArchives')}
-              <span className="text-xs font-bold bg-[var(--bg-secondary)] text-[var(--text-tertiary)] px-2.5 py-1 rounded-full border border-[var(--border)] shadow-inner">
-                {channel.videos.length} {T('archive.songs').toUpperCase()}
+              <span className="text-sm font-black bg-[var(--bg-tertiary)] text-[var(--accent)] px-4 py-1 rounded-full border border-[var(--border)] shadow-inner">
+                {channel.videos.length} <span className="text-[var(--text-tertiary)] ml-1">Archives</span>
               </span>
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative">
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
             {channel.videos.length > 0 ? (
               channel.videos.map((video, index) => {
                 const isExpanded = expandedVideoId === video.id;
@@ -228,18 +240,15 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                 return (
                   <React.Fragment key={video.id}>
                     <motion.div
-                      className={`group/card rounded-2xl overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-300 ${isExpanded
-                        ? 'ring-2 ring-[var(--accent)] shadow-lg shadow-[var(--accent-glow)] border border-transparent'
-                        : 'border border-[var(--border)] hover:shadow-xl hover:shadow-black/10'
+                      variants={itemVariants}
+                      className={`group/card rounded-3xl overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-500 hover:-translate-y-2 ${isExpanded
+                        ? 'ring-2 ring-[var(--accent)] shadow-2xl shadow-[var(--accent-glow)] border border-transparent'
+                        : 'border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-2xl hover:shadow-black/40'
                         }`}
                       style={{
                         order: index,
                         background: 'var(--bg-secondary)',
                       }}
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: Math.min(index * 0.05, 0.4) }}
                     >
                       <Link href={`/videos/${video.video_id}`} className="relative aspect-video overflow-hidden block">
                         <img src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'} alt={video.title}
@@ -344,6 +353,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                                     startSec: s.start_sec,
                                     endSec: s.end_sec,
                                     channelName: channel.name,
+                                    channelThumbnailUrl: channel.image || null,
                                     thumbnailUrl: video.thumbnail_url,
                                     videoTitle: video.title,
                                   })}
@@ -373,7 +383,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                   <p className="text-sm font-medium">{T('archive.noArchives')}</p>
                 </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </section>
 

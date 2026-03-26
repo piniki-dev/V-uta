@@ -126,33 +126,66 @@ export default function HistoryClient({ initialHistory }: Props) {
     return dateStr;
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.5, ease: 'easeOut' }
+    }
+  } as const;
+
   return (
     <div className="container mx-auto px-4 py-8 pb-32 max-w-5xl">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <motion.div 
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 bg-gradient-to-br from-[#ff4e8e] to-[#8e4eff] rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-[#ff4e8e]/20">
             <History size={40} />
           </div>
           <div>
-            <h1 className="text-4xl font-black mb-2 tracking-tight">{T('history.pageTitle')}</h1>
+            <h1 className="text-4xl font-black mb-2 tracking-tight glow-text">{T('history.pageTitle')}</h1>
             <p className="text-[#666] font-medium">{T('history.pageDescription')}</p>
           </div>
         </div>
         
-        {history.length > 0 && (
-          <button
-            onClick={handleClearAll}
-            disabled={isClearing}
-            className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
-          >
-            <Trash2 size={18} />
-            {T('history.clearAll')}
-          </button>
-        )}
-      </div>
+        <AnimatePresence>
+          {history.length > 0 && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={handleClearAll}
+              disabled={isClearing}
+              className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Trash2 size={18} />
+              {T('history.clearAll')}
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {history.length === 0 ? (
-        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center flex flex-col items-center gap-6">
+        <motion.div 
+          className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center flex flex-col items-center gap-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
           <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center text-[var(--text-tertiary)]">
             <Clock size={40} />
           </div>
@@ -163,11 +196,16 @@ export default function HistoryClient({ initialHistory }: Props) {
           <Link href="/" className="mt-4 px-8 py-3 bg-[var(--accent)] text-white font-bold rounded-full hover:bg-[var(--accent-hover)] transition-all active:scale-95">
             {T('history.explore')}
           </Link>
-        </div>
+        </motion.div>
       ) : (
-        <div className="space-y-12">
+        <motion.div 
+          className="space-y-12"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {Object.entries(groupedHistory).map(([date, items]: [string, any]) => (
-            <section key={date}>
+            <motion.section key={date} variants={itemVariants}>
               <div className="flex items-center gap-3 mb-6">
                 <Calendar size={18} className="text-[var(--accent)]" />
                 <h2 className="text-lg font-black text-[var(--text-primary)]">{formatDateLabel(date)}</h2>
@@ -183,7 +221,7 @@ export default function HistoryClient({ initialHistory }: Props) {
                 showPlayedAt={true}
                 onItemClick={(item) => handlePlayHistory(item)}
               />
-            </section>
+            </motion.section>
           ))}
 
           {/* 無限スクロール用ローダー */}
@@ -198,7 +236,7 @@ export default function HistoryClient({ initialHistory }: Props) {
               <p className="text-[var(--text-tertiary)] font-medium">{T('history.noMore') || 'これ以上の履歴はありません'}</p>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

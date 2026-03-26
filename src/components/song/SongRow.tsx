@@ -1,6 +1,5 @@
-'use client';
-
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Music, Play, ExternalLink, Clock, User } from 'lucide-react';
 import Link from 'next/link';
 import type { PlayerSong } from '@/types';
@@ -88,10 +87,21 @@ export default function SongRow({
     }
   };
 
+  const itemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      transition: { duration: 0.3 }
+    }
+  };
+
   return (
-    <div
+    <motion.div
+      variants={itemVariants}
       onClick={handlePlay}
-      className={`group grid gap-4 items-center px-6 py-4 hover:bg-[var(--bg-hover)] transition-all cursor-pointer relative ${
+      whileHover={{ backgroundColor: 'var(--bg-hover)', y: -1 }}
+      className={`group grid gap-4 items-center px-6 py-4 transition-all cursor-pointer relative ${
         isCurrentSong ? 'bg-[var(--bg-hover)]' : ''
       } ${
         showVideoInfo 
@@ -122,11 +132,11 @@ export default function SongRow({
 
       {/* 2. Song Info (Artwork, Title, Artist) */}
       <div className="min-w-0 flex items-center gap-4">
-        <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative shadow-sm border border-[var(--border)]">
+        <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative shadow-sm border border-[var(--border)] group-hover:border-[var(--accent-glow)] transition-colors">
           {song.artworkUrl ? (
-            <img src={song.artworkUrl} alt="" className="w-full h-full object-cover" />
+            <img src={song.artworkUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
           ) : (
-            <Music size={16} className="text-[var(--text-tertiary)]" />
+            <Music size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" />
           )}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <Play size={20} fill="white" className="text-white" />
@@ -165,7 +175,7 @@ export default function SongRow({
       {/* 3. Conditional: Video Info OR Time Info */}
       {showVideoInfo ? (
         <div className="hidden md:flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--border)] shadow-sm bg-[var(--bg-tertiary)] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--border)] shadow-sm bg-[var(--bg-tertiary)] flex items-center justify-center group-hover:border-[var(--accent-glow)] transition-colors">
             {song.channelThumbnailUrl ? (
               <img src={song.channelThumbnailUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -187,7 +197,7 @@ export default function SongRow({
           </Link>
         </div>
       ) : showTimeInfo ? (
-        <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-tertiary)] font-medium tabular-nums">
+        <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-tertiary)] font-medium tabular-nums group-hover:text-[var(--accent)] transition-colors">
           <Clock size={14} className="opacity-40" />
           <span>{formatTime(song.startSec)} - {formatTime(song.endSec)}</span>
         </div>
@@ -196,7 +206,7 @@ export default function SongRow({
       )}
 
       {/* 4. Duration */}
-      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums">
+      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums group-hover:text-[var(--accent)] transition-colors">
         {formatTime(song.endSec - song.startSec)}
       </div>
 
@@ -213,6 +223,6 @@ export default function SongRow({
           50% { height: 16px; }
         }
       `}</style>
-    </div>
+    </motion.div>
   );
 }

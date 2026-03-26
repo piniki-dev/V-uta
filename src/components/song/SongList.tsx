@@ -3,7 +3,7 @@
 import React from 'react';
 import type { PlayerSong } from '@/types';
 import SongRow from './SongRow';
-import { Reorder } from 'framer-motion';
+import { Reorder, motion } from 'framer-motion';
 import { useLocale } from '@/components/LocaleProvider';
 
 interface SongListProps<T> {
@@ -89,31 +89,45 @@ export default function SongList<T extends { id: any }>({
     );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
   return (
     <div className={`bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-xl ${className}`}>
       {renderHeader()}
-      <div className="divide-y divide-[var(--border)]">
+      <motion.div 
+        className="divide-y divide-[var(--border)]"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {items.map((item, index) => {
           const song = mapToPlayerSong(item);
           return (
-            <div key={item.id} className="relative">
-              <SongRow
-                song={song}
-                index={index}
-                playlist={playlist}
-                sourceType={sourceType}
-                sourceId={sourceId}
-                showVideoInfo={showVideoInfo}
-                showTimeInfo={showTimeInfo}
-                showPlayedAt={showPlayedAt}
-                renderActions={renderActions?.(item, song)}
-                rowId={item.id}
-                onClick={onItemClick ? () => onItemClick(item, song) : undefined}
-              />
-            </div>
+            <SongRow
+              key={item.id}
+              song={song}
+              index={index}
+              playlist={playlist}
+              sourceType={sourceType}
+              sourceId={sourceId}
+              showVideoInfo={showVideoInfo}
+              showTimeInfo={showTimeInfo}
+              showPlayedAt={showPlayedAt}
+              renderActions={renderActions?.(item, song)}
+              rowId={item.id}
+              onClick={onItemClick ? () => onItemClick(item, song) : undefined}
+            />
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
