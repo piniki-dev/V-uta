@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit, Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import { PlayerProvider } from "@/components/player/PlayerContext";
@@ -11,9 +11,22 @@ import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 
-const inter = Inter({
-  variable: "--font-inter",
+const outfit = Outfit({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-jp",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 import { translations } from "@/lib/translations";
@@ -43,14 +56,14 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${inter.variable}`}>
+      <body className={`${outfit.variable} ${plusJakarta.variable} ${notoSansJP.variable}`}>
         <LocaleProvider>
           <ThemeProvider>
             <FavoritesProvider>
               <PlayerProvider>
                 <SidebarProvider>
                   <Header />
-                  <div className="app-layout">
+                  <div className="app-layout mesh-bg">
                     <Sidebar />
                     <LayoutWrapper>
                       <main className="main-content">{children}</main>

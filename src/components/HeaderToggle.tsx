@@ -47,6 +47,7 @@ export default function HeaderToggle() {
           display: flex;
           align-items: center;
           gap: 10px;
+          font-family: var(--font-heading);
           font-size: 24px;
           letter-spacing: -1.2px;
           font-weight: 900;
