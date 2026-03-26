@@ -180,3 +180,51 @@ export async function clearPlayHistory() {
 
   return { success: true };
 }
+
+/**
+ * 再生回数ランキングを取得する
+ */
+export async function getSongRankings(params: {
+  channelId?: bigint;
+  userId?: string;
+  days?: number;
+  groupByMaster?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_song_rankings', {
+    p_channel_id: params.channelId,
+    p_user_id: params.userId,
+    p_days: params.days,
+    p_group_by_master: params.groupByMaster || false,
+    p_limit: params.limit || 10,
+    p_offset: params.offset || 0,
+  });
+
+  if (error) {
+    console.error('Error fetching song rankings:', error);
+    return { success: false, error: error.message };
+  }
+
+  // RPC の戻り値を PlayerSong 互換の形式に整形
+  const rankings = (data as any[]).map((item) => ({
+    id: item.song_id,
+    playCount: item.play_count,
+    title: item.master_song_title,
+    artist: item.master_song_artist,
+    title_en: item.master_song_title_en,
+    artist_en: item.master_song_artist_en,
+    artworkUrl: item.artwork_url,
+    videoId: item.video_id,
+    videoTitle: item.video_title,
+    channelName: item.channel_name,
+    channelThumbnailUrl: item.channel_image,
+    startSec: item.start_sec,
+    endSec: item.end_sec,
+    thumbnailUrl: `https://i.ytimg.com/vi/${item.video_id}/mqdefault.jpg`, // デフォルトのサムネイル
+  }));
+
+  return { success: true, data: rankings };
+}
