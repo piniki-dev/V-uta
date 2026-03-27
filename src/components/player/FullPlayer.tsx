@@ -205,47 +205,38 @@ export default function FullPlayer() {
       </div>
 
       {/* デスクトップ版 UI (既存のものを維持しつつ微調整) */}
-      <div className="hidden md:flex full-player__body relative z-10 p-8 md:p-16 h-full flex flex-row gap-12">
+      {/* デスクトップ版 UI (既存のものを維持しつつ微調整) */}
+      <div className="hidden md:flex full-player__body relative z-10 p-4 md:p-6 lg:p-16 h-full flex-col lg:flex-row gap-4 md:gap-6 lg:gap-12">
         <button 
           onClick={closeFullPlayer}
-          className="absolute top-8 left-8 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors z-20 group"
+          className="absolute top-6 left-6 lg:top-8 lg:left-8 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[var(--text-primary)] hover:bg-white/10 transition-colors z-20 group shadow-sm"
         >
           <ChevronDown size={28} className="group-hover:translate-y-0.5 transition-transform" />
         </button>
 
-        {/* 左: YouTube プレイヤー + 曲情報 */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
+        {/* 左(md時は上): YouTube プレイヤー + 曲情報 */}
+        <div className="flex-1 flex flex-col items-center justify-center p-2 min-w-0 min-h-0 w-full">
           <div 
-            className={`full-player__main relative transition-all duration-500 z-10 ${
-              state.videoRatio === '9/16' ? 'h-[90%]' : 'w-full max-w-6xl'
-            }`}
+            className="full-player__main relative transition-all duration-500 z-10 flex items-center justify-center"
             style={{
-              aspectRatio: state.videoRatio === '9/16' ? '9/16' : '16/9'
+              aspectRatio: state.videoRatio === '9/16' ? '9/16' : '16/9',
+              width: state.videoRatio === '9/16' ? 'auto' : '100%',
+              height: state.videoRatio === '9/16' ? '100%' : 'auto',
+              maxWidth: '100%',
+              maxHeight: '100%',
             }}
           >
             <div className="full-player__video-placeholder w-full h-full" />
           </div>
 
-          <motion.div 
-            className="space-y-4 md:hidden"
-            initial={{ opacity: 0, y: 30 }}
-            animate={state.isFullPlayerOpen ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-[var(--text-primary)] glow-text drop-shadow-2xl">
-              {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
-            </h2>
-            <p className="text-xl md:text-2xl font-bold text-[var(--text-secondary)] opacity-80">
-              {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
-            </p>
-          </motion.div>
+
         </div>
 
-        {/* 右: 再生リスト (Queue) */}
-        <div className="w-full md:w-96 flex flex-col bg-[var(--bg-secondary)]/30 backdrop-blur-2xl border border-white/5 rounded-[40px] overflow-hidden shadow-2xl">
-          <div className="p-8 border-b border-white/5">
-            <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight glow-text-subtle flex items-center gap-3">
-              <span className="w-1.5 h-6 bg-[var(--accent)] rounded-full shadow-[0_0_10px_var(--accent-glow)]" />
+        {/* 右(md時は下): 再生リスト (Queue) */}
+        <div className="w-full lg:w-96 h-1/3 min-h-[200px] lg:h-auto lg:min-h-0 shrink-0 flex flex-col bg-[var(--bg-secondary)]/30 backdrop-blur-2xl border border-[var(--border)] rounded-3xl lg:rounded-[40px] overflow-hidden shadow-2xl">
+          <div className="p-4 lg:p-8 border-b border-[var(--border)]">
+            <h3 className="text-lg lg:text-xl font-black text-[var(--text-primary)] tracking-tight glow-text-subtle flex items-center gap-3">
+              <span className="w-1.5 h-5 lg:h-6 bg-[var(--accent)] rounded-full shadow-[0_0_10px_var(--accent-glow)]" />
               {T('player.queue')}
             </h3>
           </div>

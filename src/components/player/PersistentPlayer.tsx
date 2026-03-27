@@ -17,9 +17,7 @@ export default function PersistentPlayer() {
     const videoWindow = videoWindowRef.current;
     if (!videoWindow) return;
 
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    
-    if (!(state.isFullPlayerOpen && isMobile)) {
+    if (!state.isFullPlayerOpen) {
       // フルプレイヤー閉じ時: inline styleをリセット、CSSクラスがPIP表示を制御
       videoWindow.style.position = '';
       videoWindow.style.width = '';
@@ -36,28 +34,36 @@ export default function PersistentPlayer() {
 
     let animationFrameId: number;
 
-    // ポータルターゲットの座標にvideo-windowを重ねる
+    // ポータルターゲット(モバイル・デスクトップ別)の座標にvideo-windowを重ねる
     const syncPosition = () => {
-      const portalTarget = document.getElementById('mobile-video-portal');
-      if (!portalTarget || !videoWindow) return;
+      let portalTarget: Element | null = null;
       
-      const rect = portalTarget.getBoundingClientRect();
-      
-      // 座標が取得できている場合のみ適用（0の場合はまだマウントされていない等）
-      if (rect.width > 0 && rect.height > 0) {
-        videoWindow.style.position = 'fixed';
-        videoWindow.style.top = `${rect.top}px`;
-        videoWindow.style.left = `${rect.left}px`;
-        videoWindow.style.width = `${rect.width}px`;
-        videoWindow.style.height = `${rect.height}px`;
-        videoWindow.style.right = 'auto';
-        videoWindow.style.bottom = 'auto';
-        videoWindow.style.zIndex = '1002';
-        videoWindow.style.borderRadius = '32px';
-        videoWindow.style.overflow = 'hidden';
+      // ブレイクポイント(md=768px未満)で同期先を切り替え
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        portalTarget = document.getElementById('mobile-video-portal');
+      } else {
+        portalTarget = document.querySelector('.full-player__video-placeholder');
       }
 
-      // 次のフレームでも同期を続ける（アニメーションやスクロール追従のため）
+      if (portalTarget && videoWindow) {
+        const rect = portalTarget.getBoundingClientRect();
+        
+        // 座標が取得できている場合のみ適用
+        if (rect.width > 0 && rect.height > 0) {
+          videoWindow.style.position = 'fixed';
+          videoWindow.style.top = `${rect.top}px`;
+          videoWindow.style.left = `${rect.left}px`;
+          videoWindow.style.width = `${rect.width}px`;
+          videoWindow.style.height = `${rect.height}px`;
+          videoWindow.style.right = 'auto';
+          videoWindow.style.bottom = 'auto';
+          videoWindow.style.zIndex = '1002';
+          videoWindow.style.borderRadius = '32px';
+          videoWindow.style.overflow = 'hidden';
+        }
+      }
+
+      // 次のフレームでも同期を続ける（アニメーションやリサイズ追従のため）
       animationFrameId = requestAnimationFrame(syncPosition);
     };
 
@@ -81,17 +87,7 @@ export default function PersistentPlayer() {
       data-video-ratio={state.videoRatio}
       data-video-ratio-mode={state.videoRatioMode}
     >
-      {/* アンビエントグロー - フルプレイヤー表示時のみ、ビデオと同じ座標に描画 */}
-      {state.isFullPlayerOpen && state.currentSong?.thumbnailUrl && (
-        <div 
-          className="absolute inset-0 opacity-50 blur-[100px] scale-110 pointer-events-none transition-all duration-700 z-0"
-          style={{
-            backgroundImage: `url(${state.currentSong.thumbnailUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-      )}
+
       <div className="video-window__inner">
         <YouTubePlayer />
       </div>

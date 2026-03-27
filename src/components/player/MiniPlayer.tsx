@@ -50,7 +50,7 @@ export default function MiniPlayer() {
   
   return (
     <div 
-      className={`mini-player ${state.isFullPlayerOpen ? 'md:flex hidden' : 'flex'} cursor-pointer select-none`}
+      className={`mini-player ${state.isFullPlayerOpen ? '!hidden md:!flex' : 'flex'} cursor-pointer select-none`}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('button, .SliderRoot, .VolumeSliderRoot')) {
           return;

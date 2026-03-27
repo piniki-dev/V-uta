@@ -1481,20 +1481,10 @@ input[type="range"]:hover::-webkit-slider-thumb {
 }
 
 .video-window--full {
-  top: var(--header-height);
-  left: 64px;
-  right: 496px;
-  /* p-16(64px) + playlist(384px) + gap(48px) = 496px */
-  bottom: var(--player-height);
+  background: transparent;
   width: auto;
   aspect-ratio: auto;
-  background: transparent;
   overflow: visible;
-}
-
-
-.video-window--full.sidebar-open {
-  left: calc(var(--sidebar-width) + 64px);
 }
 
 .video-window__inner {
@@ -1507,9 +1497,9 @@ input[type="range"]:hover::-webkit-slider-thumb {
 }
 
 .video-window--full .video-window__inner {
-  padding: 32px;
-  position: relative;
-  z-index: 10;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* YouTube Iframe container inside Video Window */
@@ -1523,39 +1513,29 @@ input[type="range"]:hover::-webkit-slider-thumb {
 }
 
 .video-window--full .youtube-player-container {
-  height: auto !important;
-  max-width: 1200px;
-  aspect-ratio: 16 / 9;
-}
-
-.video-window--full[data-video-ratio="9/16"] .youtube-player-container {
-  aspect-ratio: 9 / 16;
-  max-width: calc((100vh - var(--header-height) - var(--player-height) - 64px) * 9 / 16);
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  aspect-ratio: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* This targets the actual YT player inside the container in full mode */
 .video-window--full #yt-player {
   width: 100% !important;
   height: 100% !important;
-  border-radius: 40px;
-  box-shadow: 0 10px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  border-radius: 32px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: border-radius 0.4s, box-shadow 0.4s;
 }
 
-/* Zoomed (Fill) mode to remove black margins */
+/* Zoomed (Fill) mode */
 .video-window--full[data-zoomed="true"] {
   background: black;
 }
 
-.video-window--full[data-zoomed="true"] .youtube-player-container {
-  max-width: none !important;
-  width: 100% !important;
-  height: 100% !important;
-  aspect-ratio: auto;
-}
-
 .video-window--full[data-zoomed="true"] .video-window__inner {
-  padding: 0;
   overflow: hidden;
 }
 
@@ -1565,44 +1545,10 @@ input[type="range"]:hover::-webkit-slider-thumb {
   height: auto !important;
   min-width: 100% !important;
   min-height: 100% !important;
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
-/* モバイル: ポータル移動方式 - JSがvideo-windowをFullPlayer内に移動するため、CSSはポータル内での表示を制御 */
-@media (max-width: 768px) {
-  .video-window--pip {
-    width: 200px;
-    bottom: calc(var(--player-height) + 12px);
-    right: 12px;
-  }
-
-  /* ポータル内ではvideo-windowが100%で広がるように。JSがinline styleでposition:relativeに設定済み */
-  .video-window--full .video-window__inner {
-    padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .video-window--full .youtube-player-container {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    aspect-ratio: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .video-window--full #yt-player {
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 32px !important;
-    box-shadow: none !important;
-  }
-}
 
 /* PiP Positions Responsive */
 @media (max-width: 768px) {
