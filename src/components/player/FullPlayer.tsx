@@ -59,7 +59,7 @@ export default function FullPlayer() {
           <motion.div 
             layout
             id="mobile-video-portal"
-            className="w-full max-h-full aspect-video rounded-[32px] overflow-hidden shadow-2xl ring-1 ring-[var(--border)] relative bg-black"
+            className="w-full max-h-full aspect-video rounded-[32px] overflow-hidden relative"
           />
         </motion.div>
 
