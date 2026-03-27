@@ -5,6 +5,7 @@ import SearchSongs from './SearchSongs';
 import Link from 'next/link';
 import { ExternalLink, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Hero from '@/components/Hero';
 
 interface SearchClientProps {
   query: string;
@@ -37,57 +38,27 @@ export default function SearchClient({ query, songs, videos, channels }: SearchC
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
-      {/* 検索ヘッダー */}
-      <motion.section 
-        className="relative overflow-hidden border-b border-[var(--border)] py-16 mesh-bg"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
-        
-        <div className="container relative z-10 w-full px-6">
-          <header>
-            <motion.h1 
-              className="text-4xl sm:text-5xl font-black mb-6 tracking-tight text-[var(--text-primary)] glow-text"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              {T('search.title')}
-            </motion.h1>
-            
-            {!query ? (
-              <motion.p 
-                className="text-[var(--text-secondary)] text-lg font-medium"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                {T('search.inputKeyword')}
-              </motion.p>
-            ) : (
-              <motion.div 
-                className="flex flex-col gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <p className="text-[var(--text-secondary)] text-xl font-medium">
-                  {T('search.resultsFor', { query })}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black bg-[var(--accent-subtle)] text-[var(--accent)] px-4 py-1.5 rounded-full border border-[var(--accent)]/20 shadow-lg shadow-[var(--accent-glow)]/10">
-                    {songs.length + videos.length + channels.length > 0 
-                      ? T('search.found')
-                      : T('search.notFound')}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </header>
-        </div>
-      </motion.section>
+      <Hero
+        title={T('search.title')}
+        description={
+          !query ? (
+            T('search.inputKeyword')
+          ) : (
+            <p className="text-xl font-medium">
+              {T('search.resultsFor', { query })}
+            </p>
+          )
+        }
+        badge={
+          query ? (
+            <span>
+              {songs.length + videos.length + channels.length > 0 
+                ? T('search.found')
+                : T('search.notFound')}
+            </span>
+          ) : undefined
+        }
+      />
 
       {query && (
         <div className="container py-20 pb-48">

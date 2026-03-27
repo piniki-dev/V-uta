@@ -11,6 +11,7 @@ import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
 import { useLocale } from '@/components/LocaleProvider';
 import SongMenu from '@/components/song/SongMenu';
 import SongList from '@/components/song/SongList';
+import Hero from '@/components/Hero';
 
 interface ChannelWithVideos extends Channel {
   vtuber?: Vtuber & { production?: Production };
@@ -109,102 +110,47 @@ export default function ChannelClient({ initialData, error }: { initialData: any
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
-      {/* チャンネルヘッダー */}
-      <motion.section
-        className="relative overflow-hidden border-b border-[var(--border)] py-10 md:py-16 mesh-bg"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
-        
-        <div className="container relative z-10 w-full px-6">
-          <div className="flex items-center gap-6 md:gap-14 flex-col md:flex-row md:text-left text-center">
-            <motion.div
-              className="relative w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] shrink-0"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 80 }}
-            >
-              {/* アバター背後のグロー */}
-              <div className="absolute inset-0 bg-[var(--accent)]/30 rounded-full blur-3xl -z-10 animate-pulse" />
-
-              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-white/10 ring-offset-4 ring-offset-black/20 group cursor-pointer">
-                {channel.image ? (
-                  <img 
-                    src={channel.image} 
-                    alt={channel.name} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full text-5xl text-[var(--accent)] bg-[var(--bg-tertiary)] font-black">
-                    {channel.name ? channel.name[0] : '?'}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            <div className="flex-1 min-w-0">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <h1 className="text-3xl sm:text-5xl font-black mb-4 tracking-tight text-[var(--text-primary)] break-words glow-text">
-                  {channel.name}
-                </h1>
-
-                <div className="flex flex-wrap items-center gap-4 mb-8 md:justify-start justify-center">
-                  {channel.handle && (
-                    <span className="text-[var(--accent)] text-base font-black px-4 py-1.5 bg-[var(--accent-subtle)] rounded-full border border-[var(--accent)]/20 shadow-lg shadow-[var(--accent-glow)]/10">
-                      @{channel.handle.replace('@', '')}
-                    </span>
-                  )}
-                  {channel.vtuber && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-[var(--text-tertiary)] select-none text-xl">•</span>
-                      <span className="text-[var(--text-secondary)] text-lg font-bold">
-                        {channel.vtuber.name}
-                      </span>
-                      {channel.vtuber.production && (
-                        <span className="text-[12px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] px-3 py-1 rounded-full shadow-lg shadow-[var(--accent-glow)]">
-                          {channel.vtuber.production.name}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="flex flex-wrap gap-4 md:justify-start justify-center items-center"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <a 
-                  href={`https://youtube.com/channel/${channel.yt_channel_id}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--youtube-red)] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
-                >
-                  <Youtube size={18} /> YouTube
-                </a>
-                {channel.vtuber?.link && (
-                  <a 
-                    href={channel.vtuber.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[#1d9bf0] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
-                  >
-                    <Twitter size={18} /> Twitter
-                  </a>
-                )}
-              </motion.div>
+      <Hero
+        title={channel.name}
+        image={channel.image || undefined}
+        description={
+          channel.vtuber && (
+            <div className="flex items-center gap-3">
+              <span className="text-[var(--text-secondary)] text-lg font-bold">
+                {channel.vtuber.name}
+              </span>
+              {channel.vtuber.production && (
+                <span className="text-[12px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] px-3 py-1 rounded-full shadow-lg shadow-[var(--accent-glow)]">
+                  {channel.vtuber.production.name}
+                </span>
+              )}
             </div>
-          </div>
-        </div>
-      </motion.section>
+          )
+        }
+        badge={channel.handle ? `@${channel.handle.replace('@', '')}` : undefined}
+        actions={
+          <>
+            <a 
+              href={`https://youtube.com/channel/${channel.yt_channel_id}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--youtube-red)] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
+            >
+              <Youtube size={18} /> YouTube
+            </a>
+            {channel.vtuber?.link && (
+              <a 
+                href={channel.vtuber.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 px-8 py-3 rounded-2xl text-[14px] font-black bg-black/5 dark:bg-white/5 text-[var(--text-primary)] border border-[var(--border)] hover:bg-[#1d9bf0] hover:text-white hover:border-transparent transition-all duration-300 active:scale-95 shadow-xl"
+              >
+                <Twitter size={18} /> Twitter
+              </a>
+            )}
+          </>
+        }
+      />
 
       {/* アーカイブ一覧 */}
       <section className="py-20 pb-48">

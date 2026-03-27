@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SongMenu from '@/components/song/SongMenu';
 import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
+import Hero from '@/components/Hero';
 
 interface Props {
   initialHistory: any[];
@@ -146,39 +147,31 @@ export default function HistoryClient({ initialHistory }: Props) {
   } as const;
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-32 max-w-5xl">
-      <motion.div 
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#ff4e8e] to-[#8e4eff] rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-[#ff4e8e]/20">
-            <History size={40} />
-          </div>
-          <div>
-            <h1 className="text-4xl font-black mb-2 tracking-tight glow-text">{T('history.pageTitle')}</h1>
-            <p className="text-[#666] font-medium">{T('history.pageDescription')}</p>
-          </div>
-        </div>
-        
-        <AnimatePresence>
-          {history.length > 0 && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              onClick={handleClearAll}
-              disabled={isClearing}
-              className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
-            >
-              <Trash2 size={18} />
-              {T('history.clearAll')}
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </motion.div>
+    <div className="min-h-screen bg-[var(--bg-primary)]">
+      <Hero
+        title={T('history.pageTitle')}
+        description={T('history.pageDescription')}
+        icon={<History size={60} />}
+        actions={
+          <AnimatePresence>
+            {history.length > 0 && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={handleClearAll}
+                disabled={isClearing}
+                className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 size={18} />
+                {T('history.clearAll')}
+              </motion.button>
+            )}
+          </AnimatePresence>
+        }
+      />
+
+      <div className="container mx-auto px-6 py-12 pb-48">
 
       {history.length === 0 ? (
         <motion.div 
@@ -239,5 +232,6 @@ export default function HistoryClient({ initialHistory }: Props) {
         </motion.div>
       )}
     </div>
+  </div>
   );
 }

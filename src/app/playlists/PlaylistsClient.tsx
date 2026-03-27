@@ -8,6 +8,7 @@ import { Loader2, Lock, Globe, ListMusic } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
 
 import { motion } from 'framer-motion';
+import Hero from '@/components/Hero';
 
 export default function PlaylistsClient() {
   const { T } = useLocale();
@@ -59,23 +60,14 @@ export default function PlaylistsClient() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <motion.div 
-        className="flex items-center justify-between mb-12"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div>
-          <h1 className="text-4xl font-black flex items-center gap-4 tracking-tight">
-            <div className="w-12 h-12 bg-[var(--accent)] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[var(--accent-glow)]">
-              <ListMusic size={28} />
-            </div>
-            <span className="glow-text">{T('playlist.manage')}</span>
-          </h1>
-          <p className="text-[var(--text-tertiary)] mt-3 font-medium ml-1">{T('playlist.subtitle')}</p>
-        </div>
-      </motion.div>
+    <div className="min-h-screen bg-[var(--bg-primary)]">
+      <Hero
+        title={T('playlist.manage')}
+        description={T('playlist.subtitle')}
+        icon={<ListMusic size={60} />}
+      />
+
+      <div className="container mx-auto px-6 py-12 pb-48">
 
       {error && (
         <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl">
@@ -132,5 +124,6 @@ export default function PlaylistsClient() {
         </motion.div>
       )}
     </div>
+  </div>
   );
 }
