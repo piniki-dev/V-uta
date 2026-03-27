@@ -101,12 +101,12 @@ export default function SongRow({
       variants={itemVariants}
       onClick={handlePlay}
       whileHover={{ backgroundColor: 'var(--bg-hover)', y: -1 }}
-      className={`group grid gap-4 items-center px-6 py-4 transition-all cursor-pointer relative ${
+      className={`group grid gap-3 md:gap-4 items-center px-4 md:px-6 py-4 transition-all cursor-pointer relative ${
         isCurrentSong ? 'bg-[var(--bg-hover)]' : ''
       } ${
         showVideoInfo 
-          ? 'grid-cols-[56px_1fr_40px] md:grid-cols-[56px_1fr_1fr_80px_100px]' 
-          : 'grid-cols-[56px_1fr_40px] md:grid-cols-[56px_1fr_120px_80px_100px]'
+          ? 'grid-cols-[32px_1fr_auto] md:grid-cols-[56px_1fr_1fr_80px_100px]' 
+          : 'grid-cols-[32px_1fr_auto] md:grid-cols-[56px_1fr_120px_80px_100px]'
       } ${className}`}
     >
       {/* 1. Index / Playing Icon */}
@@ -206,7 +206,7 @@ export default function SongRow({
       )}
 
       {/* 4. Duration */}
-      <div className="text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums group-hover:text-[var(--accent)] transition-colors">
+      <div className="hidden sm:block text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums group-hover:text-[var(--accent)] transition-colors">
         {formatTime(song.endSec - song.startSec)}
       </div>
 

@@ -56,7 +56,7 @@ export default function ArchiveClient({ video, songs }: Props) {
     <div className="page-container">
       {/* 動画情報ヘッダー */}
       <motion.div 
-        className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-8 mb-12 flex flex-col md:flex-row gap-10 relative overflow-hidden shadow-2xl group"
+        className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-5 md:p-8 mb-12 flex flex-col md:flex-row gap-6 md:gap-10 relative overflow-hidden shadow-2xl group"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -116,23 +116,23 @@ export default function ArchiveClient({ video, songs }: Props) {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 md:gap-4">
             <a 
               href={`https://youtube.com/watch?v=${video.video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-[var(--youtube-red)] text-[var(--text-secondary)] hover:text-white font-black rounded-xl border border-[var(--border)] transition-all duration-300 active:scale-95 group/yt text-sm shadow-sm"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-white/5 hover:bg-[var(--youtube-red)] text-[var(--text-secondary)] hover:text-white font-black rounded-xl border border-[var(--border)] transition-all duration-300 active:scale-95 group/yt text-xs md:text-sm shadow-sm"
             >
-              <Youtube size={18} />
-              {T('archive.watchOnYoutube')}
+              <Youtube size={16} />
+              <span className="truncate">{T('archive.watchOnYoutube')}</span>
             </a>
             
             <Link 
               href={`/songs/new?url=https://www.youtube.com/watch?v=${video.video_id}`}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] hover:border-[var(--accent)] font-black rounded-xl transition-all duration-300 active:scale-95 text-sm"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-hover)] hover:border-[var(--accent)] font-black rounded-xl transition-all duration-300 active:scale-95 text-xs md:text-sm"
             >
-              <Pencil size={18} />
-              {T('archive.editSongs')}
+              <Pencil size={16} />
+              <span className="truncate">{T('archive.editSongs')}</span>
             </Link>
           </div>
         </div>

@@ -111,7 +111,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
     <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* チャンネルヘッダー */}
       <motion.section
-        className="relative overflow-hidden border-b border-[var(--border)] py-16 mesh-bg"
+        className="relative overflow-hidden border-b border-[var(--border)] py-10 md:py-16 mesh-bg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2 }}
@@ -119,7 +119,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/10 pointer-events-none" />
         
         <div className="container relative z-10 w-full px-6">
-          <div className="flex items-center gap-10 sm:gap-14 flex-col md:flex-row md:text-left text-center">
+          <div className="flex items-center gap-6 md:gap-14 flex-col md:flex-row md:text-left text-center">
             <motion.div
               className="relative w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] shrink-0"
               initial={{ scale: 0.8, opacity: 0 }}
@@ -241,7 +241,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
                   <React.Fragment key={video.id}>
                     <motion.div
                       variants={itemVariants}
-                      className={`group/card rounded-3xl overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-500 hover:-translate-y-2 ${isExpanded
+                      className={`group/card rounded-2xl md:rounded-3xl overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-500 hover:-translate-y-2 ${isExpanded
                         ? 'ring-2 ring-[var(--accent)] shadow-2xl shadow-[var(--accent-glow)] border border-transparent'
                         : 'border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-2xl hover:shadow-black/40'
                         }`}

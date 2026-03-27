@@ -41,13 +41,23 @@ export default function MiniPlayer() {
   } = usePlayer();
   const { t, T } = useLocale();
 
+  // モバイルかつフルプレイヤーが開いている場合のみ非表示にする
+  // デスクトップではFullPlayerが開いていてもMiniPlayerを表示し続ける（ユーザーの要望）
   if (!state.currentSong) return null;
 
   const duration = state.currentSong.endSec - state.currentSong.startSec;
   const progress = duration > 0 ? (state.currentTime / duration) * 100 : 0;
-
+  
   return (
-    <div className="mini-player">
+    <div 
+      className={`mini-player ${state.isFullPlayerOpen ? 'md:flex hidden' : 'flex'} cursor-pointer select-none`}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button, .SliderRoot, .VolumeSliderRoot')) {
+          return;
+        }
+        toggleFullPlayer();
+      }}
+    >
       {/* シークバー（上部） */}
       <div className="mini-player__seekbar">
         <Slider.Root
@@ -56,8 +66,7 @@ export default function MiniPlayer() {
           max={100}
           step={0.1}
           onValueChange={(val) => {
-            const v = val[0];
-            const seekSec = state.currentSong!.startSec + (v / 100) * duration;
+            const seekSec = state.currentSong!.startSec + (val[0] / 100) * duration;
             seekTo(seekSec);
           }}
         >
@@ -93,10 +102,10 @@ export default function MiniPlayer() {
                 className="scale-90 opacity-60 hover:opacity-100 transition-opacity"
               />
             </div>
-            <span className="mini-player__meta">
+            <span className="mini-player__meta truncate max-w-[150px] md:max-w-none">
               {state.currentSong.channelName}
               {state.currentSong.videoTitle && (
-                <span className="mini-player__video-title"> · {state.currentSong.videoTitle}</span>
+                <span className="mini-player__video-title hidden md:inline"> · {state.currentSong.videoTitle}</span>
               )}
             </span>
           </div>
@@ -151,7 +160,7 @@ export default function MiniPlayer() {
 
           <button
             onClick={toggleLoop}
-            className={`mini-player__btn mini-player__btn--toggle ${state.isLooping ? 'active' : ''}`}
+            className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.isLooping ? 'active' : ''}`}
             title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -161,7 +170,7 @@ export default function MiniPlayer() {
 
           <button
             onClick={toggleMute}
-            className="mini-player__btn"
+            className="hidden md:flex mini-player__btn"
             title={state.isMuted ? T('player.unmute') : T('player.mute')}
           >
             {state.isMuted || state.volume === 0 ? (
@@ -175,18 +184,20 @@ export default function MiniPlayer() {
             )}
           </button>
 
-          <Slider.Root
-            className="VolumeSliderRoot"
-            value={[state.isMuted ? 0 : state.volume]}
-            max={100}
-            step={1}
-            onValueChange={(val) => setVolume(val[0])}
-          >
-            <Slider.Track className="VolumeSliderTrack">
-              <Slider.Range className="VolumeSliderRange" />
-            </Slider.Track>
-            <Slider.Thumb className="VolumeSliderThumb" aria-label="Volume" />
-          </Slider.Root>
+          <div className="hidden md:block">
+            <Slider.Root
+              className="VolumeSliderRoot"
+              value={[state.isMuted ? 0 : state.volume]}
+              max={100}
+              step={1}
+              onValueChange={(val) => setVolume(val[0])}
+            >
+              <Slider.Track className="VolumeSliderTrack">
+                <Slider.Range className="VolumeSliderRange" />
+              </Slider.Track>
+              <Slider.Thumb className="VolumeSliderThumb" aria-label="Volume" />
+            </Slider.Root>
+          </div>
 
           <div className="mini-player__divider" />
 

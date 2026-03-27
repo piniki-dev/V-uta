@@ -79,7 +79,7 @@ export default function HomeClient() {
         
         <div className="container relative z-10 w-full px-6 flex flex-col items-center text-center">
           <motion.h1 
-            className="text-5xl md:text-8xl font-black mb-8 tracking-tighter leading-[1.05]"
+            className="text-4xl md:text-8xl font-black mb-8 tracking-tighter leading-[1.05]"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -171,7 +171,7 @@ export default function HomeClient() {
                 <motion.div key={video.id} variants={itemVariants}>
                   <Link
                     href={`/videos/${video.video_id}`}
-                    className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
+                    className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
                   >
                     <div className="aspect-video relative overflow-hidden">
                       {video.thumbnail_url && (

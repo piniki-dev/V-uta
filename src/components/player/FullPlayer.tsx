@@ -1,20 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
-import { motion } from 'framer-motion';
-import { Music } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic } from 'lucide-react';
 
 export default function FullPlayer() {
   const {
     state,
     play,
     seekTo,
+    pause,
+    resume,
+    nextSong,
+    prevSong,
+    toggleLoop,
+    closeFullPlayer,
   } = usePlayer();
   const { t, T } = useLocale();
   const { isOpen: isSidebarOpen } = useSidebar();
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   if (!state.currentSong) return null;
 
@@ -27,21 +35,199 @@ export default function FullPlayer() {
   };
 
   return (
-    <div className={`full-player ${state.isFullPlayerOpen ? 'open' : 'closed'} ${isSidebarOpen ? 'sidebar-open' : ''} bg-[var(--bg-primary)] overflow-hidden`}>
-      {/* 没入型背景 */}
-      <div className="absolute inset-0 mesh-bg opacity-40 pointer-events-none" />
+    <div className={`full-player animate-in fade-in duration-500 ${state.isFullPlayerOpen ? 'open' : 'closed'} ${isSidebarOpen ? 'sidebar-open' : ''} bg-[var(--bg-primary)] overflow-hidden z-[500]`}>
+      <div className="absolute inset-0 mesh-bg opacity-10 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]/40 pointer-events-none" />
 
-      <div className="full-player__body relative z-10 p-8 md:p-16 h-full flex flex-col md:flex-row gap-12">
+      {/* モバイル版 UI - ライトモード・ダークモード両対応のセマンティックカラーを使用 */}
+      <div className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)]">
+        {/* ヘッダー */}
+        <div className="shrink-0 flex justify-start mb-4 z-20">
+          <button 
+            onClick={closeFullPlayer}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm"
+          >
+            <ChevronDown size={24} />
+          </button>
+        </div>
+
+        {/* メインビジュアル - layoutアニメーションで位置をスムーズに移動 */}
+        <motion.div 
+          layout
+          className={`flex-1 flex justify-center min-h-0 overflow-hidden ${isQueueOpen ? 'items-start mt-2' : 'items-center'}`}
+        >
+          <motion.div 
+            layout
+            id="mobile-video-portal"
+            className="w-full max-h-full aspect-video rounded-[32px] overflow-hidden shadow-2xl ring-1 ring-[var(--border)] relative bg-black"
+          />
+        </motion.div>
+
+        {/* コントロール・曲情報領域 (キューが開いている時は非表示・縮小) */}
+        <AnimatePresence>
+          {!isQueueOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex flex-col shrink-0 overflow-hidden"
+            >
+              {/* 曲名情報 */}
+              <div className="shrink-0 space-y-1 mt-4">
+                <h2 className="text-2xl font-black text-[var(--text-primary)] truncate leading-tight">
+                  {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
+                </h2>
+                <p className="text-lg font-bold text-[var(--text-secondary)] truncate">
+                  {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
+                </p>
+              </div>
+
+              {/* コントロール・シークバー */}
+              <div className="shrink-0 mt-4 mb-12 space-y-8">
+                <div className="space-y-3">
+                   <div className="relative w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+                      <motion.div 
+                        className="absolute top-0 left-0 h-full bg-[var(--accent)] shadow-[0_0_15px_var(--accent-glow)]"
+                        style={{ width: `${duration > 0 ? (state.currentTime / duration) * 100 : 0}%` }}
+                      />
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={duration > 0 ? (state.currentTime / duration) * 100 : 0}
+                        onChange={handleSeek}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                   </div>
+                   <div className="flex justify-between text-[11px] font-bold text-[var(--text-tertiary)] tabular-nums">
+                     <span>{formatTime(state.currentTime)}</span>
+                     <span>{formatTime(duration)}</span>
+                   </div>
+                </div>
+
+                <div className="flex items-center justify-between px-2">
+                   <button className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors">
+                     <Music size={20} className="opacity-0 pointer-events-none" /> {/* Spacer */}
+                   </button>
+                   <div className="flex items-center gap-8">
+                     <button onClick={prevSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
+                       <SkipBack size={32} fill="currentColor" />
+                     </button>
+                     <button 
+                      onClick={state.isPlaying ? pause : resume}
+                      className="w-20 h-20 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                     >
+                       {state.isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
+                     </button>
+                     <button onClick={nextSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
+                       <SkipForward size={32} fill="currentColor" />
+                     </button>
+                   </div>
+                   <button 
+                    onClick={toggleLoop}
+                    className={`transition-colors active:scale-90 ${state.isLooping ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                   >
+                     <Repeat size={24} />
+                   </button>
+                </div>
+              </div>
+
+              {/* キュー引き出しハンドル */}
+              <button 
+                onClick={() => setIsQueueOpen(true)}
+                className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 group"
+              >
+                <div className="w-12 h-1 bg-[var(--border)] rounded-full group-hover:bg-[var(--text-tertiary)] transition-colors" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors flex items-center gap-2">
+                  <ListMusic size={12} /> {T('player.queue')}
+                </span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* モバイルキュー表示 (Bottom Sheet) */}
+        <AnimatePresence>
+          {isQueueOpen && (
+            <>
+              <motion.div 
+                className="absolute inset-0 bg-transparent z-[1010]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsQueueOpen(false)}
+              />
+              <motion.div 
+                className="absolute bottom-0 left-0 right-0 h-[62vh] bg-[var(--bg-secondary)] rounded-t-[40px] z-[1020] flex flex-col shadow-2xl border-t border-white/5"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              >
+                <div className="flex flex-col items-center p-4">
+                  <div className="w-12 h-1 bg-[var(--border)] rounded-full mb-6" />
+                  <h3 className="text-lg font-black text-[var(--text-primary)] self-start px-2 mb-2 flex items-center gap-3">
+                     {T('player.queue')}
+                     <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
+                  {state.playlist.map((song, index) => (
+                    <button
+                      key={`${song.id}-${index}`}
+                      onClick={() => {
+                        play(song, state.playlist);
+                        setIsQueueOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
+                        index === state.currentIndex 
+                          ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm' 
+                          : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
+                      }`}
+                    >
+                      <img src={song.artworkUrl || ''} alt="" className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" />
+                      <div className="flex-1 text-left min-w-0">
+                        <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                          {t(song.title, song.title_en || song.title)}
+                        </div>
+                        <div className="text-[10px] font-bold text-[var(--text-tertiary)] truncate mt-1">
+                          {t(song.artist || '-', song.artist_en || song.artist || '-')}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* デスクトップ版 UI (既存のものを維持しつつ微調整) */}
+      <div className="hidden md:flex full-player__body relative z-10 p-8 md:p-16 h-full flex flex-row gap-12">
+        <button 
+          onClick={closeFullPlayer}
+          className="absolute top-8 left-8 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors z-20 group"
+        >
+          <ChevronDown size={28} className="group-hover:translate-y-0.5 transition-transform" />
+        </button>
+
         {/* 左: YouTube プレイヤー + 曲情報 */}
-        <div className="flex-1 flex flex-col gap-10">
-          <div className="full-player__main relative aspect-video rounded-[40px] overflow-hidden shadow-2xl ring-1 ring-white/10 group">
-            {/* PersistentPlayer will be positioned here when open */}
-            <div className="full-player__video-placeholder w-full h-full bg-black/20 backdrop-blur-3xl animate-pulse" />
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <div 
+            className={`full-player__main relative transition-all duration-500 z-10 ${
+              state.videoRatio === '9/16' ? 'h-[90%]' : 'w-full max-w-6xl'
+            }`}
+            style={{
+              aspectRatio: state.videoRatio === '9/16' ? '9/16' : '16/9'
+            }}
+          >
+            <div className="full-player__video-placeholder w-full h-full" />
           </div>
 
           <motion.div 
-            className="space-y-4"
+            className="space-y-4 md:hidden"
             initial={{ opacity: 0, y: 30 }}
             animate={state.isFullPlayerOpen ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: 0.3, duration: 0.6 }}
@@ -53,29 +239,6 @@ export default function FullPlayer() {
               {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
             </p>
           </motion.div>
-
-          {/* カスタムシークバー */}
-          <div className="space-y-4 mt-auto max-w-3xl">
-            <div className="relative w-full h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden shadow-inner">
-              <motion.div 
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] shadow-[0_0_15px_var(--accent-glow)]"
-                style={{ width: `${(state.currentTime - state.currentSong.startSec) / duration * 100}%` }}
-              />
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="0.1"
-                value={(state.currentTime - state.currentSong.startSec) / duration * 100 || 0}
-                onChange={handleSeek}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-            </div>
-            <div className="flex justify-between text-sm font-black text-[var(--text-tertiary)] tracking-widest tabular-nums uppercase">
-              <span>{formatTime(state.currentTime - state.currentSong.startSec)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
         </div>
 
         {/* 右: 再生リスト (Queue) */}
