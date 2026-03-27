@@ -50,8 +50,8 @@ export const translations = {
       allPlaylists: 'すべてのリスト',
       noPlaylists: 'リストがありません',
       signInToView: 'ログインして表示',
-      search: '検索',
       settings: '設定',
+      channels: 'チャンネル',
     },
     player: {
       previous: '前の曲',
@@ -332,8 +332,8 @@ export const translations = {
       allPlaylists: 'All Playlists',
       noPlaylists: 'No playlists',
       signInToView: 'Sign in to view',
-      search: 'Search',
       settings: 'Settings',
+      channels: 'Channels',
     },
     player: {
       previous: 'Previous',

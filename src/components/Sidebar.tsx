@@ -137,6 +137,11 @@ export default function Sidebar() {
               <span>{T('sidebar.history')}</span>
             </Link>
 
+            <Link href="/channels" className="sidebar__link" onClick={handleLinkClick}>
+              <div className="sidebar__icon-box"><User size={22} /></div>
+              <span>{T('sidebar.channels')}</span>
+            </Link>
+
             <div className="sidebar__divider" />
 
             {/* プレイリストセクション */}
