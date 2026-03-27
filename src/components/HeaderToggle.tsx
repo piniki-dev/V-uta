@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { Menu } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
+import { useHeader } from './HeaderProvider';
 
 export default function HeaderToggle() {
   const { toggle } = useSidebar();
+  const { isMobileSearchActive } = useHeader();
 
   return (
-    <div className="header__left">
+    <div className={`flex items-center gap-5 ${isMobileSearchActive ? 'max-sm:hidden' : ''}`}>
       <button 
         className="header__menu-toggle" 
         onClick={toggle}
@@ -21,12 +23,6 @@ export default function HeaderToggle() {
         <span className="header__logo-text tracking-tighter">V-uta</span>
       </Link>
       <style jsx>{`
-        .header__left {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
         .header__menu-toggle {
           padding: 8px;
           margin-left: 0;
