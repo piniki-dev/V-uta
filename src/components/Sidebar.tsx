@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Menu, X, Home, PlusSquare, ListMusic, ChevronDown, 
-  ChevronRight, LogOut, User, Search, Settings, History 
+  ChevronRight, LogOut, User, Search, Settings, History,
+  Info, FileText, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
@@ -203,6 +204,23 @@ export default function Sidebar() {
                 <div className="sidebar__icon-box"><Settings size={22} /></div>
                 <span>{T('sidebar.settings')}</span>
               </div>
+            </div>
+
+            <div className="sidebar__divider" />
+
+            <div className="sidebar__section mb-8">
+              <Link href="/about" className="sidebar__link" onClick={handleLinkClick}>
+                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><Info size={22} /></div>
+                <span>{T('legal.about')}</span>
+              </Link>
+              <Link href="/terms" className="sidebar__link" onClick={handleLinkClick}>
+                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><FileText size={22} /></div>
+                <span>{T('legal.terms')}</span>
+              </Link>
+              <Link href="/privacy" className="sidebar__link" onClick={handleLinkClick}>
+                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><Shield size={22} /></div>
+                <span>{T('legal.privacy')}</span>
+              </Link>
             </div>
           </nav>
 

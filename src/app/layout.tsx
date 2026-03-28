@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
+import Footer from "@/components/Footer";
 
 const outfit = Outfit({
   variable: "--font-display",
@@ -66,7 +67,10 @@ export default async function RootLayout({
                   <div className="app-layout mesh-bg">
                     <Sidebar />
                     <LayoutWrapper>
-                      <main className="main-content">{children}</main>
+                      <main className="main-content">
+                        {children}
+                        <Footer />
+                      </main>
                     </LayoutWrapper>
                   </div>
                   <MiniPlayer />
