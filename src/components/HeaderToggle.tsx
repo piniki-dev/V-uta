@@ -19,7 +19,7 @@ export default function HeaderToggle() {
         <Menu size={24} />
       </button>
       <Link href="/" className="header__logo font-black">
-        <span className="header__logo-icon">♪</span>
+        <img src="/logo-icon.png" alt="V-uta" className="header__logo-img" />
         <span className="header__logo-text tracking-tighter">V-uta</span>
       </Link>
       <style jsx>{`
@@ -42,23 +42,26 @@ export default function HeaderToggle() {
         .header__logo {
           display: flex;
           align-items: center;
-          gap: 10px;
-          font-family: var(--font-heading);
+          gap: 12px;
+          font-family: var(--font-display);
           font-size: 24px;
-          letter-spacing: -1.2px;
-          font-weight: 900;
+          letter-spacing: -0.5px;
+          font-weight: 800;
         }
 
-        .header__logo-icon {
-          color: var(--accent);
-          font-size: 26px;
+        .header__logo-img {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+          border-radius: 8px;
         }
 
         .header__logo-text {
-          background: linear-gradient(135deg, var(--accent), #a855f7);
+          background: linear-gradient(135deg, #fff, #a855f7);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          line-height: 1;
         }
       `}</style>
     </div>

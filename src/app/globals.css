@@ -232,13 +232,15 @@ input[type="range"]:hover::-webkit-slider-thumb {
   letter-spacing: -1px;
 }
 
-.header__logo-icon {
-  font-size: 22px;
-  color: var(--accent);
+.header__logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .header__logo-text {
-  background: linear-gradient(135deg, var(--accent), #a855f7);
+  background: linear-gradient(135deg, var(--text-primary), #a855f7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
