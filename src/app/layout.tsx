@@ -37,10 +37,51 @@ export async function generateMetadata() {
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
   return {
-    title: `${t.common.siteTitle} | ${t.home.title}`,
+    title: {
+      default: t.common.siteTitle,
+      template: `%s | ${t.common.siteTitle}`,
+    },
     description: t.home.description,
+    keywords: ["VTuber", "歌枠", "YouTube", "歌ってみた", "V-uta", "Music Player"],
+    authors: [{ name: "piniki" }],
+    metadataBase: new URL(baseUrl),
+    alternates: {
+      canonical: '/',
+      languages: {
+        'ja-JP': '/ja',
+        'en-US': '/en',
+      },
+    },
+    openGraph: {
+      title: t.common.siteTitle,
+      description: t.home.description,
+      url: baseUrl,
+      siteName: t.common.siteTitle,
+      locale: locale === 'ja' ? 'ja_JP' : 'en_US',
+      type: 'website',
+      images: [
+        {
+          url: '/logo-icon.png',
+          width: 800,
+          height: 800,
+          alt: t.common.siteTitle,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t.common.siteTitle,
+      description: t.home.description,
+      images: ['/logo-icon.png'],
+    },
+    icons: {
+      icon: '/icon.png',
+      shortcut: '/favicon.ico',
+      apple: '/apple-icon.png',
+    },
   };
 }
 

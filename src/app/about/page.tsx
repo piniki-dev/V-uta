@@ -29,6 +29,11 @@ export default function AboutPage() {
             {T('legal.poweredByYoutube')}
           </p>
         </section>
+
+        <section className="legal-section">
+          <h2>{T('legal.contact')}</h2>
+          <p>{T('legal.aboutContent.contactEmail')}</p>
+        </section>
       </div>
 
       <style jsx>{`
