@@ -350,10 +350,14 @@ VALUES ('contact_attachments', 'contact_attachments', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- オブジェクトへのポリシー
--- 誰でもアップロード可能
+-- 誰でもアップロード可能（画像のみ）
 CREATE POLICY "Allow anyone to upload contact attachments"
 ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'contact_attachments');
+WITH CHECK (
+    bucket_id = 'contact_attachments' AND 
+    (storage.foldername(name))[1] IS NULL AND
+    (storage.extension(name) IN ('jpg', 'jpeg', 'png', 'webp'))
+);
 
 -- 認証済みユーザーのみ参照可能（管理者として自分も認証済みになるため）
 CREATE POLICY "Allow authenticated users to view contact attachments"

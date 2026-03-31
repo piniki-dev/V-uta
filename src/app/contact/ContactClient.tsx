@@ -34,7 +34,13 @@ export default function ContactClient() {
 
     // 5MB 制限
     if (file.size > 5 * 1024 * 1024) {
-      setError('ファイルサイズが大きすぎます (最大 5MB)');
+      setError(T('contact.form.fileSizeError'));
+      return;
+    }
+
+    // 画像ファイル以外のチェック
+    if (!file.type.startsWith('image/')) {
+      setError(T('contact.form.fileTypeError'));
       return;
     }
 
