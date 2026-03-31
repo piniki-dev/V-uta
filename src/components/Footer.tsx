@@ -27,6 +27,7 @@ export default function Footer() {
           
           <nav className="footer__nav">
             <Link href="/about" className="footer__link">{T('legal.about')}</Link>
+            <Link href="/contact" className="footer__link">{T('legal.contact')}</Link>
             <Link href="/terms" className="footer__link">{T('legal.terms')}</Link>
             <Link href="/privacy" className="footer__link">{T('legal.privacy')}</Link>
           </nav>

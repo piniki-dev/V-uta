@@ -318,6 +318,33 @@ export const translations = {
         contactEmail: 'support@v-uta.app',
       },
     },
+    contact: {
+      title: 'お問い合わせ',
+      subtitle: 'バグ報告、ご意見などをお送りください。',
+      form: {
+        name: 'お名前',
+        namePlaceholder: '例: 山田 太郎',
+        email: 'メールアドレス',
+        emailPlaceholder: '例: example@v-uta.com',
+        category: 'お問い合わせ種別',
+        categories: {
+          bug: 'バグ報告',
+          feedback: 'ご意見・ご要望',
+          other: 'その他',
+        },
+        message: 'メッセージ',
+        messagePlaceholder: '詳細を入力してください',
+        image: '画像の添付',
+        imageDesc: 'スクリーンショットなどがあれば添付してください (最大 5MB)',
+        imageRemove: '画像を削除',
+        submit: '送信する',
+        submitting: '送信中...',
+        successTitle: '送信完了',
+        successMessage: 'お問い合わせありがとうございます。内容を確認させていただきます。',
+        errorTitle: '送信失敗',
+        errorMessage: '送信中にエラーが発生しました。時間をおいて再度お試しください。',
+      },
+    },
   },
   en: {
     common: {
@@ -638,7 +665,34 @@ export const translations = {
         contactEmail: 'support@v-uta.app',
       },
     },
+    contact: {
+      title: 'Contact',
+      subtitle: 'Please send us bug reports, feedback, etc.',
+      form: {
+        name: 'Name',
+        namePlaceholder: 'e.g. Taro Yamada',
+        email: 'Email Address',
+        emailPlaceholder: 'e.g. example@v-uta.com',
+        category: 'Inquiry Category',
+        categories: {
+          bug: 'Bug Report',
+          feedback: 'Feedback/Suggestion',
+          other: 'Other',
+        },
+        message: 'Message',
+        messagePlaceholder: 'Please enter details',
+        image: 'Attach Image',
+        imageDesc: 'Attach a screenshot if any (Max 5MB)',
+        imageRemove: 'Remove Image',
+        submit: 'Send Message',
+        submitting: 'Sending...',
+        successTitle: 'Sent Successfully',
+        successMessage: 'Thank you for your inquiry. We will review the details.',
+        errorTitle: 'Failed to Send',
+        errorMessage: 'Sorry, an error occurred while sending. Please try again later.',
+      },
+    },
   },
-};
+} as const;
 
 export type TranslationKeys = typeof translations.ja;

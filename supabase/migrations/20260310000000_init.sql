@@ -147,6 +147,19 @@ CREATE TABLE public.play_history (
   meta_data jsonb -- 将来的な拡張性のため
 );
 
+-- 11. inquiries (お問い合わせ・フィードバック)
+CREATE TABLE public.inquiries (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- ログインユーザーの場合
+  name text,
+  email text,
+  category text CHECK (category IN ('bug', 'feedback', 'other')),
+  message text NOT NULL,
+  image_url text, -- 画像添付用
+  status text DEFAULT 'open' CHECK (status IN ('open', 'close')),
+  created_at timestamptz DEFAULT now()
+);
+
 -- ==========================================
 -- Functions & Triggers
 -- ==========================================
@@ -242,6 +255,7 @@ ALTER TABLE public.songs_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlist_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.play_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
 
 -- 1. productions: 参照全公開、登録はログイン要、更新削除不可
 CREATE POLICY "productions_select_all" ON public.productions FOR SELECT USING (true);
@@ -299,6 +313,9 @@ CREATE POLICY "playlist_items_modify_policy" ON public.playlist_items FOR ALL US
 -- 10. play_history: 自分の履歴のみ参照・追加・削除可能
 CREATE POLICY "play_history_all_policy" ON public.play_history FOR ALL USING (auth.uid() = user_id);
 
+-- 11. inquiries: 誰でも追加可能、参照は制限（ダッシュボード等で確認）
+CREATE POLICY "inquiries_insert_all" ON public.inquiries FOR INSERT WITH CHECK (true);
+
 -- ==========================================
 -- Indexes
 -- ==========================================
@@ -319,6 +336,29 @@ CREATE INDEX idx_playlist_items_song_id ON public.playlist_items(song_id);
 CREATE INDEX idx_play_history_user_id ON public.play_history(user_id);
 CREATE INDEX idx_play_history_song_id ON public.play_history(song_id);
 CREATE INDEX idx_play_history_played_at ON public.play_history(played_at);
+
+CREATE INDEX idx_inquiries_user_id ON public.inquiries(user_id);
+CREATE INDEX idx_inquiries_created_at ON public.inquiries(created_at);
+
+-- ==========================================
+-- Storage Settings
+-- ==========================================
+
+-- バケットの作成
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('contact_attachments', 'contact_attachments', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- オブジェクトへのポリシー
+-- 誰でもアップロード可能
+CREATE POLICY "Allow anyone to upload contact attachments"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'contact_attachments');
+
+-- 認証済みユーザーのみ参照可能（管理者として自分も認証済みになるため）
+CREATE POLICY "Allow authenticated users to view contact attachments"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'contact_attachments' AND auth.role() = 'authenticated');
 
 
 -- ==========================================
