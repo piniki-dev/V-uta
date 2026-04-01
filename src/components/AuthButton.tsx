@@ -40,13 +40,8 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
     return () => subscription.unsubscribe();
   }, [router, supabase]);
 
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  const handleLogin = () => {
+    router.push('/login');
   };
 
   const handleLogout = async () => {
@@ -149,7 +144,7 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
         className={`bg-[var(--text-primary)] text-[var(--bg-primary)] border-none rounded-full px-4 py-2 text-sm font-semibold cursor-pointer items-center gap-2 transition-all hover:scale-105 active:scale-95 ${isMobileSearchActive ? 'hidden sm:flex' : 'flex'}`}
       >
         <LogIn size={18} />
-        {T('auth.signInWithGoogle')}
+        {T('header.login')}
       </button>
     </div>
   );

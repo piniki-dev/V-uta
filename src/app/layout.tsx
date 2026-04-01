@@ -109,7 +109,9 @@ export default async function RootLayout({
                     <Sidebar />
                     <LayoutWrapper>
                       <main className="main-content">
-                        {children}
+                        <div className="flex-1">
+                          {children}
+                        </div>
                         <Footer />
                       </main>
                     </LayoutWrapper>
