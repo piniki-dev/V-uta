@@ -132,6 +132,14 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
         {isMobileSearchActive ? <X size={20} /> : <Search size={20} />}
       </button>
 
+      <button
+        onClick={() => setLocale(locale === 'ja' ? 'en' : 'ja')}
+        className={`p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors ${isMobileSearchActive ? 'hidden sm:flex' : 'flex'}`}
+        title={T('auth.switchLanguage')}
+      >
+        <Languages size={20} />
+      </button>
+
       <button 
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         className={`p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors ${isMobileSearchActive ? 'hidden sm:flex' : 'flex'}`}
