@@ -1976,9 +1976,11 @@ input[type="range"]:hover::-webkit-slider-thumb {
   position: fixed;
   top: var(--header-height);
   left: 0;
-  bottom: var(--player-height);
+  bottom: 0;
   width: var(--sidebar-width);
-  background: var(--bg-primary);
+  background-color: var(--bg-primary);
+  background-image: none !important;
+  opacity: 1 !important;
   border-right: 1px solid var(--border);
   z-index: 900;
   transform: translateX(-100%);

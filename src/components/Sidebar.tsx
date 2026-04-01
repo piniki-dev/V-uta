@@ -15,13 +15,16 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useSidebar } from './SidebarContext';
 import { useLocale } from './LocaleProvider';
+import { usePlayer } from './player/PlayerContext';
 
 export default function Sidebar() {
   const { isOpen, close, toggle } = useSidebar();
+  const { state: playerState } = usePlayer();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { T } = useLocale();
+  const hasPlayer = !!playerState.currentSong;
   const router = useRouter();
   const supabase = createClient();
 
@@ -89,7 +92,10 @@ export default function Sidebar() {
       </AnimatePresence>
 
       <aside className={`sidebar ${isOpen ? 'is-open' : ''}`}>
-        <div className="sidebar__inner custom-scrollbar">
+        <div 
+          className="sidebar__inner custom-scrollbar"
+          style={{ paddingBottom: hasPlayer ? 'var(--player-height)' : '0' }}
+        >
           {/* ヘッダー (モバイル用) */}
           <div className="sidebar__header md:hidden">
             <div className="sidebar__logo">
