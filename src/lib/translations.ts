@@ -181,7 +181,7 @@ export const translations = {
       description: 'YouTubeの歌枠アーカイブから曲の区間を登録します。',
       loginRequired: 'ログインが必要です',
       loginDescription: '歌を登録するには、Google アカウントでのログインが必要です。',
-      loginInstruction: '画面右上の「Google でログイン」ボタンからログインしてください。',
+      loginInstruction: '画面右上の「ログイン」ボタンからログインしてください。',
     },
     songMenu: {
       playNext: '次に再生',
@@ -539,7 +539,7 @@ export const translations = {
       description: 'Register song segments from YouTube stream archives.',
       loginRequired: 'Login Required',
       loginDescription: 'You need to sign in with your Google account to register songs.',
-      loginInstruction: 'Please sign in using the "Sign in with Google" button in the top right corner.',
+      loginInstruction: 'Please sign in using the "Sign in" button in the top right corner.',
     },
     songMenu: {
       playNext: 'Play Next',
