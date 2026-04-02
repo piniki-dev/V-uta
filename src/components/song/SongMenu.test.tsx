@@ -36,7 +36,7 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
 });
 
 // モーダルのモック（ポータルなどの複雑さを避けるため）
-vi.mock('@/app/playlists/PlaylistAddModal', () => ({
+vi.mock('@/components/playlist/PlaylistAddModal', () => ({
   default: () => <div data-testid="playlist-modal">Playlist Modal</div>,
 }));
 
@@ -62,6 +62,7 @@ const mockSong = {
   startSec: 0,
   endSec: 180,
   channelName: 'Test Channel',
+  channelThumbnailUrl: null,
   thumbnailUrl: null,
   videoTitle: 'Test Video',
 };

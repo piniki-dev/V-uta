@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { getPlaylists, createPlaylist, addSongToPlaylist } from './actions';
+import { getPlaylists, createPlaylist, addSongToPlaylist } from '@/app/playlists/actions';
 import type { Playlist } from '@/types';
 import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink, ListMusic } from 'lucide-react';
 import Link from 'next/link';
@@ -34,8 +34,8 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
     setIsLoading(true);
     const result = await getPlaylists();
     if (result.success && result.data) {
-      // 自分のプレイリストのみ表示（追加するため）
-      // 「お気に入りした曲」プレイリストは自動管理なので除外する
+      // 閾ｪ蛻・・繝励Ξ繧､繝ｪ繧ｹ繝医・縺ｿ陦ｨ遉ｺ・郁ｿｽ蜉縺吶ｋ縺溘ａ・・
+      // 縲後♀豌励↓蜈･繧翫＠縺滓峇縲阪・繝ｬ繧､繝ｪ繧ｹ繝医・閾ｪ蜍慕ｮ｡逅・↑縺ｮ縺ｧ髯､螟悶☆繧・
       const filtered = result.data.filter(p => !p.is_favorites);
       setPlaylists(filtered);
     }
@@ -57,7 +57,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
         if (addRes.success) {
           setSuccess(T('playlist.createSuccess'));
           setCreatedPlaylistSlug(createRes.data.slug);
-          // リンクを表示するため、自動で閉じないようにするか時間を延ばす
+          // 繝ｪ繝ｳ繧ｯ繧定｡ｨ遉ｺ縺吶ｋ縺溘ａ縲∬・蜍輔〒髢峨§縺ｪ縺・ｈ縺・↓縺吶ｋ縺区凾髢薙ｒ蟒ｶ縺ｰ縺・
           setTimeout(() => {
             onSuccess?.();
           }, 3000);
@@ -138,7 +138,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate text-[var(--text-primary)]">{playlist.name}</p>
-                      {/* 公開設定を一時的に非表示 */}
+                      {/* 蜈ｬ髢玖ｨｭ螳壹ｒ荳譎ら噪縺ｫ髱櫁｡ｨ遉ｺ */}
                       {/* <p className="text-xs text-[var(--text-tertiary)]">{playlist.is_public ? T('playlist.public') : T('playlist.private')}</p> */}
                     </div>
                     <Plus size={18} className="text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -173,7 +173,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 autoFocus
               />
               <div className="flex items-center justify-between px-1">
-                {/* 公開設定を一時的に非表示 */}
+                {/* 蜈ｬ髢玖ｨｭ螳壹ｒ荳譎ら噪縺ｫ髱櫁｡ｨ遉ｺ */}
                 <label className="hidden items-center gap-2 cursor-pointer select-none group">
                   <div className="relative">
                     <input

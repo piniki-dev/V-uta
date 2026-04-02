@@ -1,5 +1,5 @@
 import { getPlaylistDetail, getFavoritePlaylistDetail } from '../actions';
-import PlaylistDetailClient from './PlaylistDetailClient';
+import PlaylistDetailContent from './PlaylistDetailContent';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
@@ -38,5 +38,5 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  return <PlaylistDetailClient playlist={result.data} />;
+  return <PlaylistDetailContent playlist={result.data} />;
 }

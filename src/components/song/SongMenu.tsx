@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '@/components/player/PlayerContext';
 import type { PlayerSong } from '@/types';
-import PlaylistAddModal from '@/app/playlists/PlaylistAddModal';
+import PlaylistAddModal from '@/components/playlist/PlaylistAddModal';
 import ShareModal from './ShareModal';
 import { useLocale } from '@/components/LocaleProvider';
 

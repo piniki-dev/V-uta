@@ -15,7 +15,7 @@ interface Props {
   playlist: Playlist & { items: any[] };
 }
 
-export default function PlaylistDetailClient({ playlist }: Props) {
+export default function PlaylistDetailContent({ playlist }: Props) {
   const { playWithSource } = usePlayer();
   const { T } = useLocale();
   const { favoriteIds } = useFavorites();
