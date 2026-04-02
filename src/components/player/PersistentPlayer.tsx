@@ -57,7 +57,7 @@ export default function PersistentPlayer() {
           videoWindow.style.height = `${rect.height}px`;
           videoWindow.style.right = 'auto';
           videoWindow.style.bottom = 'auto';
-          videoWindow.style.zIndex = '1002';
+          videoWindow.style.zIndex = '3000';
           videoWindow.style.borderRadius = '32px';
           videoWindow.style.overflow = 'hidden';
         }
@@ -83,7 +83,6 @@ export default function PersistentPlayer() {
       className={`video-window ${state.isFullPlayerOpen ? 'video-window--full' : 'video-window--pip'} ${isSidebarOpen ? 'sidebar-open' : ''}`}
       data-full={state.isFullPlayerOpen}
       data-pip-position={state.pipPosition}
-      data-zoomed={state.isZoomed}
       data-video-ratio={state.videoRatio}
       data-video-ratio-mode={state.videoRatioMode}
     >

@@ -36,7 +36,6 @@ export default function MiniPlayer() {
     seekTo,
     toggleFullPlayer,
     setPipPosition,
-    toggleZoom,
     setVideoRatioMode,
   } = usePlayer();
   const { t, T } = useLocale();
@@ -52,30 +51,35 @@ export default function MiniPlayer() {
     <div 
       className={`mini-player ${state.isFullPlayerOpen ? '!hidden md:!flex' : 'flex'} cursor-pointer select-none`}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button, .SliderRoot, .VolumeSliderRoot')) {
+        const target = e.target as HTMLElement;
+        // 要素がすでにDOMから取り除かれている、またはボタンやスライダー等の操作要素内の場合は無視
+        if (!target.isConnected || target.closest('button, [role="menuitem"], [data-radix-collection-item], .SliderRoot, .VolumeSliderRoot')) {
           return;
         }
         toggleFullPlayer();
       }}
     >
       {/* シークバー（上部） */}
-      <div className="mini-player__seekbar">
-        <Slider.Root
-          className="SliderRoot"
-          value={[progress]}
-          max={100}
-          step={0.1}
-          onValueChange={(val) => {
-            const seekSec = state.currentSong!.startSec + (val[0] / 100) * duration;
-            seekTo(seekSec);
-          }}
-        >
-          <Slider.Track className="SliderTrack">
-            <Slider.Range className="SliderRange" />
-          </Slider.Track>
-          <Slider.Thumb className="SliderThumb" aria-label="Seek" />
-        </Slider.Root>
-      </div>
+       <div 
+         className="mini-player__seekbar"
+         onClick={(e) => e.stopPropagation()}
+       >
+         <Slider.Root
+           className="SliderRoot"
+           value={[progress]}
+           max={100}
+           step={0.1}
+           onValueChange={(val) => {
+             const seekSec = state.currentSong!.startSec + (val[0] / 100) * duration;
+             seekTo(seekSec);
+           }}
+         >
+           <Slider.Track className="SliderTrack">
+             <Slider.Range className="SliderRange" />
+           </Slider.Track>
+           <Slider.Thumb className="SliderThumb" aria-label="Seek" />
+         </Slider.Root>
+       </div>
 
       {/* メインコンテンツ */}
       <div className="mini-player__content">
@@ -114,18 +118,20 @@ export default function MiniPlayer() {
         {/* 中央: 再生コントロール */}
         <div className="mini-player__controls">
           <button
-            onClick={prevSong}
+            onClick={(e) => { e.stopPropagation(); prevSong(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="mini-player__btn"
             title={T('player.previous')}
             disabled={state.playlist.length <= 1}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="20" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
             </svg>
           </button>
 
           <button
-            onClick={() => (state.isPlaying ? pause() : resume())}
+            onClick={(e) => { e.stopPropagation(); state.isPlaying ? pause() : resume(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="mini-player__btn mini-player__btn--play"
             title={state.isPlaying ? T('player.pause') : T('player.play')}
           >
@@ -141,12 +147,13 @@ export default function MiniPlayer() {
           </button>
 
           <button
-            onClick={nextSong}
+            onClick={(e) => { e.stopPropagation(); nextSong(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="mini-player__btn"
             title={T('player.next')}
             disabled={state.playlist.length <= 1}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="20" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
             </svg>
           </button>
@@ -159,7 +166,8 @@ export default function MiniPlayer() {
           </span>
 
           <button
-            onClick={toggleLoop}
+            onClick={(e) => { e.stopPropagation(); toggleLoop(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.isLooping ? 'active' : ''}`}
             title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
           >
@@ -169,7 +177,8 @@ export default function MiniPlayer() {
           </button>
 
           <button
-            onClick={toggleMute}
+            onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="hidden md:flex mini-player__btn"
             title={state.isMuted ? T('player.unmute') : T('player.mute')}
           >
@@ -184,7 +193,11 @@ export default function MiniPlayer() {
             )}
           </button>
 
-          <div className="hidden md:block">
+          <div 
+            className="hidden md:block"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <Slider.Root
               className="VolumeSliderRoot"
               value={[state.isMuted ? 0 : state.volume]}
@@ -202,21 +215,14 @@ export default function MiniPlayer() {
           <div className="mini-player__divider" />
 
           {/* ズーム切り替え (フルプレーヤー中のみ) */}
-          {state.isFullPlayerOpen && (
-            <button
-              onClick={toggleZoom}
-              className={`mini-player__btn ${state.isZoomed ? 'active' : ''}`}
-              title={state.isZoomed ? T('player.zoomOff') : T('player.zoomOn')}
-            >
-              <Crop size={18} />
-            </button>
-          )}
 
           {/* アスペクト比切り替え (フルプレーヤー中のみ) */}
           {state.isFullPlayerOpen && (
             <DropdownMenu.Root modal={false}>
               <DropdownMenu.Trigger asChild>
                 <button 
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className={`mini-player__btn ${state.videoRatioMode !== 'auto' ? 'active' : ''}`}
                   title={T('player.aspectRatio')}
                 >
@@ -229,6 +235,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.videoRatioMode === 'auto' ? 'active' : ''}`}
                     onSelect={() => setVideoRatioMode('auto')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <LayoutPanelLeft size={16} />
                     <span>{T('player.ratioAuto')}</span>
@@ -236,6 +243,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.videoRatioMode === '16/9' ? 'active' : ''}`}
                     onSelect={() => setVideoRatioMode('16/9')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Monitor size={16} />
                     <span>{T('player.ratio169')}</span>
@@ -243,6 +251,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.videoRatioMode === '9/16' ? 'active' : ''}`}
                     onSelect={() => setVideoRatioMode('9/16')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Smartphone size={16} />
                     <span>{T('player.ratio916')}</span>
@@ -257,6 +266,8 @@ export default function MiniPlayer() {
             <DropdownMenu.Root modal={false}>
               <DropdownMenu.Trigger asChild>
                 <button 
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className="mini-player__btn" 
                   title={T('player.changePosition')}
                 >
@@ -269,6 +280,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'top-left' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('top-left')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <ArrowUpLeft size={16} />
                     <span>{T('player.topLeft')}</span>
@@ -276,6 +288,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'top-right' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('top-right')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <ArrowUpRight size={16} />
                     <span>{T('player.topRight')}</span>
@@ -283,6 +296,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'bottom-left' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('bottom-left')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <ArrowDownLeft size={16} />
                     <span>{T('player.bottomLeft')}</span>
@@ -290,6 +304,7 @@ export default function MiniPlayer() {
                   <DropdownMenu.Item 
                     className={`pip-menu-item ${state.pipPosition === 'bottom-right' ? 'active' : ''}`}
                     onSelect={() => setPipPosition('bottom-right')}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <ArrowDownRight size={16} />
                     <span>{T('player.bottomRight')}</span>
@@ -301,7 +316,8 @@ export default function MiniPlayer() {
 
           {/* フルプレーヤートグル (1番右) */}
           <button
-            onClick={toggleFullPlayer}
+            onClick={(e) => { e.stopPropagation(); toggleFullPlayer(); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className={`mini-player__btn ${state.isFullPlayerOpen ? 'active' : ''}`}
             title={state.isFullPlayerOpen ? T('player.closePlayer') : T('player.openPlayer')}
           >

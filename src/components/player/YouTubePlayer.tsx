@@ -50,14 +50,18 @@ export default function YouTubePlayer() {
   const stopRef = useRef(stop);
   const setTimeRef = useRef(setTime);
 
-  // Refs を最新状態に同期（これらは描画に影響しないため Effect で更新）
+  // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
     isLoopingRef.current = state.isLooping;
     currentSongRef.current = state.currentSong;
+  }, [state.isLooping, state.currentSong]);
+ 
+  // コールバック関数は最新のものを保持
+  useEffect(() => {
     nextSongRef.current = nextSong;
     stopRef.current = stop;
     setTimeRef.current = setTime;
-  }, [state.isLooping, state.currentSong, nextSong, stop, setTime]);
+  }, [nextSong, stop, setTime]);
 
   // YouTube Player 初期化
   useEffect(() => {

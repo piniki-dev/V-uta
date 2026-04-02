@@ -1427,8 +1427,8 @@ input[type="range"]:hover::-webkit-slider-thumb {
 /* ===== Video Window (Persistent Player) ===== */
 .video-window {
   position: fixed;
-  z-index: 550;
-  /* FullPlayer(500) < VideoWindow(550) */
+  z-index: 3000;
+  /* FullPlayer(500) < VideoWindow(3000) */
   transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
   background: var(--bg-primary);
@@ -1532,26 +1532,6 @@ input[type="range"]:hover::-webkit-slider-thumb {
   transition: border-radius 0.4s, box-shadow 0.4s;
 }
 
-/* Zoomed (Fill) mode */
-.video-window--full[data-zoomed="true"] {
-  background: black;
-}
-
-.video-window--full[data-zoomed="true"] .video-window__inner {
-  overflow: hidden;
-}
-
-.video-window--full[data-zoomed="true"] #yt-player {
-  max-width: none !important;
-  width: auto !important;
-  height: auto !important;
-  min-width: 100% !important;
-  min-height: 100% !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-
 /* PiP Positions Responsive */
 @media (max-width: 768px) {
   .video-window--pip[data-pip-position="bottom-right"] {
@@ -1586,7 +1566,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  z-index: 1000;
+  z-index: 4000;
   backdrop-filter: blur(10px);
 }
 
