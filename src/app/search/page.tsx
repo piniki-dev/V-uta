@@ -1,4 +1,4 @@
-import SearchClient from './SearchClient';
+import SearchView from './SearchView';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
@@ -89,12 +89,16 @@ export default async function SearchPage({
     channels = channelsData.data || [];
   }
 
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+
   return (
-    <SearchClient 
+    <SearchView 
       query={query ? decodeURIComponent(query) : ''} 
       songs={songs} 
       videos={videos}
-      channels={channels} 
+      channels={channels}
+      locale={locale}
     />
   );
 }
