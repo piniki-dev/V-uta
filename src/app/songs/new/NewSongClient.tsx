@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useTransition, useCallback, useEffect, useRef, useMemo } from 'react';
-import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from './actions';
+import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, updateSong, deleteSong, updateSongMaster } from './actions';
 import type { ITunesSearchResult } from './actions';
 import type { YouTubeVideoMetadata, Video, Song, Production } from '@/types';
 import { formatTime, parseTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
-import { updateSong, deleteSong, updateSongMaster, searchSongForEdit } from '@/app/videos/[videoId]/edit/actions';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -655,7 +654,7 @@ export default function NewSongClient() {
 
     const country = locale === 'en' ? 'us' : 'jp';
     const lang = locale === 'en' ? 'en_us' : 'ja_jp';
-    const result = await searchSongForEdit(item.searchQuery, country, lang);
+    const result = await searchSongAction(item.searchQuery, country, lang);
 
     setAllSongs((prev) =>
       prev.map((it, i) =>
