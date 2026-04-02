@@ -250,6 +250,9 @@ export const translations = {
       noMore: 'これ以上の履歴はありません',
       playedAt: '再生時刻',
     },
+    channels: {
+      description: '登録されているVTuberのチャンネル一覧です。お気に入りのVTuberを見つけましょう。',
+    },
     editSong: {
       pageTitle: '曲の編集',
       updateSuccess: '区間を更新しました',
@@ -607,6 +610,9 @@ export const translations = {
       description: 'A list of songs you recently listened to.',
       noMore: 'No more history',
       playedAt: 'Played At',
+    },
+    channels: {
+      description: 'A list of registered VTuber channels. Find your favorite VTubers.',
     },
     editSong: {
       pageTitle: 'Edit Songs',

@@ -1,5 +1,5 @@
 import { getChannels } from './actions';
-import ChannelsClient from './ChannelsClient';
+import ChannelsView from './ChannelsView';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 
@@ -10,7 +10,7 @@ export async function generateMetadata() {
 
   return {
     title: `${t.sidebar.channels} | ${t.common.siteTitle}`,
-    description: '登録されているVTuberのチャンネル一覧です。',
+    description: t.channels.description,
   };
 }
 
@@ -18,8 +18,13 @@ export default async function ChannelsPage() {
   const result = await getChannels();
 
   if (!result.success) {
-    return <ChannelsClient initialData={null} error={result.error} />;
+    return (
+      <div className="container py-24 text-center">
+        <h2 className="text-2xl font-bold text-[var(--error)] mb-4">Error Occurred</h2>
+        <p className="text-[var(--text-secondary)]">{result.error}</p>
+      </div>
+    );
   }
 
-  return <ChannelsClient initialData={result.data} error={null} />;
+  return <ChannelsView channels={result.data || []} />;
 }
