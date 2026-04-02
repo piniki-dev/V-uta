@@ -1,5 +1,5 @@
 import { getPlayHistory } from './actions';
-import HistoryClient from './HistoryClient';
+import HistoryView from './HistoryView';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 
@@ -25,7 +25,13 @@ export default async function HistoryPage() {
     redirect('/');
   }
 
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
+  
   const result = await getPlayHistory(50, 0);
 
-  return <HistoryClient initialHistory={result.success ? result.data || [] : []} />;
+  const initialHistory = result.success ? (result.data || []) : [];
+
+  return <HistoryView initialHistory={initialHistory} t={t} />;
 }

@@ -1,37 +1,52 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { clearPlayHistory, getPlayHistory } from './actions';
 import type { PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
-import { formatTime } from '@/lib/utils';
-import { Play, Trash2, History, ExternalLink, Calendar, Clock } from 'lucide-react';
-import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-import SongMenu from '@/components/song/SongMenu';
-import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
-import Hero from '@/components/Hero';
+import { getPlayHistory } from '@/app/history/actions';
+import SongList from '@/components/song/SongList';
+import { motion } from 'framer-motion';
+import { Clock, Calendar } from 'lucide-react';
+import Link from 'next/link';
 
-interface Props {
+interface HistoryListProps {
   initialHistory: any[];
 }
 
-export default function HistoryClient({ initialHistory }: Props) {
-  const { playWithSource, state } = usePlayer();
-  const { t, locale, T } = useLocale();
+export default function HistoryList({ initialHistory }: HistoryListProps) {
+  const { playWithSource } = usePlayer();
+  const { locale, T } = useLocale();
   const [history, setHistory] = useState(initialHistory);
-  const [isClearing, setIsClearing] = useState(false);
   const [offset, setOffset] = useState(initialHistory.length);
   const [hasMore, setHasMore] = useState(initialHistory.length === 50);
   const [isLoading, setIsLoading] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
+  const toPlayerSong = (item: any): PlayerSong => {
+    const song = item.songs;
+    return {
+      id: song.id,
+      title: song.master_songs.title,
+      artist: song.master_songs.artist,
+      title_en: song.master_songs.title_en || null,
+      artist_en: song.master_songs.artist_en || null,
+      artworkUrl: song.master_songs.artwork_url,
+      videoId: song.videos.video_id,
+      startSec: song.start_sec,
+      endSec: song.end_sec,
+      channelName: song.videos.channels?.name || null,
+      channelThumbnailUrl: song.videos.channels?.image || null,
+      thumbnailUrl: song.videos.thumbnail_url || null,
+      videoTitle: song.videos.title,
+      playedAt: item.played_at
+    };
+  };
+
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
     
     setIsLoading(true);
-    // 取得件数を50件に固定
     const limit = 50;
     const result = await getPlayHistory(limit, offset);
     
@@ -65,42 +80,9 @@ export default function HistoryClient({ initialHistory }: Props) {
     return () => observer.disconnect();
   }, [loadMore, hasMore, isLoading]);
 
-  const toPlayerSong = (item: any): PlayerSong => {
-    const song = item.songs;
-    return {
-      id: song.id,
-      title: song.master_songs.title,
-      artist: song.master_songs.artist,
-      title_en: song.master_songs.title_en || null,
-      artist_en: song.master_songs.artist_en || null,
-      artworkUrl: song.master_songs.artwork_url,
-      videoId: song.videos.video_id,
-      startSec: song.start_sec,
-      endSec: song.end_sec,
-      channelName: song.videos.channels?.name || null,
-      channelThumbnailUrl: song.videos.channels?.image || null,
-      thumbnailUrl: song.videos.thumbnail_url || null,
-      videoTitle: song.videos.title,
-      playedAt: item.played_at
-    };
-  };
-
   const handlePlayHistory = (item: any) => {
     const song = toPlayerSong(item);
-    playWithSource(song, [song], 'history', item.id);
-  };
-
-  const handleClearAll = async () => {
-    if (!confirm(T('history.clearConfirm'))) return;
-    
-    setIsClearing(true);
-    const result = await clearPlayHistory();
-    if (result.success) {
-      setHistory([]);
-    } else {
-      alert(result.error);
-    }
-    setIsClearing(false);
+    playWithSource(song, [song], 'history', String(item.id));
   };
 
   // 日付ごとにグループ化
@@ -147,32 +129,7 @@ export default function HistoryClient({ initialHistory }: Props) {
   } as const;
 
   return (
-    <div className="min-h-screen">
-      <Hero
-        title={T('history.pageTitle')}
-        description={T('history.pageDescription')}
-        icon={<History size={60} />}
-        actions={
-          <AnimatePresence>
-            {history.length > 0 && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                onClick={handleClearAll}
-                disabled={isClearing}
-                className="flex items-center gap-2 px-6 py-3 bg-[var(--bg-elevated)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 font-bold rounded-2xl border border-[var(--border)] hover:border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
-              >
-                <Trash2 size={18} />
-                {T('history.clearAll')}
-              </motion.button>
-            )}
-          </AnimatePresence>
-        }
-      />
-
-      <div className="container mx-auto px-6 py-12 pb-48">
-
+    <div className="container mx-auto px-6 py-12 pb-48">
       {history.length === 0 ? (
         <motion.div 
           className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl p-20 text-center flex flex-col items-center gap-6"
@@ -232,6 +189,5 @@ export default function HistoryClient({ initialHistory }: Props) {
         </motion.div>
       )}
     </div>
-  </div>
   );
 }
