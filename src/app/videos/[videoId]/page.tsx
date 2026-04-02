@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import type { Video, Song } from '@/types';
-import ArchiveClient from './ArchiveClient';
+import ArchiveView from './ArchiveView';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 
@@ -68,7 +68,7 @@ export default async function ArchivePage({ params }: Props) {
     .order('start_sec', { ascending: true });
 
   return (
-    <ArchiveClient
+    <ArchiveView
       video={video as Video}
       songs={(songs || []) as Song[]}
     />
