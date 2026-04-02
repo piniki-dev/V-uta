@@ -1,30 +1,31 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
-import { useLocale } from '@/components/LocaleProvider';
+import { translations } from '@/lib/translations';
+import { cookies } from 'next/headers';
 import Hero from '@/components/Hero';
 
-export default function NotFound() {
-  const { T } = useLocale();
+export default async function NotFound() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center">
       <Hero
         centered
         badge="404"
-        title={T('common.notFoundTitle')}
-        description={T('common.notFoundText')}
+        title={t.common.notFoundTitle}
+        description={t.common.notFoundText}
         actions={
-          <Link href="/" className="btn btn--primary btn--lg">
+          <Link href="/" className="btn btn--primary btn--lg items-center">
             <Home size={20} className="mr-2" />
-            {T('common.backToHome')}
+            {t.common.backToHome}
           </Link>
         }
       />
 
-      <style jsx>{`
+      <style>{`
         .btn {
           display: inline-flex;
           align-items: center;

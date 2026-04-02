@@ -1,6 +1,4 @@
-'use client';
-
-import { motion } from 'framer-motion';
+import React from 'react';
 
 interface SkeletonProps {
   className?: string;
@@ -22,17 +20,20 @@ export default function Skeleton({ className = '', width, height, variant = 'rec
       className={`${baseStyles} ${variantStyles[variant]} ${className}`}
       style={{ width, height }}
     >
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent shadow-[inset_-20px_0_20px_rgba(255,255,255,0.02)]"
-        animate={{
-          x: ['-100%', '100%'],
-        }}
-        transition={{
-          duration: 1.5,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
+      <div className="skeleton-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent shadow-[inset_-20px_0_20px_rgba(255,255,255,0.02)]" />
+      <style>{`
+        .skeleton-shimmer {
+          animation: shimmer 1.5s linear infinite;
+        }
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </div>
   );
 }

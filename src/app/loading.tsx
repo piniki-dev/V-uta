@@ -1,13 +1,14 @@
-'use client';
-
 import Skeleton from '@/components/Skeleton';
-import { useLocale } from '@/components/LocaleProvider';
+import { translations } from '@/lib/translations';
+import { cookies } from 'next/headers';
 
-export default function Loading() {
-  const { T } = useLocale();
+export default async function Loading() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
 
   return (
-    <div className="w-full flex flex-col p-6 md:p-12 animate-in fade-in duration-500">
+    <div className="w-full flex flex-col p-6 md:p-12 animate-loading-in">
       {/* ヒーローセクション風スケルトン */}
       <div className="mb-12">
         <Skeleton variant="text" className="w-48 h-10 mb-4" />
@@ -34,11 +35,11 @@ export default function Loading() {
         ))}
       </div>
 
-      <style jsx>{`
-        .animate-in {
-          animation: fadeIn 0.5s ease-out;
+      <style>{`
+        .animate-loading-in {
+          animation: fadeInLoading 0.5s ease-out both;
         }
-        @keyframes fadeIn {
+        @keyframes fadeInLoading {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
