@@ -1,11 +1,10 @@
-import Skeleton from '@/components/Skeleton';
-import { translations } from '@/lib/translations';
-import { cookies } from 'next/headers';
+'use client';
 
-export default async function Loading() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+import Skeleton from '@/components/Skeleton';
+import { useLocale } from '@/components/LocaleProvider';
+
+export default function Loading() {
+  const { T } = useLocale();
 
   return (
     <div className="w-full flex flex-col p-6 md:p-12 animate-loading-in">
@@ -35,7 +34,7 @@ export default async function Loading() {
         ))}
       </div>
 
-      <style>{`
+      <style jsx>{`
         .animate-loading-in {
           animation: fadeInLoading 0.5s ease-out both;
         }
