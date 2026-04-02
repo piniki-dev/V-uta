@@ -107,13 +107,8 @@ export default function NewSongClient() {
 
   const [isCoverVideo, setIsCoverVideo] = useState(false);
 
-  // 歌ってみた動画モードの自動入力
-  useEffect(() => {
-    if (isCoverVideo && metadata) {
-      setStartTime('0:00');
-      setEndTime(formatTime(metadata.duration));
-    }
-  }, [isCoverVideo, metadata]);
+
+  // 変更があるかどうか
 
   // 一括モード用
   const [batchArchives, setBatchArchives] = useState<BatchArchive[]>([]);
@@ -171,16 +166,6 @@ export default function NewSongClient() {
     }
   }, [initialUrl]);
 
-  // 開始時間変更時に曲の長さから終了時間を自動入力
-  useEffect(() => {
-    if (!selectedSong || !startTime) {
-      return;
-    }
-    const startSec = parseTime(startTime);
-    if (!startSec || isNaN(startSec) || selectedSong.durationSec <= 0) return;
-    const endSec = startSec + selectedSong.durationSec;
-    setEndTime(formatTime(endSec));
-  }, [startTime, selectedSong]);
 
   const handleFetchVideo = (manualUrl?: string, batchIndex?: number, batchData?: BatchArchive[]) => {
     const targetUrl = manualUrl || url;
@@ -195,7 +180,13 @@ export default function NewSongClient() {
         return;
       }
       setMetadata(result.data.metadata);
-      setIsCoverVideo(!result.data.metadata.isStream); // 自動判定
+      const isActuallyCover = !result.data.metadata.isStream;
+      setIsCoverVideo(isActuallyCover); // 自動判定
+
+      if (isActuallyCover) {
+        setStartTime('0:00');
+        setEndTime(formatTime(result.data.metadata.duration));
+      }
 
       const convertedSongs: EditableSong[] = result.data.existingSongs.map(song => ({
         id: song.id,
@@ -393,6 +384,14 @@ export default function NewSongClient() {
     setSearchResults([]);
     setSearchQuery('');
     setIsManualInput(false);
+
+    // 開始時間があり、曲に長さがある場合は終了時間を自動計算
+    if (startTime && track.durationSec > 0) {
+      const startSec = parseTime(startTime);
+      if (startSec !== null) {
+        setEndTime(formatTime(startSec + track.durationSec));
+      }
+    }
   };
 
   const handleManualSongSelect = () => {
@@ -905,7 +904,14 @@ export default function NewSongClient() {
                         <input
                           type="checkbox"
                           checked={isCoverVideo}
-                          onChange={(e) => setIsCoverVideo(e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setIsCoverVideo(checked);
+                            if (checked && metadata) {
+                              setStartTime('0:00');
+                              setEndTime(formatTime(metadata.duration));
+                            }
+                          }}
                           className="sr-only peer"
                         />
                         <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff4e8e]"></div>
@@ -1063,7 +1069,17 @@ export default function NewSongClient() {
                         id="start-time"
                         type="text"
                         value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStartTime(val);
+                          // 曲が選択されており、正しい形式の数値なら終了時間を自動計算
+                          if (selectedSong && selectedSong.durationSec > 0) {
+                            const s = parseTime(val);
+                            if (s !== null) {
+                              setEndTime(formatTime(s + selectedSong.durationSec));
+                            }
+                          }
+                        }}
                         placeholder="m:ss or h:mm:ss"
                         className="form-input"
                         disabled={isPending}
