@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { translations } from '@/lib/translations';
+import { useRouter } from 'next/navigation';
 
 type Locale = 'ja' | 'en';
 
@@ -19,6 +20,7 @@ const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('ja');
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const savedLocale = localStorage.getItem('vuta-locale') as Locale;
@@ -43,6 +45,8 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     document.cookie = `vuta-locale=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
     // lang 属性を更新
     document.documentElement.lang = newLocale;
+    // サーバーコンポーネントを再描画
+    router.refresh();
   };
 
   const t = (ja: string, en: string) => {
