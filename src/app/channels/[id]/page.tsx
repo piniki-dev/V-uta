@@ -1,5 +1,5 @@
 import { getChannelWithVideos } from '@/app/songs/new/actions';
-import ChannelClient from './ChannelClient';
+import ChannelView from './ChannelView';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
@@ -39,8 +39,13 @@ export default async function ChannelPage({ params }: PageProps) {
     if (result.error.includes('見つかりませんでした')) {
       notFound();
     }
-    return <ChannelClient initialData={null} error={result.error} />;
+    return (
+      <div className="container" style={{ paddingTop: '100px', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--error)' }}>Error Occurred</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>{result.error}</p>
+      </div>
+    );
   }
 
-  return <ChannelClient initialData={result.data} error={null} />;
+  return <ChannelView initialData={result.data} />;
 }
