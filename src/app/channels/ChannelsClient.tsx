@@ -51,7 +51,7 @@ export default function ChannelsClient({ initialData, error }: ChannelsClientPro
   } as const;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={T('sidebar.channels')}
         description="登録されているVTuberのチャンネル一覧です。お気に入りのVTuberを見つけましょう。"

@@ -108,7 +108,7 @@ export default function PlaylistDetailClient({ playlist }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       {/* プレイリストヘッダー */}
       <Hero
         title={

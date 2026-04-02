@@ -721,7 +721,7 @@ export default function NewSongClient() {
 
   return (
     <>
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={T('newSong.pageTitle')}
         description={T('newSong.pageDescription')}

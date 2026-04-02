@@ -147,7 +147,7 @@ export default function HistoryClient({ initialHistory }: Props) {
   } as const;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={T('history.pageTitle')}
         description={T('history.pageDescription')}

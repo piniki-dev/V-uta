@@ -109,7 +109,7 @@ export default function ChannelClient({ initialData, error }: { initialData: any
   } as const;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={channel.name}
         image={channel.image || undefined}

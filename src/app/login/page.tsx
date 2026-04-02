@@ -86,7 +86,7 @@ export default function LoginPage() {
   }, [mounted, initializeGoogleSignIn]);
 
   return (
-    <div className="w-full bg-[var(--bg-primary)] flex items-start justify-center p-6 pt-24 pb-24 relative overflow-hidden">
+    <div className="w-full min-h-[calc(100vh-var(--header-height)-120px)] flex items-center justify-center p-6 py-12 relative overflow-hidden">
       <Script 
         src="https://accounts.google.com/gsi/client" 
         strategy="afterInteractive"

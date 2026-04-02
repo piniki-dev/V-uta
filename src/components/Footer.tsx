@@ -40,10 +40,21 @@ export default function Footer() {
 
       <style jsx>{`
         .footer {
-          padding: 64px 0 32px;
-          background: rgba(var(--bg-primary-rgb), 0.5);
-          border-top: 1px solid var(--border);
+          padding: 80px 0 32px;
+          background: linear-gradient(to bottom, transparent, rgba(var(--bg-primary-rgb), 0.4) 80px, rgba(var(--bg-primary-rgb), 0.6));
           margin-top: auto;
+          position: relative;
+        }
+
+        .footer::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(to right, transparent, var(--border), transparent);
+          opacity: 0.5;
         }
 
         .footer__inner {

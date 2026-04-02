@@ -60,7 +60,7 @@ export default function PlaylistsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={T('playlist.manage')}
         description={T('playlist.subtitle')}

@@ -66,7 +66,7 @@ export default function HomeClient() {
   } as const;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       {/* プレミアムヒーローセクション */}
       <motion.section 
         className="relative overflow-hidden border-b border-[var(--border)] py-24 md:py-32 mb-12 mesh-bg"

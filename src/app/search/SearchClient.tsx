@@ -37,7 +37,7 @@ export default function SearchClient({ query, songs, videos, channels }: SearchC
   } as const;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen">
       <Hero
         title={T('search.title')}
         description={
