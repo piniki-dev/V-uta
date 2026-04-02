@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Menu, X, Home, PlusSquare, ListMusic, ChevronDown, 
-  ChevronRight, LogOut, User, Search, Settings, History,
-  Info, FileText, Shield
+  ChevronRight, LogOut, User, History,
+  Info, FileText, Shield, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
@@ -17,11 +17,11 @@ import { useSidebar } from './SidebarContext';
 import { useLocale } from './LocaleProvider';
 import { usePlayer } from './player/PlayerContext';
 
-export default function Sidebar() {
+export default function Sidebar({ initialUser }: { initialUser: SupabaseUser | null }) {
   const { isOpen, close, toggle } = useSidebar();
   const { state: playerState } = usePlayer();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
+  const [user, setUser] = useState<SupabaseUser | null>(initialUser);
+  const [isPlaylistOpen, setIsPlaylistOpen] = useState(!!initialUser);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { T } = useLocale();
   const hasPlayer = !!playerState.currentSong;
@@ -139,10 +139,17 @@ export default function Sidebar() {
               <span>{T('sidebar.addSong')}</span>
             </Link>
 
-            <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
-              <div className="sidebar__icon-box"><History size={22} /></div>
-              <span>{T('sidebar.history')}</span>
-            </Link>
+            {user ? (
+              <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
+                <div className="sidebar__icon-box"><History size={22} /></div>
+                <span>{T('sidebar.history')}</span>
+              </Link>
+            ) : (
+              <div className="sidebar__link opacity-40 cursor-not-allowed select-none" title={T('common.loginRequired')}>
+                <div className="sidebar__icon-box"><History size={22} /></div>
+                <span>{T('sidebar.history')}</span>
+              </div>
+            )}
 
             <Link href="/channels" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><User size={22} /></div>
@@ -152,10 +159,11 @@ export default function Sidebar() {
             <div className="sidebar__divider" />
 
             {/* プレイリストセクション */}
-            <div className="sidebar__section">
+            <div className={`sidebar__section ${!user ? 'opacity-40 pointer-events-none' : ''}`}>
               <button 
                 className="sidebar__link w-full"
                 onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
+                disabled={!user}
               >
                 <div className="sidebar__icon-box"><ListMusic size={22} /></div>
                 <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
@@ -201,31 +209,14 @@ export default function Sidebar() {
 
             <div className="sidebar__divider" />
 
-            <div className="sidebar__section">
-              <div className="sidebar__link opacity-40 cursor-not-allowed">
-                <div className="sidebar__icon-box"><Search size={22} /></div>
-                <span>{T('sidebar.search')}</span>
-              </div>
-              <div className="sidebar__link opacity-40 cursor-not-allowed">
-                <div className="sidebar__icon-box"><Settings size={22} /></div>
-                <span>{T('sidebar.settings')}</span>
-              </div>
-            </div>
-
-            <div className="sidebar__divider" />
-
             <div className="sidebar__section mb-8">
               <Link href="/about" className="sidebar__link" onClick={handleLinkClick}>
-                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><Info size={22} /></div>
+                <div className="sidebar__icon-box"><Info size={22} /></div>
                 <span>{T('legal.about')}</span>
               </Link>
-              <Link href="/terms" className="sidebar__link" onClick={handleLinkClick}>
-                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><FileText size={22} /></div>
-                <span>{T('legal.terms')}</span>
-              </Link>
-              <Link href="/privacy" className="sidebar__link" onClick={handleLinkClick}>
-                <div className="sidebar__icon-box"><Search size={22} className="opacity-0 w-0" /><Shield size={22} /></div>
-                <span>{T('legal.privacy')}</span>
+              <Link href="/contact" className="sidebar__link" onClick={handleLinkClick}>
+                <div className="sidebar__icon-box"><Mail size={22} /></div>
+                <span>{T('contact.title')}</span>
               </Link>
             </div>
           </nav>

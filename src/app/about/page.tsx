@@ -2,7 +2,7 @@
 
 import Hero from '@/components/Hero';
 import { useLocale } from '@/components/LocaleProvider';
-import { Info, MessageCircle } from 'lucide-react';
+import { Info, MessageCircle, Shield, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -25,6 +25,39 @@ export default function AboutPage() {
           <p className="mt-4">
             {T('legal.poweredByYoutube')}
           </p>
+        </section>
+
+        <section className="mt-16 bg-gradient-to-br from-[var(--bg-secondary)] to-transparent border border-[var(--border)] rounded-3xl p-8 md:p-12">
+          <h2 className="text-xl font-bold mb-8 flex items-center gap-3">
+            <Shield size={24} className="text-[var(--accent)]" />
+            {T('legal.terms')} & {T('legal.privacy')}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Link 
+              href="/terms"
+              className="flex items-center gap-4 p-6 bg-[var(--bg-tertiary)]/50 hover:bg-[var(--bg-tertiary)] rounded-2xl border border-[var(--border)] transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                <FileText size={24} />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-[var(--text-primary)]">{T('legal.terms')}</div>
+                <div className="text-xs text-[var(--text-tertiary)]">Terms of Service</div>
+              </div>
+            </Link>
+            <Link 
+              href="/privacy"
+              className="flex items-center gap-4 p-6 bg-[var(--bg-tertiary)]/50 hover:bg-[var(--bg-tertiary)] rounded-2xl border border-[var(--border)] transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
+                <Shield size={24} />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-[var(--text-primary)]">{T('legal.privacy')}</div>
+                <div className="text-xs text-[var(--text-tertiary)]">Privacy Policy</div>
+              </div>
+            </Link>
+          </div>
         </section>
 
         <section className="mt-16 bg-gradient-to-br from-[var(--accent)]/10 to-transparent border border-[var(--accent)]/20 text-center rounded-3xl p-8 md:p-12 relative overflow-hidden">

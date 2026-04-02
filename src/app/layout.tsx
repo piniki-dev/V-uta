@@ -11,6 +11,7 @@ import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
+import { createClient } from "@/utils/supabase/server";
 
 const outfit = Outfit({
   variable: "--font-display",
@@ -95,6 +96,8 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -106,7 +109,7 @@ export default async function RootLayout({
                 <SidebarProvider>
                   <Header />
                   <div className="app-layout mesh-bg">
-                    <Sidebar />
+                    <Sidebar initialUser={user} />
                     <LayoutWrapper>
                       <main className="main-content">
                         <div className="flex-1">
