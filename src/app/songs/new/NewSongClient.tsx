@@ -128,6 +128,49 @@ export default function NewSongClient() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasChanges]);
 
+  // クライアントサイドナビゲーションの監視（サイドバーやヘッダーのリンクなど）
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      // クリックされた要素から最も近い a タグを探す
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+
+      if (anchor && hasChanges) {
+        const href = anchor.getAttribute('href');
+        const targetAttr = anchor.getAttribute('target');
+
+        // 内部リンク（# で始まらず、http で始まらない）かつ、別タブ表示でない場合にガード
+        if (
+          href && 
+          !href.startsWith('#') && 
+          !href.startsWith('http') && 
+          (!targetAttr || targetAttr === '_self')
+        ) {
+          // 遷移を差し止める
+          e.preventDefault();
+          e.stopPropagation();
+
+          // 確認モーダルの内容をセットして表示
+          setModalConfig({
+            title: T('newSong.confirmDiscard'),
+            message: T('newSong.discardMessage'),
+            confirmText: T('newSong.move'),
+            cancelText: T('common.cancel'),
+            type: 'warning',
+          });
+          setOnConfirmAction(() => () => {
+            router.push(href);
+          });
+          setIsModalOpen(true);
+        }
+      }
+    };
+
+    // キャプチャフェーズでイベントを捕捉して、Next.js の Link コンポーネントの挙動より先に割り込む
+    window.addEventListener('click', handleAnchorClick, true);
+    return () => window.removeEventListener('click', handleAnchorClick, true);
+  }, [hasChanges, router, T]);
+
   // バッチアイテムへの移動
   const navigateToBatchItem = (index: number) => {
     if (index < 0 || index >= batchArchives.length) return;
