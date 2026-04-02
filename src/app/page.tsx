@@ -1,4 +1,4 @@
-import HomeClient from './HomeClient';
+import Home from './Home';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 
@@ -14,5 +14,5 @@ export async function generateMetadata() {
 }
 
 export default async function HomePage() {
-  return <HomeClient />;
+  return <Home />;
 }
