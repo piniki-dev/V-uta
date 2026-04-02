@@ -314,6 +314,7 @@ export const translations = {
         intro: '本規約は、piniki（以下「本開発者」といいます）が提供するサービス「V-uta」（以下「本サービス」といいます）の利用条件を定めるものです。',
         youtube: '本サービスは YouTube API Services を利用しています。ユーザーは、本サービスを利用することで、YouTube 利用規約（https://www.youtube.com/t/terms）に同意したものとみなされます。',
         prohibited: '商用利用、不正アクセス、著作権侵害、および YouTube 規約に反する行為を禁止します。',
+        youtubeTitle: 'YouTube 利用規約',
       },
       privacyContent: {
         title: 'プライバシーポリシー',
@@ -322,6 +323,9 @@ export const translations = {
         googleLink: 'ユーザーデータの収集・利用については、Google プライバシーポリシー（http://www.google.com/policies/privacy）を併せてご確認ください。',
         revocation: 'ユーザーは、Google セキュリティ設定ページ（https://security.google.com/settings/security/permissions）から、本サービスによるデータへのアクセス権をいつでも取り消すことができます。',
         dataUsage: '本サービスは、楽曲のお気に入り保存や再生履歴の同期のために、Google アカウントの基本情報を取得・利用します。これらのデータは本サービスの機能提供以外の目的には使用しません。',
+        youtubeTitle: 'YouTube サービス',
+        revocationTitle: 'ユーザーデータの削除・アクセス権の取り消し',
+        usageTitle: 'データの利用目的',
       },
       aboutContent: {
         title: 'V-uta について',
@@ -675,6 +679,7 @@ export const translations = {
         intro: 'These terms govern the use of "V-uta" (hereafter "the Service") provided by piniki (hereafter "the Developer").',
         youtube: 'The Service uses YouTube API Services. By using the Service, users agree to be bound by the YouTube Terms of Service (https://www.youtube.com/t/terms).',
         prohibited: 'Commercial use, unauthorized access, copyright infringement, and actions violating YouTube terms are prohibited.',
+        youtubeTitle: 'YouTube Terms',
       },
       privacyContent: {
         title: 'Privacy Policy',
@@ -683,6 +688,9 @@ export const translations = {
         googleLink: 'Please also refer to the Google Privacy Policy (http://www.google.com/policies/privacy) regarding data collection and usage.',
         revocation: 'Users can revoke the Service\'s access to their data via the Google Security Settings page (https://security.google.com/settings/security/permissions).',
         dataUsage: 'The Service retrieves and uses basic Google account information for saving favorites and syncing history. This data is not used for purposes other than providing Service features.',
+        youtubeTitle: 'YouTube Services',
+        revocationTitle: 'Data Access Revocation',
+        usageTitle: 'Data Usage',
       },
       aboutContent: {
         title: 'About V-uta',

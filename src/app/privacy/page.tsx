@@ -1,88 +1,67 @@
-'use client';
-
+import { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { translations } from '@/lib/translations';
 import Hero from '@/components/Hero';
-import { useLocale } from '@/components/LocaleProvider';
 import { Shield } from 'lucide-react';
 
-export default function PrivacyPage() {
-  const { T } = useLocale();
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
+
+  return {
+    title: `${t.legal.privacy} | ${t.common.siteTitle}`,
+    description: t.legal.privacyContent.intro,
+  };
+}
+
+export default async function PrivacyPage() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
 
   return (
-    <div className="legal-page">
+    <div className="min-h-screen pb-20">
       <Hero 
-        title={T('legal.privacy')}
-        description={T('legal.privacyContent.intro')}
+        title={t.legal.privacy}
+        description={t.legal.privacyContent.intro}
         icon={<Shield size={48} />}
         centered
       />
 
-      <div className="container page-content">
-        <section className="legal-section">
-          <h2>YouTube Services</h2>
-          <p>{T('legal.privacyContent.youtubeApi')}</p>
-          <p className="mt-4">{T('legal.privacyContent.googleLink')}</p>
+      <div className="container mx-auto px-6 py-16 max-w-3xl">
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-5 font-heading">{t.legal.privacyContent.youtubeTitle}</h2>
+          <p className="text-base leading-relaxed text-[var(--text-secondary)] break-words">{t.legal.privacyContent.youtubeApi}</p>
+          <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)] break-words">{t.legal.privacyContent.googleLink}</p>
           <a 
             href="http://www.google.com/policies/privacy" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-accent underline hover:text-accent-hover block mt-4"
+            className="text-[var(--accent)] underline hover:text-[var(--accent-hover)] block mt-4 transition-colors"
           >
-            {T('legal.googlePrivacy')}
+            {t.legal.googlePrivacy}
           </a>
         </section>
 
-        <section className="legal-section">
-          <h2>Data Access Revocation</h2>
-          <p>{T('legal.privacyContent.revocation')}</p>
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-5 font-heading">{t.legal.privacyContent.revocationTitle}</h2>
+          <p className="text-base leading-relaxed text-[var(--text-secondary)] break-words">{t.legal.privacyContent.revocation}</p>
           <a 
             href="https://security.google.com/settings/security/permissions" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-accent underline hover:text-accent-hover block mt-4"
+            className="text-[var(--accent)] underline hover:text-[var(--accent-hover)] block mt-4 transition-colors"
           >
-            {T('legal.revokeAccess')}
+            {t.legal.revokeAccess}
           </a>
         </section>
 
-        <section className="legal-section">
-          <h2>Data Usage</h2>
-          <p>{T('legal.privacyContent.dataUsage')}</p>
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-5 font-heading">{t.legal.privacyContent.usageTitle}</h2>
+          <p className="text-base leading-relaxed text-[var(--text-secondary)] break-words">{t.legal.privacyContent.dataUsage}</p>
         </section>
       </div>
-
-      <style jsx>{`
-        .legal-page {
-          min-height: 100vh;
-        }
-        .page-content {
-          padding: 64px 24px;
-          max-width: 800px;
-          margin: 0 auto;
-        }
-        .legal-section {
-          margin-bottom: 48px;
-        }
-        h2 {
-          font-family: var(--font-heading);
-          font-size: 24px;
-          font-weight: 700;
-          margin-bottom: 20px;
-          color: var(--text-primary);
-        }
-        p {
-          font-size: 16px;
-          line-height: 1.8;
-          color: var(--text-secondary);
-          word-break: break-word;
-        }
-        .text-accent {
-          color: var(--accent);
-          transition: color var(--transition);
-        }
-        .mt-4 {
-          margin-top: 16px;
-        }
-      `}</style>
     </div>
   );
 }
