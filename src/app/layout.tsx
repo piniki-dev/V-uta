@@ -84,8 +84,20 @@ export async function generateMetadata() {
       shortcut: '/favicon.ico',
       apple: '/apple-icon.png',
     },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: t.common.siteTitle,
+    },
+    formatDetection: {
+      telephone: false,
+    },
   };
 }
+
+export const viewport = {
+  themeColor: '#0f0f0f',
+};
 
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
