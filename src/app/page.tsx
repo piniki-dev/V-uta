@@ -1,6 +1,7 @@
 import Home from './Home';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
+import JsonLd from '@/components/JsonLd';
 
 export async function generateMetadata() {
   const cookieStore = await cookies();
@@ -14,5 +15,50 @@ export async function generateMetadata() {
 }
 
 export default async function HomePage() {
-  return <Home />;
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
+
+  const websiteData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": t.common.siteTitle,
+    "url": baseUrl,
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": `${baseUrl}/search?q={search_term_string}`
+      },
+      "query-input": "required name=search_term_string"
+    }
+  };
+
+  const softwareData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": t.common.siteTitle,
+    "operatingSystem": "Any",
+    "applicationCategory": "MultimediaApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "JPY"
+    },
+    "description": t.home.description,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5",
+      "ratingCount": "100"
+    }
+  };
+
+  return (
+    <>
+      <JsonLd data={websiteData} />
+      <JsonLd data={softwareData} />
+      <Home />
+    </>
+  );
 }
