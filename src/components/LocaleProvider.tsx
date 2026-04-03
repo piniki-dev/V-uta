@@ -95,8 +95,32 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
 export function useLocale() {
   const context = useContext(LocaleContext);
+  
   if (context === undefined) {
-    throw new Error('useLocale must be used within a LocaleProvider');
+    // コンテキストが見つからない場合（404ページなど）のフォールバック
+    const defaultLocale: Locale = 'ja';
+    const T = (keyPath: string): string => {
+      const keys = keyPath.split('.');
+      let current: any = translations[defaultLocale];
+      for (const key of keys) {
+        if (current && current[key] !== undefined) {
+          current = current[key];
+        } else {
+          return keyPath;
+        }
+      }
+      return typeof current === 'string' ? current : keyPath;
+    };
+
+    return {
+      locale: defaultLocale,
+      setLocale: () => {},
+      isJa: true,
+      isEn: false,
+      t: (ja: string, en: string) => ja,
+      T,
+    } as LocaleContextType;
   }
+  
   return context;
 }

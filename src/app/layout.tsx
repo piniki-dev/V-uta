@@ -64,25 +64,16 @@ export async function generateMetadata() {
       siteName: t.common.siteTitle,
       locale: locale === 'ja' ? 'ja_JP' : 'en_US',
       type: 'website',
-      images: [
-        {
-          url: '/logo-icon.png',
-          width: 800,
-          height: 800,
-          alt: t.common.siteTitle,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: t.common.siteTitle,
       description: t.home.description,
-      images: ['/logo-icon.png'],
     },
     icons: {
       icon: '/icon.png',
       shortcut: '/favicon.ico',
-      apple: '/apple-icon.png',
+      apple: '/icon.png',
     },
     appleWebApp: {
       capable: true,

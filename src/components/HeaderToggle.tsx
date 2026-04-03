@@ -19,7 +19,7 @@ export default function HeaderToggle() {
         <Menu size={24} />
       </button>
       <Link href="/" className="header__logo font-black">
-        <img src="/logo-icon.png" alt="V-uta" className="header__logo-img" />
+        <img src="/icon.svg" alt="V-uta" className="header__logo-img" />
         <span className="header__logo-text tracking-tighter">V-uta</span>
       </Link>
       <style jsx>{`

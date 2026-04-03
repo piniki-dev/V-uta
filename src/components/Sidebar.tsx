@@ -94,7 +94,7 @@ export default function Sidebar({
           {/* ヘッダー (モバイル用) */}
           <div className="sidebar__header md:hidden">
             <div className="sidebar__logo">
-              <img src="/logo-icon.png" alt="V-uta" className="header__logo-img" />
+              <img src="/icon.svg" alt="V-uta" className="header__logo-img" />
               <span className="header__logo-text text-xl">V-uta</span>
             </div>
             <button className="sidebar__close" onClick={close}>
