@@ -12,6 +12,7 @@ import LayoutWrapper from "@/components/LayoutWrapper";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
 import { createClient } from "@/utils/supabase/server";
+import { getPlaylists } from "@/app/playlists/actions";
 
 const outfit = Outfit({
   variable: "--font-display",
@@ -98,6 +99,8 @@ export default async function RootLayout({
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const playlistsRes = await getPlaylists();
+  const initialPlaylists = playlistsRes.success ? playlistsRes.data || [] : [];
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -109,7 +112,7 @@ export default async function RootLayout({
                 <SidebarProvider>
                   <Header />
                   <div className="app-layout mesh-bg">
-                    <Sidebar initialUser={user} />
+                    <Sidebar initialUser={user} initialPlaylists={initialPlaylists} />
                     <LayoutWrapper>
                       <main className="main-content">
                         <div className="flex-1">

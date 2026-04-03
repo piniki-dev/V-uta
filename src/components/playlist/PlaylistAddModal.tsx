@@ -6,6 +6,7 @@ import type { Playlist } from '@/types';
 import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink, ListMusic } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from '@/components/LocaleProvider';
+import { useRouter } from 'next/navigation';
 
 
 interface Props {
@@ -25,6 +26,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
   const [success, setSuccess] = useState('');
   const [createdPlaylistSlug, setCreatedPlaylistSlug] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   useEffect(() => {
     loadPlaylists();
@@ -53,6 +55,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
       }
 
       if (createRes.data) {
+        router.refresh();
         const addRes = await addSongToPlaylist(createRes.data.id, songId);
         if (addRes.success) {
           setSuccess(T('playlist.createSuccess'));

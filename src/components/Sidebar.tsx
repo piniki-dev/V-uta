@@ -17,12 +17,18 @@ import { useSidebar } from './SidebarContext';
 import { useLocale } from './LocaleProvider';
 import { usePlayer } from './player/PlayerContext';
 
-export default function Sidebar({ initialUser }: { initialUser: SupabaseUser | null }) {
+export default function Sidebar({ 
+  initialUser, 
+  initialPlaylists 
+}: { 
+  initialUser: SupabaseUser | null,
+  initialPlaylists: Playlist[]
+}) {
   const { isOpen, close, toggle } = useSidebar();
   const { state: playerState } = usePlayer();
   const [user, setUser] = useState<SupabaseUser | null>(initialUser);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(!!initialUser);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const playlists = initialPlaylists;
   const { T } = useLocale();
   const hasPlayer = !!playerState.currentSong;
   const router = useRouter();
@@ -42,18 +48,7 @@ export default function Sidebar({ initialUser }: { initialUser: SupabaseUser | n
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  useEffect(() => {
-    if (user) {
-      loadPlaylists();
-    }
-  }, [user]);
-
-  const loadPlaylists = async () => {
-    const res = await getPlaylists();
-    if (res.success && res.data) {
-      setPlaylists(res.data);
-    }
-  };
+  // プレイリストの読み込みはサーバーサイドに移行したため削除
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
