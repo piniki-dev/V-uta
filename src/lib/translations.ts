@@ -732,3 +732,34 @@ export const translations = {
 } as const;
 
 export type TranslationKeys = typeof translations.ja;
+
+export function getT(locale: 'ja' | 'en') {
+  const t_data = translations[locale];
+  
+  return (key: string, params?: Record<string, any>): string => {
+    const keys = key.split('.');
+    let current: any = t_data;
+    
+    for (const k of keys) {
+      if (current[k] !== undefined) {
+        current = current[k];
+      } else {
+        return key;
+      }
+    }
+    
+    let result = typeof current === 'string' ? current : key;
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
+      });
+    }
+    
+    return result;
+  };
+}
+
+export function getStaticT(locale: 'ja' | 'en') {
+  return (ja: string, en: string) => locale === 'ja' ? ja : en;
+}

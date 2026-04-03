@@ -1,10 +1,12 @@
-'use client';
-
 import Link from 'next/link';
-import { useLocale } from './LocaleProvider';
+import { cookies } from 'next/headers';
+import { getT } from '@/lib/translations';
+import './Footer.css';
 
-export default function Footer() {
-  const { T } = useLocale();
+export default async function Footer() {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const T = getT(locale);
 
   return (
     <footer className="footer">
@@ -37,115 +39,6 @@ export default function Footer() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .footer {
-          padding: 80px 0 32px;
-          background: linear-gradient(to bottom, transparent, rgba(var(--bg-primary-rgb), 0.4) 80px, rgba(var(--bg-primary-rgb), 0.6));
-          margin-top: auto;
-          position: relative;
-        }
-
-        .footer::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(to right, transparent, var(--border), transparent);
-          opacity: 0.5;
-        }
-
-        .footer__inner {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-        }
-
-        .footer__top {
-          max-width: 600px;
-          margin-bottom: 40px;
-        }
-
-        .footer__logo {
-          font-family: var(--font-heading);
-          font-size: 24px;
-          font-weight: 800;
-          margin-bottom: 16px;
-        }
-
-        .footer__logo-text {
-          background: linear-gradient(135deg, var(--accent), #a855f7);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .footer__description {
-          font-size: 14px;
-          color: var(--text-secondary);
-          line-height: 1.6;
-        }
-
-        .footer__divider {
-          width: 100%;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, var(--border), transparent);
-          margin-bottom: 32px;
-        }
-
-        .footer__bottom {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 24px;
-        }
-
-        @media (min-width: 769px) {
-          .footer__bottom {
-            flex-direction: row;
-            justify-content: space-between;
-          }
-        }
-
-        .footer__copyright {
-          font-size: 13px;
-          color: var(--text-tertiary);
-        }
-
-        .footer__nav {
-          display: flex;
-          gap: 24px;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-
-        .footer__link {
-          font-size: 13px;
-          color: var(--text-secondary);
-          transition: color var(--transition);
-        }
-
-        .footer__link:hover {
-          color: var(--accent);
-        }
-
-        .footer__attribution {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .footer__yt-text {
-          font-size: 12px;
-          color: var(--text-tertiary);
-          font-weight: 500;
-          letter-spacing: 0.5px;
-        }
-      `}</style>
     </footer>
   );
 }
