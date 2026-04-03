@@ -27,6 +27,9 @@ type PlayerAction =
   | { type: 'SET_VIDEO_RATIO'; ratio: string }
   | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' };
 
+// ===== Constants =====
+const VOLUME_STORAGE_KEY = 'vuta-player-volume';
+
 // ===== Reducer =====
 
 const initialState: PlayerState = {
@@ -198,8 +201,20 @@ export function usePlayer(): PlayerContextType {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
+  const isMounted = useRef(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // 音量の初期ロード (クライアントサイドのみ)
+  useEffect(() => {
+    const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (savedVolume !== null) {
+      const vol = Number(savedVolume);
+      if (!isNaN(vol)) {
+        dispatch({ type: 'SET_VOLUME', volume: vol });
+      }
+    }
+  }, []);
 
   // ページ遷移時にフルプレイヤーを閉じる
   useEffect(() => {
@@ -398,6 +413,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const setVolume = useCallback((volume: number) => {
     dispatch({ type: 'SET_VOLUME', volume });
+    localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
     if (playerRef.current) {
       playerRef.current.setVolume(volume);
       if (volume > 0) playerRef.current.unMute();
