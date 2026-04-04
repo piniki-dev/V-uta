@@ -13,6 +13,8 @@ import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
 import { createClient } from "@/utils/supabase/server";
 import { getPlaylists } from "@/app/playlists/actions";
+import { Analytics } from "@vercel/analytics/react";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const outfit = Outfit({
   variable: "--font-display",
@@ -133,6 +135,10 @@ export default async function RootLayout({
             </FavoritesProvider>
           </ThemeProvider>
         </LocaleProvider>
+        <Analytics />
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+        )}
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import type { PlayerSong } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
+import { sendGAEvent } from '@next/third-parties/google';
 
 interface Props {
   song: PlayerSong;
@@ -38,7 +39,11 @@ export default function ShareModal({ song, onClose, trackNumber }: Props) {
 
   const handleCopy = () => {
     if (!appUrl) return;
-    navigator.clipboard.writeText(appUrl);
+    sendGAEvent('event', 'share_song', {
+      song_id: song.id,
+      song_title: song.title,
+      method: 'copy_url',
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -86,6 +91,13 @@ export default function ShareModal({ song, onClose, trackNumber }: Props) {
               href={xIntentUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => {
+                sendGAEvent('event', 'share_song', {
+                  song_id: song.id,
+                  song_title: song.title,
+                  method: 'x_post',
+                });
+              }}
               className="flex items-center justify-center gap-3 w-full py-3.5 bg-[var(--text-primary)] text-[var(--bg-primary)] font-black rounded-2xl hover:opacity-90 transition-all active:scale-[0.98]"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

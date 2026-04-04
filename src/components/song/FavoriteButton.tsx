@@ -4,6 +4,7 @@ import React, { useTransition } from 'react';
 import { Heart } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
 import { useFavorites } from '@/components/FavoritesProvider';
+import { sendGAEvent } from '@next/third-parties/google';
 
 interface FavoriteButtonProps {
   songId: number;
@@ -28,6 +29,13 @@ export default function FavoriteButton({
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isPending) return;
+
+    // お気に入り登録時のみイベントを送信
+    if (!isFavorited) {
+      sendGAEvent('event', 'favorite_song', {
+        song_id: songId,
+      });
+    }
 
     startTransition(async () => {
       await toggleFavorite(songId);

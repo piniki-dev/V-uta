@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useCallback, useRef, useE
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { PlayerSong, PlayerState, PipPosition } from '@/types';
 import { recordPlayHistory, updatePlayDuration } from '@/app/history/actions';
+import { sendGAEvent } from '@next/third-parties/google';
 
 // ===== Actions =====
 
@@ -333,6 +334,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => { ignore = true; };
   }, [state.currentSong, state.playSessionKey, state.sourceType, state.sourceId, state.isPlaying]);
 
+  // GA4: 完走イベントの記録
+  const lastRecordedCompletionKey = useRef<number>(-1);
+  useEffect(() => {
+    if (state.currentSong && state.playSessionKey !== lastRecordedCompletionKey.current) {
+      const metrics = getPlaybackMetrics();
+      if (metrics.isCompleted) {
+        lastRecordedCompletionKey.current = state.playSessionKey;
+        sendGAEvent('event', 'complete_song', {
+          song_id: state.currentSong.id,
+          song_title: state.currentSong.title,
+          artist_name: state.currentSong.channelName,
+        });
+      }
+    }
+  }, [state.currentSong, state.playSessionKey, state.currentTime, getPlaybackMetrics]);
+
   // アンマウント時のみ最終再生時間を保存
   const cleanupRefs = useRef({ historyId: state.currentHistoryId, currentTime: state.currentTime });
   
@@ -372,6 +389,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       sourceType: isContinuingContext ? (state.sourceType || undefined) : undefined,
       sourceId: isContinuingContext ? (state.sourceId || undefined) : undefined
     });
+
+    sendGAEvent('event', 'play_song', {
+      song_id: song.id,
+      song_title: song.title,
+      artist_name: song.channelName,
+      source_type: isContinuingContext ? state.sourceType : 'direct',
+    });
   }, [state.currentHistoryId, state.playlist, state.sourceType, state.sourceId, getPlaybackMetrics]);
 
   const playWithSource = useCallback((song: PlayerSong, playlist?: PlayerSong[], sourceType?: string, sourceId?: string) => {
@@ -381,6 +405,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         ...getPlaybackMetrics()
       });
     }
+
+    sendGAEvent('event', 'play_song', {
+      song_id: song.id,
+      song_title: song.title,
+      artist_name: song.channelName,
+      source_type: sourceType || 'direct',
+      source_id: sourceId,
+    });
+
     dispatch({ type: 'PLAY', song, playlist, sourceType, sourceId });
   }, [state.currentHistoryId, getPlaybackMetrics]);
 
