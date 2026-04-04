@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { RefreshCcw, Home } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import { useLocale } from '@/components/LocaleProvider';
 import Hero from '@/components/Hero';
 import Link from 'next/link';
@@ -18,6 +19,7 @@ export default function Error({
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Global Error Boundary:', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
