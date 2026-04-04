@@ -4,6 +4,38 @@ import SongMenu from './SongMenu';
 import { PlayerProvider } from '@/components/player/PlayerContext';
 import { LocaleProvider } from '@/components/LocaleProvider';
 
+// LocaleProvider のモック
+vi.mock('@/components/LocaleProvider', () => ({
+  useLocale: () => ({
+    T: (key: string) => {
+      const keys: Record<string, string> = {
+        'songMenu.playNext': '次に再生',
+        'songMenu.addToQueue': '再生リストの最後に追加',
+        'songMenu.addToPlaylist': 'プレイリストに追加',
+        'songMenu.share': '共有',
+        'songMenu.openInYoutube': 'YouTubeで開く',
+      };
+      return keys[key] || key;
+    },
+    t: (ja: string, en: string) => ja,
+  }),
+  LocaleProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+// Next.js Navigation のモック
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // PlayerContext のモック
 vi.mock('@/components/player/PlayerContext', async () => {
   const actual = await vi.importActual('@/components/player/PlayerContext');
