@@ -272,8 +272,15 @@ export const translations = {
       heroSub1: '歌枠アーカイブから歌区間だけを抽出して連続再生。',
       heroSub2: 'お気に入りの歌を見つけよう。',
       registerBtn: '歌を登録する',
-      recentArchives: '最近のアーカイブ',
+      recentArchives: '最近追加されたアーカイブ',
       recentSongs: '最近追加された曲',
+      songRanking: '楽曲ランキング',
+      popularChannels: '人気のチャンネル',
+      rankingPeriods: {
+        daily: '24時間',
+        weekly: '7日',
+        monthly: '30日',
+      },
       noArchives: 'まだアーカイブが登録されていません。',
       registerFirst: '最初の歌を登録してみましょう！',
       title: 'VTuber 歌枠プレイヤー',
@@ -632,13 +639,20 @@ export const translations = {
       searchPlaceholder: 'Search by song title...',
     },
     home: {
-      heroTitle1: 'VTuber Songs,',
+      heroTitle1: 'VTuber Songs',
       heroTitle2: 'Made Easier.',
       heroSub1: 'Extract and play song segments from stream archives.',
       heroSub2: 'Find your favorite songs.',
       registerBtn: 'Register Song',
-      recentArchives: 'Recent Archives',
+      recentArchives: 'Recently Added Archives',
       recentSongs: 'Recently Added Songs',
+      songRanking: 'Song Ranking',
+      popularChannels: 'Popular Channels',
+      rankingPeriods: {
+        daily: '24h',
+        weekly: '7d',
+        monthly: '30d',
+      },
       noArchives: 'No archives registered yet.',
       registerFirst: 'Try registering the first song!',
       title: 'VTuber Karaoke Player',
@@ -735,11 +749,11 @@ export type TranslationKeys = typeof translations.ja;
 
 export function getT(locale: 'ja' | 'en') {
   const t_data = translations[locale];
-  
+
   return (key: string, params?: Record<string, any>): string => {
     const keys = key.split('.');
     let current: any = t_data;
-    
+
     for (const k of keys) {
       if (current[k] !== undefined) {
         current = current[k];
@@ -747,15 +761,15 @@ export function getT(locale: 'ja' | 'en') {
         return key;
       }
     }
-    
+
     let result = typeof current === 'string' ? current : key;
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
       });
     }
-    
+
     return result;
   };
 }
