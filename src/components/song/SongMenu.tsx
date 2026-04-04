@@ -19,9 +19,10 @@ import { useLocale } from '@/components/LocaleProvider';
 interface SongMenuProps {
   song: PlayerSong;
   trigger?: React.ReactNode;
+  trackNumber?: number;
 }
 
-export default function SongMenu({ song, trigger }: SongMenuProps) {
+export default function SongMenu({ song, trigger, trackNumber }: SongMenuProps) {
   const { addSongNext, addSongLast } = usePlayer();
   const { t, T } = useLocale();
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -131,6 +132,7 @@ export default function SongMenu({ song, trigger }: SongMenuProps) {
       {showShareModal && (
         <ShareModal
           song={song}
+          trackNumber={trackNumber}
           onClose={() => setShowShareModal(false)}
         />
       )}

@@ -202,6 +202,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
   const isMounted = useRef(false);
+  const isFirstMount = useRef(true);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -218,6 +219,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // ページ遷移時にフルプレイヤーを閉じる
   useEffect(() => {
+    // 初回マウント（ランディング時）は無視する
+    // これにより共有リンクからの自動再生時にプレイヤーが即座に閉じるのを防ぐ
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     if (state.isFullPlayerOpen) {
       dispatch({ type: 'CLOSE_FULL_PLAYER' });
     }

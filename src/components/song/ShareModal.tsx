@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import type { PlayerSong } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
@@ -8,27 +9,47 @@ import { useLocale } from '@/components/LocaleProvider';
 interface Props {
   song: PlayerSong;
   onClose: () => void;
+  trackNumber?: number;
 }
 
-export default function ShareModal({ song, onClose }: Props) {
+export default function ShareModal({ song, onClose, trackNumber }: Props) {
   const { T } = useLocale();
   const [copied, setCopied] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // YouTubeのタイムスタンプ付きURL
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // アプリ内の共有用URL (クライアントサイドでのみ生成)
+  // トラック番号がある場合はそれを優先し、ない場合は songId を使用
+  const appUrl = isMounted 
+    ? trackNumber
+      ? `${window.location.origin}/videos/${song.videoId}?track=${trackNumber}`
+      : `${window.location.origin}/videos/${song.videoId}?songId=${song.id}`
+    : '';
+  
+  // YouTubeのタイムスタンプ付きURL (サブ用途)
   const youtubeUrl = `https://youtu.be/${song.videoId}?t=${song.startSec}`;
   
   // X (Twitter) 投稿用のテキスト
   const shareText = `${song.title} / ${song.artist || '不明'} - ${song.videoTitle || '動画'} / ${song.channelName || '不明'} #V_uta`;
-  const xIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(youtubeUrl)}`;
+  const xIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(youtubeUrl);
+    if (!appUrl) return;
+    navigator.clipboard.writeText(appUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+  if (!isMounted) return null;
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div 
         className="w-full max-w-sm bg-[var(--bg-primary)] border border-[var(--border)] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
@@ -76,7 +97,7 @@ export default function ShareModal({ song, onClose }: Props) {
             {/* URLコピー */}
             <div className="relative group">
               <div className="flex items-center gap-2 p-1.5 pl-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl focus-within:border-[var(--accent)] transition-colors">
-                <span className="text-xs text-[var(--text-tertiary)] truncate flex-1 font-mono">{youtubeUrl}</span>
+                <span className="text-xs text-[var(--text-tertiary)] truncate flex-1 font-mono">{appUrl}</span>
                 <button
                   onClick={handleCopy}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -114,6 +135,7 @@ export default function ShareModal({ song, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -5,24 +5,19 @@ import { join } from 'node:path';
 
 export const runtime = 'nodejs';
 
-export const alt = 'V-uta | VTuber Karaoke Player';
-export const size = {
+const size = {
   width: 1200,
   height: 630,
 };
 
-export const contentType = 'image/png';
-
-export default async function Image({ 
-  params, 
-  searchParams 
-}: { 
-  params: Promise<{ videoId: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ videoId: string }> }
+) {
   const { videoId } = await params;
-  const sParams = await searchParams;
-  const track = typeof sParams?.track === 'string' ? parseInt(sParams.track) : null;
+  const { searchParams } = new URL(req.url);
+  const track = searchParams.get('track');
+  const trackNum = track ? parseInt(track) : null;
   
   // アプリアイコンの読み込み
   let iconData;
@@ -34,7 +29,6 @@ export default async function Image({
     console.error('Failed to load icon:', e);
   }
 
-  // OGP用にシンプルなクライアントを用意
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
@@ -48,17 +42,12 @@ export default async function Image({
     .single();
 
   if (videoError || !video) {
-    return new ImageResponse(
-      <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f0f', color: 'white' }}>
-        Video Not Found / OGP Error
-      </div>,
-      size
-    );
+    return new Response('Video Not Found', { status: 404 });
   }
 
   // 特定のトラック情報を取得
   let songInfo = null;
-  if (track) {
+  if (trackNum) {
     const { data: songs } = await supabase
       .from('songs')
       .select('*, master_songs(*)')
@@ -66,15 +55,14 @@ export default async function Image({
       .eq('is_active', true)
       .order('start_sec', { ascending: true });
       
-    if (songs && songs[track - 1]) {
-      songInfo = songs[track - 1];
+    if (songs && songs[trackNum - 1]) {
+      songInfo = songs[trackNum - 1];
     }
   }
 
   const title = songInfo ? (songInfo.master_songs?.title || "Unknown Song") : video.title;
-  const artist = songInfo ? (songInfo.master_songs?.artist || video.channels?.name) : video.channels?.name;
-  const artwork = songInfo?.master_songs?.artwork_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const blurBg = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const channelName = video.channels?.name || "Unknown VTuber";
+  const youtubeThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   return new ImageResponse(
     (
@@ -92,7 +80,7 @@ export default async function Image({
         }}
       >
         <img
-          src={blurBg}
+          src={youtubeThumbnail}
           alt=""
           style={{
             position: 'absolute',
@@ -100,7 +88,7 @@ export default async function Image({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            opacity: 0.3,
+            opacity: 0.2,
             filter: 'blur(40px)',
           }}
         />
@@ -116,16 +104,28 @@ export default async function Image({
           }}
         >
           <div style={{ display: 'flex', width: '500px', height: '100%' }}>
-            <img src={artwork} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={youtubeThumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '40px', justifyContent: 'center' }}>
-            <div style={{ fontSize: '24px', color: '#ff4e8e', marginBottom: '12px', fontWeight: 'bold' }}>
+            <div style={{ display: 'flex', fontSize: '24px', color: '#ff4e8e', marginBottom: '12px', fontWeight: 'bold' }}>
               {songInfo ? 'SONG' : 'VIDEO'}
             </div>
-            <div style={{ fontSize: '48px', color: 'white', fontWeight: 'bold', marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            
+            <div style={{ display: 'flex', fontSize: '48px', color: 'white', fontWeight: 'bold', marginBottom: '8px', overflow: 'hidden', maxHeight: '144px' }}>
               {title}
             </div>
-            <div style={{ fontSize: '28px', color: '#aaa', marginBottom: 'auto' }}>{artist}</div>
+            
+            <div style={{ display: 'flex', fontSize: '32px', color: '#eee', marginBottom: '8px', fontWeight: 'bold' }}>
+              {channelName}
+            </div>
+
+            {songInfo && (
+              <div style={{ display: 'flex', fontSize: '20px', color: '#aaa', marginBottom: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {video.title}
+              </div>
+            )}
+            
+            {!songInfo && <div style={{ marginBottom: 'auto' }} />}
             
             {/* Platform Brand */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -136,6 +136,9 @@ export default async function Image({
         </div>
       </div>
     ),
-    { ...size }
+    { 
+      width: size.width,
+      height: size.height,
+    }
   );
 }

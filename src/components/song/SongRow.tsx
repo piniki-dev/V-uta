@@ -214,7 +214,7 @@ export default function SongRow({
       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
         <FavoriteButton songId={song.id} />
         {renderActions}
-        <SongMenu song={song} />
+        <SongMenu song={song} trackNumber={index + 1} />
       </div>
 
       <style jsx>{`
