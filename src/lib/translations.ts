@@ -750,13 +750,13 @@ export type TranslationKeys = typeof translations.ja;
 export function getT(locale: 'ja' | 'en') {
   const t_data = translations[locale];
 
-  return (key: string, params?: Record<string, any>): string => {
+  return (key: string, params?: Record<string, string | number>): string => {
     const keys = key.split('.');
-    let current: any = t_data;
+    let current: Record<string, unknown> | string = t_data;
 
     for (const k of keys) {
-      if (current[k] !== undefined) {
-        current = current[k];
+      if (typeof current === 'object' && current !== null && k in current) {
+        current = (current as Record<string, unknown>)[k] as Record<string, unknown> | string;
       } else {
         return key;
       }

@@ -19,7 +19,10 @@ export default function ShareModal({ song, onClose, trackNumber }: Props) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // アプリ内の共有用URL (クライアントサイドでのみ生成)

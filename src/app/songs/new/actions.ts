@@ -6,6 +6,7 @@ import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@
 import type { Video, Song, YouTubeVideoMetadata, Channel, Production } from '@/types';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -86,7 +87,7 @@ export async function fetchVideoPreview(
   metadata: YouTubeVideoMetadata; 
   existingSongs: Song[];
   isChannelRegistered: boolean;
-  channelData?: any;
+  channelData?: Record<string, unknown> | null;
 }>> {
   const videoId = extractVideoId(url);
   const t = await getLocaleT();
@@ -109,7 +110,7 @@ export async function fetchVideoPreview(
       .eq('yt_channel_id', metadata.channelId)
       .single();
 
-    let isChannelRegistered = !!channelRecord;
+    const isChannelRegistered = !!channelRecord;
     let channelData = null;
 
     if (!isChannelRegistered) {
@@ -671,7 +672,7 @@ export async function getChannelWithVideos(identifier: string | number): Promise
 /**
  * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする
  */
-async function fetchVideosForChannel(channel: any, supabase: any): Promise<ActionResult<any>> {
+async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
   const t = await getLocaleT();
   const { data: videos, error: vidErr } = await supabase
     .from('videos')

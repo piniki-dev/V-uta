@@ -12,7 +12,7 @@ interface LocaleContextType {
   isJa: boolean;
   isEn: boolean;
   t: (ja: string, en: string) => string;
-  T: (key: string, params?: Record<string, any>) => string;
+  T: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
@@ -23,20 +23,25 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const savedLocale = localStorage.getItem('vuta-locale') as Locale;
-    if (savedLocale && (savedLocale === 'ja' || savedLocale === 'en')) {
-      setLocaleState(savedLocale);
-    } else {
-      // ブラウザの言語設定を確認
-      const browserLang = navigator.language.split('-')[0];
-      if (browserLang === 'ja') {
-        setLocaleState('ja');
-      } else if (browserLang === 'en') {
-        setLocaleState('en');
+    const timer = setTimeout(() => {
+      const savedLocale = localStorage.getItem('vuta-locale') as Locale;
+      if (savedLocale && (savedLocale === 'ja' || savedLocale === 'en')) {
+        if (savedLocale !== locale) {
+          setLocaleState(savedLocale);
+        }
+      } else {
+        // ブラウザの言語設定を確認
+        const browserLang = navigator.language.split('-')[0];
+        if (browserLang === 'ja' && locale !== 'ja') {
+          setLocaleState('ja');
+        } else if (browserLang === 'en' && locale !== 'en') {
+          setLocaleState('en');
+        }
       }
-    }
-    setMounted(true);
-  }, []);
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [locale]);
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
@@ -53,13 +58,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     return locale === 'ja' ? ja : en;
   };
 
-  const T = (keyPath: string, params?: Record<string, any>): string => {
+  const T = (keyPath: string, params?: Record<string, string | number>): string => {
     const keys = keyPath.split('.');
-    let current: any = translations[locale];
+    let current: Record<string, unknown> | string = translations[locale];
     
     for (const key of keys) {
-      if (current[key] !== undefined) {
-        current = current[key];
+      if (typeof current === 'object' && current !== null && (current as Record<string, unknown>)[key] !== undefined) {
+        current = (current as Record<string, unknown>)[key] as Record<string, unknown> | string;
       } else {
         console.warn(`Translation key not found: ${keyPath} (${locale})`);
         return keyPath;
@@ -101,10 +106,10 @@ export function useLocale() {
     const defaultLocale: Locale = 'ja';
     const T = (keyPath: string): string => {
       const keys = keyPath.split('.');
-      let current: any = translations[defaultLocale];
+      let current: Record<string, unknown> | string = translations[defaultLocale];
       for (const key of keys) {
-        if (current && current[key] !== undefined) {
-          current = current[key];
+        if (typeof current === 'object' && current !== null && (current as Record<string, unknown>)[key] !== undefined) {
+          current = (current as Record<string, unknown>)[key] as Record<string, unknown> | string;
         } else {
           return keyPath;
         }

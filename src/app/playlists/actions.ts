@@ -93,7 +93,7 @@ export async function createPlaylist(name: string, description: string, isPublic
 /**
  * プレイリスト詳細（楽曲含む）を取得する
  */
-export async function getPlaylistDetail(slug: string): Promise<ActionResult<Playlist & { items: any[] }>> {
+export async function getPlaylistDetail(slug: string): Promise<ActionResult<Playlist & { items: PlaylistItem[] }>> {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -118,13 +118,13 @@ export async function getPlaylistDetail(slug: string): Promise<ActionResult<Play
     return { success: false, error: `${t.common.searchError}: ${error.message}` };
   }
 
-  return { success: true, data: data as any };
+  return { success: true, data: data as unknown as Playlist & { items: PlaylistItem[] } };
 }
 
 /**
  * ログインユーザーのお気に入りプレイリスト詳細を取得する
  */
-export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist & { items: any[] }>> {
+export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist & { items: PlaylistItem[] }>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -156,7 +156,7 @@ export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist
     return { success: false, error: `${t.common.searchError}: ${error.message}` };
   }
 
-  return { success: true, data: data as any };
+  return { success: true, data: data as unknown as Playlist & { items: PlaylistItem[] } };
 }
 
 /**

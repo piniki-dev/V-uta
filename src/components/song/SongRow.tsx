@@ -37,7 +37,6 @@ export default function SongRow({
   showTimeInfo = false,
   showIndex = true,
   showPlayedAt = false,
-  active = false,
   className = '',
   renderActions,
   rowId,

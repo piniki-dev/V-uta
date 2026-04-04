@@ -19,9 +19,9 @@ export default async function Home() {
     .order('created_at', { ascending: false })
     .limit(24);
 
-  const videos = (videoData as any[] || [])
+  const videos = ((videoData as unknown as Video[]) || [])
     .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-    .slice(0, 12) as Video[];
+    .slice(0, 12);
 
   // 2. ランキングデータ (初期表示は Weekly: 7日間)
   // チャンネル抽出用に多めに取得（50件）し、ランキング表示用にはその一部を使用

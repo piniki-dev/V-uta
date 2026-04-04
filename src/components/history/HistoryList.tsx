@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { useLocale } from '@/components/LocaleProvider';
@@ -10,8 +10,10 @@ import { motion } from 'framer-motion';
 import { Clock, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
+import type { HistoryItem } from '@/app/history/actions';
+
 interface HistoryListProps {
-  initialHistory: any[];
+  initialHistory: HistoryItem[];
 }
 
 export default function HistoryList({ initialHistory }: HistoryListProps) {
@@ -23,25 +25,25 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const toPlayerSong = (item: any): PlayerSong => {
-    const song = item.songs;
+  const toPlayerSong = useCallback((item: HistoryItem): PlayerSong => {
+    const { songs } = item;
     return {
-      id: song.id,
-      title: song.master_songs.title,
-      artist: song.master_songs.artist,
-      title_en: song.master_songs.title_en || null,
-      artist_en: song.master_songs.artist_en || null,
-      artworkUrl: song.master_songs.artwork_url,
-      videoId: song.videos.video_id,
-      startSec: song.start_sec,
-      endSec: song.end_sec,
-      channelName: song.videos.channels?.name || null,
-      channelThumbnailUrl: song.videos.channels?.image || null,
-      thumbnailUrl: song.videos.thumbnail_url || null,
-      videoTitle: song.videos.title,
+      id: songs.id,
+      title: songs.master_songs?.title || '',
+      artist: songs.master_songs?.artist || null,
+      title_en: songs.master_songs?.title_en || null,
+      artist_en: songs.master_songs?.artist_en || null,
+      artworkUrl: songs.master_songs?.artwork_url || null,
+      videoId: songs.videos.video_id,
+      startSec: songs.start_sec,
+      endSec: songs.end_sec,
+      channelName: songs.videos.channels?.name || null,
+      channelThumbnailUrl: songs.videos.channels?.image || null,
+      thumbnailUrl: songs.videos.thumbnail_url || null,
+      videoTitle: songs.videos.title,
       playedAt: item.played_at
     };
-  };
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -80,13 +82,21 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
     return () => observer.disconnect();
   }, [loadMore, hasMore, isLoading]);
 
-  const handlePlayHistory = (item: any) => {
+  const handlePlayHistory = (item: HistoryItem) => {
     const song = toPlayerSong(item);
     playWithSource(song, [song], 'history', String(item.id));
   };
 
+  // 今日の日付と昨日の日付をレンダリング外で計算
+  const { today, yesterday } = useMemo(() => {
+    const now = new Date();
+    const t = now.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    const y = new Date(now.getTime() - 86400000).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    return { today: t, yesterday: y };
+  }, [locale]);
+
   // 日付ごとにグループ化
-  const groupedHistory = history.reduce((groups: any, item: any) => {
+  const groupedHistory = history.reduce((groups: Record<string, HistoryItem[]>, item: HistoryItem) => {
     const date = new Date(item.played_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
       year: 'numeric',
       month: 'long',
@@ -100,14 +110,11 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
     return groups;
   }, {});
 
-  const formatDateLabel = (dateStr: string) => {
-    const today = new Date().toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-    
+  const formatDateLabel = useCallback((dateStr: string) => {
     if (dateStr === today) return T('history.today');
     if (dateStr === yesterday) return T('history.yesterday');
     return dateStr;
-  };
+  }, [today, yesterday, T]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -154,7 +161,7 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
           initial="hidden"
           animate="visible"
         >
-          {Object.entries(groupedHistory).map(([date, items]: [string, any]) => (
+          {Object.entries(groupedHistory).map(([date, items]: [string, HistoryItem[]]) => (
             <motion.section key={date} variants={itemVariants}>
               <div className="flex items-center gap-3 mb-6">
                 <Calendar size={18} className="text-[var(--accent)]" />

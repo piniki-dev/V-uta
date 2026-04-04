@@ -6,18 +6,18 @@ import { Play, TrendingUp, Calendar, Clock, Globe } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
 import { usePlayer } from '@/components/player/PlayerContext';
 import Skeleton from '@/components/Skeleton';
-import { getSongRankings } from '@/app/history/actions';
+import { getSongRankings, type FormattedRankingSong } from '@/app/history/actions';
 import type { PlayerSong } from '@/types';
 
 interface HomeRankingSectionProps {
-  initialSongs: any[];
+  initialSongs: FormattedRankingSong[];
 }
 
 export default function HomeRankingSection({ initialSongs }: HomeRankingSectionProps) {
   const { T } = useLocale();
   const { playWithSource } = usePlayer();
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [songs, setSongs] = useState(initialSongs);
+  const [songs, setSongs] = useState<FormattedRankingSong[]>(initialSongs);
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePeriodChange = async (newPeriod: 'daily' | 'weekly' | 'monthly') => {
@@ -38,7 +38,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
     setIsLoading(false);
   };
 
-  const onPlay = (song: any) => {
+  const onPlay = (song: FormattedRankingSong) => {
     const playerSong: PlayerSong = {
       id: song.id,
       title: song.title,

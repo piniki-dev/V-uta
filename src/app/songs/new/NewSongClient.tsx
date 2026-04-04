@@ -1,33 +1,33 @@
 "use client";
 
-import { useState, useTransition, useCallback, useEffect, useRef, useMemo } from 'react';
-import { fetchVideoPreview, registerVideo, registerSong, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, updateSong, deleteSong, updateSongMaster } from './actions';
+import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from './actions';
 import type { ITunesSearchResult } from './actions';
-import type { YouTubeVideoMetadata, Video, Song, Production } from '@/types';
+import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData, Vtuber } from '@/types';
 import { formatTime, parseTime } from '@/lib/utils';
 import Link from 'next/link';
-import { Search, X, Music, Info, Pencil, Save, Trash2, CheckCircle2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
+import { Search, X, Music, Info, Pencil, Save, Trash2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
-import { motion } from 'framer-motion';
 import Hero from '@/components/Hero';
 
 
 interface EditableSong {
   id?: number; // DB 登録済みの場合は ID がある
-  song: Partial<Song> & { master_songs?: any }; // プレビュー用
+  song: Partial<Song> & { master_songs?: Partial<MasterSong> }; // プレビュー用
   startTime: string;
   endTime: string;
   isEditing: boolean;
   isChangingSong: boolean;
   searchQuery: string;
-  searchResults: any[];
+  searchResults: ITunesSearchResult[];
   isSearching: boolean;
   isPersisted: boolean; // DB 保存済みか
   isDeleted?: boolean; // 削除フラグ（一括保存時に反映）
   isConfirmed: boolean; // ユーザーが曲名・アーティスト名を確定させたか
+  searchLocale?: 'ja' | 'en'; // 検索時のロケール
 }
 
 export default function NewSongClient() {
@@ -65,7 +65,6 @@ export default function NewSongClient() {
 
   // モーダル管理
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     title: string;
@@ -85,14 +84,20 @@ export default function NewSongClient() {
   // VTuber登録モーダル
   const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
   const [productions, setProductions] = useState<Production[]>([]);
-  const [vtuberForm, setVtuberForm] = useState({
+  const [vtuberForm, setVtuberForm] = useState<{
+    name: string;
+    gender: '男性' | '女性' | 'その他' | '不明';
+    link: string;
+    productionId: string;
+    newProductionName: string;
+  }>({
     name: '',
-    gender: T('vtuber.genders.unknown') as any,
+    gender: '不明',
     link: '',
     productionId: '',
     newProductionName: '',
   });
-  const [channelDataForReg, setChannelDataForReg] = useState<any>(null);
+  const [channelDataForReg, setChannelDataForReg] = useState<YouTubeChannelData | null>(null);
 
   // 変更があるかどうか
   const hasChanges = useMemo(() => {
@@ -264,7 +269,7 @@ export default function NewSongClient() {
                 master_songs: { title: s.title, artist: s.artist },
                 start_sec: parseTime(s.startTime) || 0,
                 end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
-              } as any,
+              } as unknown as Partial<Song> & { master_songs: Partial<MasterSong> },
               startTime: s.startTime,
               endTime: s.endTime || '',
               isEditing: false,
@@ -289,11 +294,12 @@ export default function NewSongClient() {
 
       // チャンネル未登録の場合はモーダルを表示
       if (!result.data.isChannelRegistered && result.data.channelData) {
-        setChannelDataForReg(result.data.channelData);
+        const channelData = result.data.channelData as unknown as YouTubeChannelData;
+        setChannelDataForReg(channelData);
         setVtuberForm(prev => ({
           ...prev,
-          name: result.data.channelData.name,
-          link: result.data.channelData.officialLink || ''
+          name: channelData.name,
+          link: channelData.officialLink || ''
         }));
 
         // 事務所一覧を取得してモーダルを開く
@@ -333,8 +339,8 @@ export default function NewSongClient() {
         setCurrentBatchIndex(0);
         setUrl(processed[0].url);
         handleFetchVideo(processed[0].url, 0, processed);
-      } catch (err: any) {
-        setError(err.message || T('newSong.csvLoadError'));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : T('newSong.csvLoadError'));
       }
     };
     reader.readAsText(file);
@@ -359,8 +365,8 @@ export default function NewSongClient() {
         setCurrentBatchIndex(0);
         setUrl(processed[0].url);
         handleFetchVideo(processed[0].url, 0, processed);
-      } catch (err: any) {
-        setError(err.message || T('newSong.gsLoadError'));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : T('newSong.gsLoadError'));
       }
     });
   };
@@ -478,10 +484,10 @@ export default function NewSongClient() {
           artwork_url: selectedSong.artworkUrl || '',
           itunes_id: selectedSong.trackId === -1 ? null : String(selectedSong.trackId),
           duration_sec: selectedSong.durationSec,
-        } as any,
+        } as unknown as Partial<MasterSong>,
         start_sec: startSec,
         end_sec: endSec,
-      },
+      } as unknown as Partial<Song> & { master_songs?: Partial<MasterSong> },
       startTime,
       endTime,
       isEditing: false,
@@ -494,7 +500,7 @@ export default function NewSongClient() {
     };
 
     // クライアント側での管理用に検索時のロケールを保存
-    (newSong as any).searchLocale = locale;
+    newSong.searchLocale = locale;
 
     setAllSongs((prev) => [...prev, newSong]);
     setSuccess(T('newSong.addToListSuccess'));
@@ -528,7 +534,7 @@ export default function NewSongClient() {
             startSec: parseTime(item.startTime) || 0,
             endSec: parseTime(item.endTime) || 0,
             isDeleted: item.isDeleted,
-            searchLocale: (item as any).searchLocale || locale,
+            searchLocale: item.searchLocale || locale,
           }));
 
         const result = await registerFullArchive({
@@ -679,7 +685,7 @@ export default function NewSongClient() {
     );
   };
 
-  const handleSelectNewSongInPlaceLocal = (index: number, track: any) => {
+  const handleSelectNewSongInPlaceLocal = (index: number, track: ITunesSearchResult) => {
     setAllSongs((prev) =>
       prev.map((it, i) => {
         if (i === index) {
@@ -698,8 +704,8 @@ export default function NewSongClient() {
                 artwork_url: track.artworkUrl || '',
                 itunes_id: track.trackId === -1 ? null : String(track.trackId),
                 duration_sec: track.durationSec,
-              } as any
-            },
+              } as unknown as Partial<MasterSong>
+            } as unknown as Partial<Song> & { master_songs?: Partial<MasterSong> },
             endTime: newEndTime,
             isConfirmed: true,
             isChangingSong: false,
@@ -735,7 +741,6 @@ export default function NewSongClient() {
     };
 
     if (hasChanges) {
-      setPendingUrl(null);
       setOnConfirmAction(() => resetAction);
       setIsModalOpen(true);
     } else {
@@ -1429,7 +1434,7 @@ export default function NewSongClient() {
                     <label className="form-label">{T('vtuber.gender')}</label>
                     <select
                       value={vtuberForm.gender}
-                      onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as any }))}
+                      onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as '男性' | '女性' | 'その他' | '不明' }))}
                       className="form-input"
                     >
                       <option value="女性">{T('vtuber.genders.female')}</option>

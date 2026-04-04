@@ -15,8 +15,14 @@ export default function SearchForm() {
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    setQuery(searchParams.get('q') || '');
-  }, [searchParams]);
+    const q = searchParams.get('q') || '';
+    if (q !== query) {
+      const timer = setTimeout(() => {
+        setQuery(q);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, query]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

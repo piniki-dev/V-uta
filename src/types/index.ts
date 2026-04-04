@@ -66,6 +66,7 @@ export interface MasterSong {
   artist_en: string | null;
   artwork_url: string | null;
   itunes_id: string | null;
+  duration_sec: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -169,6 +170,15 @@ export interface YouTubeVideoMetadata {
   description: string;
 }
 
+export interface YouTubeChannelData {
+  ytChannelId: string;
+  name: string;
+  handle: string;
+  description: string;
+  image: string;
+  officialLink?: string;
+}
+
 // ===== フォーム =====
 
 export interface SongFormData {
@@ -180,3 +190,27 @@ export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: true; data?: never } // void の場合は data なしを許容
   | { success: false; error: string };
+
+// ===== Search =====
+
+export interface SearchSongItem {
+  id: number;
+  start_sec: number;
+  end_sec: number;
+  master_songs?: {
+    title: string;
+    artist: string;
+    title_en: string | null;
+    artist_en: string | null;
+    artwork_url: string | null;
+  };
+  videos?: {
+    video_id: string;
+    title: string;
+    thumbnail_url: string | null;
+    channels?: {
+      name: string;
+      image: string | null;
+    };
+  };
+}

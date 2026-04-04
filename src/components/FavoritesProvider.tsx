@@ -30,17 +30,38 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   }, [supabase.auth]);
 
   useEffect(() => {
-    loadFavorites();
+    let mounted = true;
+
+    const initFavorites = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted) return;
+      
+      if (user) {
+        const ids = await getFavoriteSongIds();
+        if (mounted) {
+          setFavoriteIds(new Set(ids));
+          setIsLoading(false);
+        }
+      } else {
+        if (mounted) {
+          setFavoriteIds(new Set());
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initFavorites();
 
     // 認証状態の変化を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      loadFavorites();
+      initFavorites();
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadFavorites, supabase.auth]);
+  }, [supabase.auth]);
 
   const toggleFavorite = async (songId: number) => {
     const result = await toggleFavoriteAction(songId);

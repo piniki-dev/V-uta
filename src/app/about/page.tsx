@@ -12,10 +12,13 @@ export default async function AboutPage() {
   // T相当の翻訳取得関数
   const T = (key: string): string => {
     const keys = key.split('.');
-    let current: any = t_data;
+    let current: Record<string, unknown> | string = t_data;
     for (const k of keys) {
-      if (current[k] !== undefined) current = current[k];
-      else return key;
+      if (typeof current === 'object' && current !== null && k in current) {
+        current = (current as Record<string, unknown>)[k] as Record<string, unknown> | string;
+      } else {
+        return key;
+      }
     }
     return typeof current === 'string' ? current : key;
   };

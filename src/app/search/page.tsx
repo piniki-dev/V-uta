@@ -2,6 +2,7 @@ import SearchView from './SearchView';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
+import type { Video, Channel, SearchSongItem } from '@/types';
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ q: string }> }) {
   const { q } = await searchParams;
@@ -23,10 +24,9 @@ export default async function SearchPage({
 }) {
   const { q: query } = await searchParams;
   const supabase = await createClient();
-
-  let songs: any[] = [];
-  let videos: any[] = [];
-  let channels: any[] = [];
+  let songs: SearchSongItem[] = []; 
+  let videos: Video[] = [];
+  let channels: Channel[] = [];
 
   if (query) {
     const decodedQuery = decodeURIComponent(query);
@@ -84,9 +84,9 @@ export default async function SearchPage({
         .limit(10)
     ]);
 
-    songs = songsByMaster.data || [];
-    videos = videosData.data || [];
-    channels = channelsData.data || [];
+    songs = (songsByMaster.data || []) as unknown as SearchSongItem[];
+    videos = (videosData.data || []) as Video[];
+    channels = (channelsData.data || []) as Channel[];
   }
 
   const cookieStore = await cookies();

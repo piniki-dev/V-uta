@@ -94,9 +94,10 @@ export default function ContactForm() {
       } else {
         setError(result.error || '不明なエラーが発生しました');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Submit error:', err);
-      setError(err.message || '送信中にエラーが発生しました');
+      const message = err instanceof Error ? err.message : '送信中にエラーが発生しました';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

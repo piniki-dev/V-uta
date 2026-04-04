@@ -1,23 +1,15 @@
 'use client';
 
 import { usePlayer } from '@/components/player/PlayerContext';
-import { formatTime } from '@/lib/utils';
-import { Music, Play, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
-import type { PlayerSong } from '@/types';
-import SongMenu from '@/components/song/SongMenu';
+import type { PlayerSong, SearchSongItem } from '@/types';
 import SongList from '@/components/song/SongList';
-import { useLocale } from '@/components/LocaleProvider';
 
 interface SearchSongsProps {
-  songs: any[];
+  songs: SearchSongItem[];
 }
 
 export default function SearchSongs({ songs }: SearchSongsProps) {
-  const { playWithSource } = usePlayer();
-  const { t } = useLocale();
-
-  const toPlayerSong = (item: any): PlayerSong => {
+  const toPlayerSong = (item: SearchSongItem): PlayerSong => {
     return {
       id: item.id,
       title: item.master_songs?.title || '',
@@ -33,13 +25,6 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
       thumbnailUrl: item.videos?.thumbnail_url || null,
       videoTitle: item.videos?.title || ''
     };
-  };
-
-  const handlePlaySong = (item: any) => {
-    const song = toPlayerSong(item);
-    // 検索結果リスト全体をプレイリストとして渡す
-    const playlist = songs.map(s => toPlayerSong(s));
-    playWithSource(song, playlist, 'search', String(item.id));
   };
 
   return (

@@ -19,11 +19,11 @@ vi.mock('@/components/player/PlayerContext', async () => {
 // Radix UI のモック
 vi.mock('@radix-ui/react-dropdown-menu', () => {
   return {
-    Root: ({ children }: any) => <div data-testid="dropdown-root">{children}</div>,
-    Trigger: ({ children, asChild }: any) => <div data-testid="dropdown-trigger">{children}</div>,
-    Portal: ({ children }: any) => <div data-testid="dropdown-portal">{children}</div>,
-    Content: ({ children }: any) => <div data-testid="dropdown-content">{children}</div>,
-    Item: ({ children, onSelect }: any) => (
+    Root: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-root">{children}</div>,
+    Trigger: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-trigger">{children}</div>,
+    Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-portal">{children}</div>,
+    Content: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
+    Item: ({ children, onSelect }: { children: React.ReactNode; onSelect?: (e: { stopPropagation: () => void }) => void }) => (
       <div 
         onClick={() => onSelect && onSelect({ stopPropagation: () => {} })} 
         data-testid="dropdown-item"

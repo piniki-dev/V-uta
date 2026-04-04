@@ -18,22 +18,59 @@ export type HistoryItem = {
   source_id: string | null;
   songs: {
     id: number;
-    title: string;
-    artist: string;
     start_sec: number;
     end_sec: number;
     master_songs: {
+      title: string;
+      artist: string;
+      title_en?: string | null;
+      artist_en?: string | null;
       artwork_url: string | null;
     } | null;
     videos: {
       video_id: string;
       title: string;
+      thumbnail_url: string | null;
       channels: {
         name: string;
+        image: string | null;
       } | null;
     };
   };
 };
+
+export interface RankingResult {
+  song_id: number;
+  play_count: number;
+  master_song_title: string;
+  master_song_artist: string;
+  master_song_title_en: string | null;
+  master_song_artist_en: string | null;
+  artwork_url: string | null;
+  video_id: string;
+  video_title: string | null;
+  channel_name: string | null;
+  channel_image: string | null;
+  start_sec: number;
+  end_sec: number;
+}
+
+export interface FormattedRankingSong {
+  id: number;
+  playCount: number;
+  title: string;
+  artist: string;
+  title_en: string | null;
+  artist_en: string | null;
+  artworkUrl: string | null;
+  videoId: string;
+  videoTitle: string | null;
+  channelName: string | null;
+  channelThumbnailUrl: string | null;
+  startSec: number;
+  endSec: number;
+  thumbnailUrl: string;
+}
 
 /**
  * 再生履歴を記録する
@@ -81,7 +118,7 @@ export async function updatePlayDuration(params: {
   lastPosition?: number;
   completionRate?: number;
   isCompleted?: boolean;
-  metaData?: any;
+  metaData?: Record<string, unknown>;
 }) {
   const supabase = await createClient();
   
@@ -148,12 +185,7 @@ export async function getPlayHistory(limit = 50, offset = 0) {
     .order('played_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error) {
-    console.error('Error fetching play history:', error);
-    return { success: false, error: error.message };
-  }
-
-  return { success: true, data: data as any[] };
+  return { success: true, data: data as unknown as HistoryItem[] };
 }
 
 /**
@@ -191,7 +223,7 @@ export async function getSongRankings(params: {
   groupByMaster?: boolean;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<{ success: boolean; data?: FormattedRankingSong[]; error?: string }> {
   const supabase = await createClient();
 
   const { data, error } = await supabase.rpc('get_song_rankings', {
@@ -209,7 +241,7 @@ export async function getSongRankings(params: {
   }
 
   // RPC の戻り値を PlayerSong 互換の形式に整形
-  const rankings = (data as any[]).map((item) => ({
+  const rankings = ((data as RankingResult[]) || []).map((item) => ({
     id: item.song_id,
     playCount: item.play_count,
     title: item.master_song_title,

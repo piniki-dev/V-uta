@@ -4,12 +4,13 @@ import SearchSongs from './SearchSongs';
 import { ArchivesGrid, ChannelsGrid } from '@/components/search/SearchGrids';
 import SearchSectionHeader from '@/components/search/SearchSectionHeader';
 import { X } from 'lucide-react';
+import type { Video, Channel, PlayerSong, SearchSongItem } from '@/types';
 
 interface SearchViewProps {
   query: string;
-  songs: any[];
-  videos: any[];
-  channels: any[];
+  songs: SearchSongItem[]; 
+  videos: Video[];
+  channels: Channel[];
   locale: 'ja' | 'en';
 }
 

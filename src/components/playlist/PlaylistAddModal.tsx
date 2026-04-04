@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { getPlaylists, createPlaylist, addSongToPlaylist } from '@/app/playlists/actions';
 import type { Playlist } from '@/types';
 import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink, ListMusic } from 'lucide-react';
@@ -28,21 +28,24 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  useEffect(() => {
-    loadPlaylists();
-  }, []);
-
-  const loadPlaylists = async () => {
-    setIsLoading(true);
+  const loadPlaylists = useCallback(async () => {
+    // setIsLoading(true); // 1234567890合集
     const result = await getPlaylists();
     if (result.success && result.data) {
-      // 閾ｪ蛻・・繝励Ξ繧､繝ｪ繧ｹ繝医・縺ｿ陦ｨ遉ｺ・郁ｿｽ蜉縺吶ｋ縺溘ａ・・
-      // 縲後♀豌励↓蜈･繧翫＠縺滓峇縲阪・繝ｬ繧､繝ｪ繧ｹ繝医・閾ｪ蜍慕ｮ｡逅・↑縺ｮ縺ｧ髯､螟悶☆繧・
+      // 自分のプレイリストのみ表示（追加するため）
+      // 「お気に入りした曲」プレイリストは自動管理なので除外する
       const filtered = result.data.filter(p => !p.is_favorites);
       setPlaylists(filtered);
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadPlaylists();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadPlaylists]);
 
   const handleCreateAndAdd = async () => {
     if (!newPlaylistName.trim()) return;
@@ -60,7 +63,6 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
         if (addRes.success) {
           setSuccess(T('playlist.createSuccess'));
           setCreatedPlaylistSlug(createRes.data.slug);
-          // 繝ｪ繝ｳ繧ｯ繧定｡ｨ遉ｺ縺吶ｋ縺溘ａ縲∬・蜍輔〒髢峨§縺ｪ縺・ｈ縺・↓縺吶ｋ縺区凾髢薙ｒ蟒ｶ縺ｰ縺・
           setTimeout(() => {
             onSuccess?.();
           }, 3000);
@@ -110,7 +112,7 @@ export default function PlaylistAddModal({ songId, onClose, onSuccess }: Props) 
                 {success}
               </div>
               {createdPlaylistSlug && (
-                <Link 
+                <Link
                   href={`/playlists/${createdPlaylistSlug}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-xs font-bold transition-colors"
                 >

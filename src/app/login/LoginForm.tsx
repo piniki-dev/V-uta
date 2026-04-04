@@ -9,9 +9,21 @@ import Script from 'next/script';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
+interface GoogleSignInResponse {
+  credential: string;
+}
+
 declare global {
   interface Window {
-    google: any;
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: Record<string, unknown>) => void;
+          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+          prompt: () => void;
+        };
+      };
+    };
   }
 }
 
@@ -34,7 +46,7 @@ export default function LoginForm({ initialTranslations }: LoginFormProps) {
     setMounted(true);
   }, []);
 
-  const handleSignInWithIdToken = useCallback(async (response: any) => {
+  const handleSignInWithIdToken = useCallback(async (response: GoogleSignInResponse) => {
     console.log('Google Sign-In response received');
     try {
       const { data, error } = await supabase.auth.signInWithIdToken({

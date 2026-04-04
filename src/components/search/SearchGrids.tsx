@@ -4,8 +4,10 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 
+import type { Video, Channel } from '@/types';
+
 interface ArchivesGridProps {
-  videos: any[];
+  videos: Video[];
 }
 
 const containerVariants = {
@@ -73,7 +75,7 @@ export function ArchivesGrid({ videos }: ArchivesGridProps) {
 }
 
 interface ChannelsGridProps {
-  channels: any[];
+  channels: Channel[];
 }
 
 export function ChannelsGrid({ channels }: ChannelsGridProps) {

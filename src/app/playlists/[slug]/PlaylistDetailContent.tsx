@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { removeSongFromPlaylist, updatePlaylist, updatePlaylistOrder } from '../actions';
-import type { Playlist, PlayerSong } from '@/types';
+import type { Playlist, PlaylistItem, PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { Play, Trash2, ListMusic, Loader2, Pencil, Save, X } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -12,14 +12,14 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useFavorites } from '@/components/FavoritesProvider';
 
 interface Props {
-  playlist: Playlist & { items: any[] };
+  playlist: Playlist & { items: PlaylistItem[] };
 }
 
 export default function PlaylistDetailContent({ playlist }: Props) {
   const { playWithSource } = usePlayer();
   const { T } = useLocale();
   const { favoriteIds } = useFavorites();
-  const [items, setItems] = useState(playlist.items);
+  const [items, setItems] = useState<PlaylistItem[]>(playlist.items);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(playlist.name);
   const [editDescription, setEditDescription] = useState(playlist.description || '');
@@ -32,10 +32,15 @@ export default function PlaylistDetailContent({ playlist }: Props) {
 
   // 外部からの更新（追加など）があった場合に同期
   useEffect(() => {
-    setItems(playlist.items);
-  }, [playlist.items]);
+    if (playlist.items !== items) {
+      const timer = setTimeout(() => {
+        setItems(playlist.items);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [playlist.items, items]);
 
-  const toPlayerSong = (item: any): PlayerSong => {
+  const toPlayerSong = (item: PlaylistItem): PlayerSong => {
     const song = item.songs;
     return {
       id: song?.id || 0,

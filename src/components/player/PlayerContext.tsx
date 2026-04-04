@@ -209,13 +209,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // 音量の初期ロード (クライアントサイドのみ)
   useEffect(() => {
-    const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
-    if (savedVolume !== null) {
-      const vol = Number(savedVolume);
-      if (!isNaN(vol)) {
-        dispatch({ type: 'SET_VOLUME', volume: vol });
+    const timer = setTimeout(() => {
+      const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+      if (savedVolume !== null) {
+        const vol = Number(savedVolume);
+        if (!isNaN(vol)) {
+          dispatch({ type: 'SET_VOLUME', volume: vol });
+        }
       }
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // ページ遷移時にフルプレイヤーを閉じる
@@ -270,7 +273,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let interval: any;
+    let interval: NodeJS.Timeout | undefined;
     if (state.isPlaying) {
       playStartTimeRef.current = performance.now();
       interval = setInterval(() => {

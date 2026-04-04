@@ -24,7 +24,7 @@ interface SongMenuProps {
 
 export default function SongMenu({ song, trigger, trackNumber }: SongMenuProps) {
   const { addSongNext, addSongLast } = usePlayer();
-  const { t, T } = useLocale();
+  const { T } = useLocale();
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 

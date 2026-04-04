@@ -11,23 +11,23 @@ interface HomeVideoGridProps {
   initialVideos: Video[] | null;
 }
 
+// スケルトン表示 (初期データがない場合に使用可能だが、サーバーコンポーネントからは初期データが渡されるはず)
+const SkeletonGrid = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+    {[...Array(8)].map((_, i) => (
+      <div key={i} className="flex flex-col gap-4">
+        <Skeleton height="180px" />
+        <div className="space-y-2">
+          <Skeleton variant="text" width="80%" />
+          <Skeleton variant="text" width="40%" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
   const { T } = useLocale();
-
-  // スケルトン表示 (初期データがない場合に使用可能だが、サーバーコンポーネントからは初期データが渡されるはず)
-  const SkeletonGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      {[...Array(8)].map((_, i) => (
-        <div key={i} className="flex flex-col gap-4">
-          <Skeleton height="180px" />
-          <div className="space-y-2">
-            <Skeleton variant="text" width="80%" />
-            <Skeleton variant="text" width="40%" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -99,11 +99,12 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
                 href={`/videos/${video.video_id}`}
                 className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
               >
-                <div className="aspect-video relative overflow-hidden">
+                <div className="aspect-video relative overflow-hidden bg-[var(--bg-tertiary)]">
                   {video.thumbnail_url && (
                     <img
                       src={video.thumbnail_url}
                       alt={video.title}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   )}

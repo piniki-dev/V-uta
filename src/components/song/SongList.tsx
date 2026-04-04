@@ -22,7 +22,7 @@ interface SongListProps<T> {
   showPlayedAt?: boolean;
 }
 
-export default function SongList<T extends { id: any }>({
+export default function SongList<T extends { id: number | string }>({
   items,
   mapToPlayerSong,
   sourceType,

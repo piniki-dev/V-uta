@@ -28,7 +28,7 @@ export function convertGSheetUrlToCsv(url: string): string {
     const gid = gidMatch ? `&gid=${gidMatch[1]}` : '';
     
     return `https://docs.google.com/spreadsheets/d/${scrollId}/export?format=csv${gid}`;
-  } catch (e) {
+  } catch {
     return url;
   }
 }
@@ -41,7 +41,7 @@ export function parseCsv(csvText: string): string[][] {
   const lines: string[][] = [];
   const rows = csvText.split(/\r?\n/);
   
-  for (let row of rows) {
+  for (const row of rows) {
     if (!row.trim()) continue;
     
     const cells: string[] = [];
