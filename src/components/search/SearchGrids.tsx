@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import Image from 'next/image';
 
 import type { Video, Channel } from '@/types';
 
@@ -45,9 +46,10 @@ export function ArchivesGrid({ videos }: ArchivesGridProps) {
             className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
           >
             <div className="aspect-video relative overflow-hidden">
-              <img 
+              <Image 
                 src={video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`} 
                 alt="" 
+                fill
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -95,9 +97,11 @@ export function ChannelsGrid({ channels }: ChannelsGridProps) {
           >
             <div className="relative">
               <div className="absolute inset-0 bg-[var(--accent)]/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <img 
+              <Image 
                 src={channel.image || '/placeholder-avatar.jpg'} 
                 alt="" 
+                width={80}
+                height={80}
                 className="relative z-10 w-20 h-20 rounded-full object-cover shadow-2xl ring-2 ring-white/10 group-hover:scale-105 transition-transform duration-500"
               />
             </div>

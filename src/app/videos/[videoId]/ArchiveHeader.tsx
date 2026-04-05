@@ -4,6 +4,7 @@ import type { Video, Song, PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { useLocale } from '@/components/LocaleProvider';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Pencil, Music, Youtube, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -50,9 +51,11 @@ export default function ArchiveHeader({ video, songs }: Props) {
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-glow-lg)] to-transparent opacity-30 pointer-events-none" />
       
       <div className="w-full md:w-80 aspect-video rounded-2xl overflow-hidden shadow-xl shrink-0 relative group/thumb">
-        <img
+        <Image
           src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'}
           alt={video.title}
+          width={320}
+          height={180}
           className="w-full h-full object-cover transition-transform duration-700 group-hover/thumb:scale-110"
         />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
@@ -90,7 +93,7 @@ export default function ArchiveHeader({ video, songs }: Props) {
             <Link href={`/channels/${video.channels.handle || video.channels.id}`} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
               <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)] group-hover/ch:scale-110 transition-transform overflow-hidden border border-[var(--border)] group-hover/ch:border-[var(--accent)]">
                 {video.channels.image ? (
-                  <img src={video.channels.image} alt="" className="w-full h-full object-cover" />
+                  <Image src={video.channels.image} alt="" width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
                   video.channels.name[0]
                 )}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Menu } from 'lucide-react';
+import Image from 'next/image';
 import { useSidebar } from './SidebarContext';
 import { useHeader } from './HeaderProvider';
 
@@ -19,7 +20,7 @@ export default function HeaderToggle() {
         <Menu size={24} />
       </button>
       <Link href="/" className="header__logo font-black">
-        <img src="/icon.svg" alt="V-uta" className="header__logo-img" />
+        <Image src="/icon.svg" alt="V-uta" width={32} height={32} className="header__logo-img" />
         <span className="header__logo-text tracking-tighter">V-uta</span>
       </Link>
       <style jsx>{`

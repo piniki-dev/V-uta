@@ -6,6 +6,7 @@ import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import type { PlayerSong } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
 import { sendGAEvent } from '@next/third-parties/google';
+import Image from 'next/image';
 
 interface Props {
   song: PlayerSong;
@@ -76,7 +77,7 @@ export default function ShareModal({ song, onClose, trackNumber }: Props) {
           {/* 曲情報プレビュー */}
           <div className="flex gap-4 items-center p-3 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-light)]">
             {song.artworkUrl ? (
-              <img src={song.artworkUrl} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+              <Image src={song.artworkUrl} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover shrink-0" />
             ) : (
               <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-xl flex items-center justify-center shrink-0">
                 <span className="text-2xl">🎵</span>

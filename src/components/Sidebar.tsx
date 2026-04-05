@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   Menu, X, Home, PlusSquare, ListMusic, ChevronDown, 
   ChevronRight, LogOut, User, History,
@@ -94,7 +95,7 @@ export default function Sidebar({
           {/* ヘッダー (モバイル用) */}
           <div className="sidebar__header md:hidden">
             <div className="sidebar__logo">
-              <img src="/icon.svg" alt="V-uta" className="header__logo-img" />
+              <Image src="/icon.svg" alt="V-uta" width={32} height={32} className="header__logo-img" />
               <span className="header__logo-text text-xl">V-uta</span>
             </div>
             <button className="sidebar__close" onClick={close}>
@@ -107,7 +108,7 @@ export default function Sidebar({
             {user ? (
               <div className="sidebar__user-info">
                 {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="" className="sidebar__avatar" />
+                  <Image src={user.user_metadata.avatar_url} alt="" width={40} height={40} className="sidebar__avatar" />
                 ) : (
                   <div className="sidebar__avatar-placeholder"><User size={20} /></div>
                 )}

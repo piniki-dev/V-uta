@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, TrendingUp, Calendar, Clock, Globe } from 'lucide-react';
+import Image from 'next/image';
 import { useLocale } from '@/components/LocaleProvider';
 import { usePlayer } from '@/components/player/PlayerContext';
 import Skeleton from '@/components/Skeleton';
@@ -179,9 +180,11 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
 
                     {/* サムネイル */}
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-md flex-shrink-0">
-                      <img 
+                      <Image 
                         src={song.artworkUrl || `https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`} 
                         alt={song.title} 
+                        width={48}
+                        height={48}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -203,9 +206,11 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                     <div className="hidden sm:flex items-center gap-2 flex-shrink-0 px-2 md:px-4">
                       <div className="flex items-center gap-2 bg-[var(--bg-tertiary)]/60 px-3 py-1.5 rounded-full border border-[var(--border)]/40 max-w-[140px] md:max-w-[220px] transition-all hover:bg-[var(--bg-tertiary)] hover:border-[var(--accent)]/30">
                         {song.channelThumbnailUrl && (
-                          <img 
+                          <Image 
                             src={song.channelThumbnailUrl} 
                             alt="" 
+                            width={24}
+                            height={24}
                             className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover flex-shrink-0 border border-white/20 shadow-sm"
                           />
                         )}

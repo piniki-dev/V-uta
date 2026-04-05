@@ -9,6 +9,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useTheme } from 'next-themes';
 import { useLocale } from './LocaleProvider';
 import { useHeader } from './HeaderProvider';
+import Image from 'next/image';
 
 export default function AuthButton({ user: initialUser }: { user: User | null }) {
   const router = useRouter();
@@ -64,9 +65,11 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
           <DropdownMenu.Trigger asChild>
             <button className={`items-center justify-center w-9 h-9 rounded-full overflow-hidden hover:opacity-80 transition-opacity outline-none bg-[var(--bg-elevated)] border border-[var(--border)] ${isMobileSearchActive ? 'hidden sm:flex' : 'flex'}`}>
               {user.user_metadata?.avatar_url ? (
-                <img
+                <Image
                   src={user.user_metadata.avatar_url}
                   alt={user.user_metadata?.full_name || 'User'}
+                  width={36}
+                  height={36}
                   className="w-full h-full object-cover"
                 />
               ) : (

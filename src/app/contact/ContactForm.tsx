@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, CheckCircle2, AlertCircle, ArrowLeft, Bug, MessageSquare, HelpCircle, Image as ImageIcon, X } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale } from '@/components/LocaleProvider';
 import { sendInquiry, type InquiryData } from './actions';
 import { createClient } from '@/utils/supabase/client';
@@ -227,9 +228,12 @@ export default function ContactForm() {
                 </button>
               ) : (
                 <div className="relative group w-32 h-32">
-                  <img 
+                  <Image 
                     src={previewUrl} 
                     alt="Preview" 
+                    width={128}
+                    height={128}
+                    unoptimized
                     className="w-full h-full object-cover rounded-2xl border border-[var(--border)]"
                   />
                   <button

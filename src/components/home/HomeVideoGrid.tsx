@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Music } from 'lucide-react';
+import Image from 'next/image';
 import type { Video } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
 import Skeleton from '@/components/Skeleton';
@@ -101,9 +102,10 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
               >
                 <div className="aspect-video relative overflow-hidden bg-[var(--bg-tertiary)]">
                   {video.thumbnail_url && (
-                    <img
+                    <Image
                       src={video.thumbnail_url}
                       alt={video.title}
+                      fill
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />

@@ -2,6 +2,7 @@
 
 import { usePlayer } from './PlayerContext';
 import { useToast } from '../ToastProvider';
+import Image from 'next/image';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import FavoriteButton from '@/components/song/FavoriteButton';
@@ -86,10 +87,12 @@ export default function MiniPlayer() {
         {/* 左: 曲情報 */}
         <div className="mini-player__info">
           {state.currentSong.thumbnailUrl && (
-            <img
+            <Image
               src={state.currentSong.thumbnailUrl}
               alt=""
-              className="mini-player__thumbnail"
+              width={48}
+              height={48}
+              className="mini-player__thumbnail object-cover"
             />
           ) || (
             <div className="mini-player__thumbnail-placeholder flex items-center justify-center bg-[var(--bg-tertiary)] rounded">

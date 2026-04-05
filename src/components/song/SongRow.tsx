@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Music, Play, ExternalLink, Clock, User } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { PlayerSong } from '@/types';
 import { formatTime } from '@/lib/utils';
 import { usePlayer } from '@/components/player/PlayerContext';
@@ -133,7 +134,13 @@ export default function SongRow({
       <div className="min-w-0 flex items-center gap-4">
         <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative shadow-sm border border-[var(--border)] group-hover:border-[var(--accent-glow)] transition-colors">
           {song.artworkUrl ? (
-            <img src={song.artworkUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <Image 
+              src={song.artworkUrl} 
+              alt="" 
+              width={48}
+              height={48}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+            />
           ) : (
             <Music size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" />
           )}
@@ -156,7 +163,13 @@ export default function SongRow({
               <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-full overflow-hidden shrink-0 border border-[var(--border)] bg-[var(--bg-tertiary)] flex items-center justify-center">
                 {song.channelThumbnailUrl ? (
-                  <img src={song.channelThumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <Image 
+                    src={song.channelThumbnailUrl} 
+                    alt="" 
+                    width={16}
+                    height={16}
+                    className="w-full h-full object-cover" 
+                  />
                 ) : (
                   <User size={10} className="text-[var(--text-tertiary)]" />
                 )}
@@ -176,7 +189,13 @@ export default function SongRow({
         <div className="hidden md:flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--border)] shadow-sm bg-[var(--bg-tertiary)] flex items-center justify-center group-hover:border-[var(--accent-glow)] transition-colors">
             {song.channelThumbnailUrl ? (
-              <img src={song.channelThumbnailUrl} alt="" className="w-full h-full object-cover" />
+              <Image 
+                src={song.channelThumbnailUrl} 
+                alt="" 
+                width={32}
+                height={32}
+                className="w-full h-full object-cover" 
+              />
             ) : (
               <User size={16} className="text-[var(--text-tertiary)]" />
             )}

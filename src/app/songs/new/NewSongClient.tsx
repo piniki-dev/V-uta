@@ -11,6 +11,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive, type ImportedSong } from '@/utils/batch-parser';
 import { FileUp, Table, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
+import Image from 'next/image';
 import Hero from '@/components/Hero';
 
 
@@ -911,9 +912,11 @@ export default function NewSongClient() {
               <div className="card__body">
                 <div className="video-preview">
                   {metadata.thumbnailUrl && (
-                    <img
+                    <Image
                       src={metadata.thumbnailUrl}
                       alt={metadata.title}
+                      width={320}
+                      height={180}
                       className="video-preview__thumbnail"
                     />
                   )}
@@ -977,9 +980,11 @@ export default function NewSongClient() {
                   {selectedSong ? (
                     <div className="selected-song">
                       {selectedSong.artworkUrl ? (
-                        <img
+                        <Image
                           src={selectedSong.artworkUrl}
                           alt={selectedSong.title}
+                          width={80}
+                          height={80}
                           className="selected-song__artwork"
                         />
                       ) : (
@@ -1041,11 +1046,13 @@ export default function NewSongClient() {
                               onClick={() => handleSelectSong(track)}
                               className="search-results__item"
                             >
-                              <img
-                                src={track.artworkUrl}
-                                alt={track.title}
-                                className="search-results__artwork"
-                              />
+                               <Image
+                                 src={track.artworkUrl}
+                                 alt={track.title}
+                                 width={64}
+                                 height={64}
+                                 className="search-results__artwork"
+                               />
                               <div className="search-results__info">
                                 <span className="search-results__title">{track.title}</span>
                                 <span className="search-results__artist">{track.artist}</span>
@@ -1203,11 +1210,12 @@ export default function NewSongClient() {
                         <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
                           <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
                           {item.song.master_songs?.artwork_url ? (
-                            <img
+                            <Image
                               src={item.song.master_songs.artwork_url}
                               alt={item.song.master_songs.title}
+                              width={40}
+                              height={40}
                               className="edit-songs__artwork"
-                              style={{ width: '40px', height: '40px' }}
                             />
                           ) : (
                             <div className="edit-songs__artwork" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyItems: 'center', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', borderRadius: 'var(--radius-sm)' }}>
@@ -1292,11 +1300,12 @@ export default function NewSongClient() {
                                         className="search-results__item"
                                         disabled={isPending}
                                       >
-                                        <img
+                                        <Image
                                           src={track.artworkUrl}
                                           alt={track.title}
+                                          width={32}
+                                          height={32}
                                           className="search-results__artwork"
-                                          style={{ width: '32px', height: '32px' }}
                                         />
                                         <div className="search-results__info">
                                           <span className="search-results__title" style={{ fontSize: '12px' }}>{track.title}</span>
@@ -1488,7 +1497,7 @@ export default function NewSongClient() {
 
                 <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {channelDataForReg?.image && (
-                    <img src={channelDataForReg.image} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="" />
+                    <Image src={channelDataForReg.image} width={40} height={40} style={{ borderRadius: '50%' }} alt="" />
                   )}
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '13px', fontWeight: 600 }}>{T('vtuber.linkedChannel')}</p>

@@ -8,6 +8,7 @@ import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic, Shield } from 'lucide-react';
+import Image from 'next/image';
 
 export default function FullPlayer() {
   const {
@@ -204,7 +205,13 @@ export default function FullPlayer() {
                           : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
                       }`}
                     >
-                      <img src={song.artworkUrl || ''} alt="" className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" />
+                      <Image 
+                        src={song.artworkUrl || ''} 
+                        alt="" 
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
+                      />
                       <div className="flex-1 text-left min-w-0">
                         <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
                           {t(song.title, song.title_en || song.title)}

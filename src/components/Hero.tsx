@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 interface HeroProps {
@@ -48,9 +49,11 @@ export default function Hero({
 
               <div className="w-32 h-32 md:w-44 md:h-44 bg-gradient-to-br from-[#ff4e8e] to-[#8e4eff] rounded-3xl flex items-center justify-center text-white shadow-2xl relative z-10 overflow-hidden ring-4 ring-white/10 group-hover/artwork:scale-105 transition-transform duration-500">
                 {image ? (
-                  <img
+                  <Image
                     src={image}
                     alt={typeof title === 'string' ? title : 'Hero Image'}
+                    width={176}
+                    height={176}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/artwork:scale-110"
                   />
                 ) : (
