@@ -14,6 +14,7 @@ import Footer from "@/components/Footer";
 import { createClient } from "@/utils/supabase/server";
 import { getPlaylists } from "@/app/playlists/actions";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
 const outfit = Outfit({
@@ -138,6 +139,7 @@ export default async function RootLayout({
           </ThemeProvider>
         </LocaleProvider>
         <Analytics />
+        <SpeedInsights />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
           <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         )}
