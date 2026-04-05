@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, TrendingUp, Calendar, Clock, Globe } from 'lucide-react';
+import { Play, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import { useLocale } from '@/components/LocaleProvider';
 import { usePlayer } from '@/components/player/PlayerContext';
-import Skeleton from '@/components/Skeleton';
 import { getSongRankings, type FormattedRankingSong } from '@/app/history/actions';
 import type { PlayerSong } from '@/types';
 

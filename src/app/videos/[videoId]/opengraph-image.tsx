@@ -13,17 +13,17 @@ export const size = {
 
 export const contentType = 'image/png';
 
-export default async function Image({ 
-  params, 
-  searchParams 
-}: { 
+export default async function Image({
+  params,
+  searchParams
+}: {
   params: Promise<{ videoId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { videoId } = await params;
   const sParams = await searchParams;
   const track = typeof sParams?.track === 'string' ? parseInt(sParams.track) : null;
-  
+
   // アプリアイコンの読み込み
   let iconData;
   try {
@@ -65,7 +65,7 @@ export default async function Image({
       .eq('video_id', video.id)
       .eq('is_active', true)
       .order('start_sec', { ascending: true });
-      
+
     if (songs && songs[track - 1]) {
       songInfo = songs[track - 1];
     }
@@ -91,6 +91,7 @@ export default async function Image({
           padding: '60px',
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={blurBg}
           alt=""
@@ -116,6 +117,7 @@ export default async function Image({
           }}
         >
           <div style={{ display: 'flex', width: '500px', height: '100%' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={artwork} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '40px', justifyContent: 'center' }}>
@@ -126,9 +128,10 @@ export default async function Image({
               {title}
             </div>
             <div style={{ fontSize: '28px', color: '#aaa', marginBottom: 'auto' }}>{artist}</div>
-            
+
             {/* Platform Brand */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {iconData && <img src={iconData} alt="" style={{ width: '32px', height: '32px', borderRadius: '6px' }} />}
               <span style={{ fontSize: '24px', color: 'white', fontWeight: 900 }}>V-uta</span>
             </div>

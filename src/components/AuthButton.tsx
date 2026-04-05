@@ -16,7 +16,7 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(initialUser);
   const { theme, setTheme } = useTheme();
-  const { locale, setLocale, t, T } = useLocale();
+  const { locale, setLocale, T } = useLocale();
   const { isMobileSearchActive, toggleMobileSearch } = useHeader();
 
   useEffect(() => {

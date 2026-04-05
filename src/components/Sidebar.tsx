@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
-  Menu, X, Home, PlusSquare, ListMusic, ChevronDown, 
+  X, Home, PlusSquare, ListMusic, ChevronDown, 
   ChevronRight, LogOut, User, History,
-  Info, FileText, Shield, Mail
+  Info, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
-import { getPlaylists } from '@/app/playlists/actions';
 import type { Playlist } from '@/types';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -25,7 +24,7 @@ export default function Sidebar({
   initialUser: SupabaseUser | null,
   initialPlaylists: Playlist[]
 }) {
-  const { isOpen, close, toggle } = useSidebar();
+  const { isOpen, close } = useSidebar();
   const { state: playerState } = usePlayer();
   const [user, setUser] = useState<SupabaseUser | null>(initialUser);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(!!initialUser);

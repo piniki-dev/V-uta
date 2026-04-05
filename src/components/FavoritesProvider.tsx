@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFavoriteSongIds, toggleFavorite as toggleFavoriteAction } from '@/app/favorites/actions';
 import { createClient } from '@/utils/supabase/client';
 
@@ -17,17 +17,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
-
-  const loadFavorites = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const ids = await getFavoriteSongIds();
-      setFavoriteIds(new Set(ids));
-    } else {
-      setFavoriteIds(new Set());
-    }
-    setIsLoading(false);
-  }, [supabase.auth]);
 
   useEffect(() => {
     let mounted = true;

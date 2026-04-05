@@ -5,7 +5,6 @@ import { removeSongFromPlaylist, updatePlaylist, updatePlaylistOrder } from '../
 import type { Playlist, PlaylistItem, PlayerSong } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { Play, Trash2, ListMusic, Loader2, Pencil, Save, X } from 'lucide-react';
-import { motion } from 'framer-motion';
 import SongList from '@/components/song/SongList';
 import Hero from '@/components/Hero';
 import { useLocale } from '@/components/LocaleProvider';

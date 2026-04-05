@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, Music, ChevronDown, ChevronUp, X, ExternalLink } from 'lucide-react';
 import type { Video, Song, Channel } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
@@ -102,8 +103,13 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
                     }}
                   >
                     <Link href={`/videos/${video.video_id}`} className="relative aspect-video overflow-hidden block">
-                      <img src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'} alt={video.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105" />
+                      <Image
+                        src={video.thumbnail_url || video.thumbnail || '/placeholder-thumb.jpg'}
+                        alt={video.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover transition-transform duration-700 group-hover/card:scale-105"
+                      />
                       <div className="absolute inset-0 bg-black/20 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center translate-y-2 group-hover/card:translate-y-0 transition-transform duration-300">
                           <ExternalLink size={20} className="text-white" />

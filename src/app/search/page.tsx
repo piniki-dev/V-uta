@@ -33,27 +33,6 @@ export default async function SearchPage({
     
     // 楽曲検索 (master_songs と videos をそれぞれ検索してマージ)
     // Supabaseの .or() を複数つなげると AND 扱いになるため、個別に取得する
-    const queryFields = `
-      id,
-      start_sec,
-      end_sec,
-      master_songs (
-        title,
-        artist,
-        title_en,
-        artist_en,
-        artwork_url
-      ),
-      videos (
-        video_id,
-        title,
-        thumbnail_url,
-        channels (
-          name
-        )
-      )
-    `;
-
     const [songsByMaster, videosData, channelsData] = await Promise.all([
       // 1. 楽曲検索 (master_songs のみ対象)
       supabase

@@ -1,10 +1,8 @@
 'use client';
 
 import Skeleton from '@/components/Skeleton';
-import { useLocale } from '@/components/LocaleProvider';
 
 export default function Loading() {
-  const { T } = useLocale();
 
   return (
     <div className="w-full flex flex-col p-6 md:p-12 animate-loading-in">

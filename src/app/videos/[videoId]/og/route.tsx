@@ -79,6 +79,7 @@ export async function GET(
           padding: '60px',
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={youtubeThumbnail}
           alt=""
@@ -104,6 +105,7 @@ export async function GET(
           }}
         >
           <div style={{ display: 'flex', width: '500px', height: '100%' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={youtubeThumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '40px', justifyContent: 'center' }}>
@@ -129,6 +131,7 @@ export async function GET(
             
             {/* Platform Brand */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {iconData && <img src={iconData} alt="" style={{ width: '32px', height: '32px', borderRadius: '6px' }} />}
               <span style={{ fontSize: '24px', color: 'white', fontWeight: 900 }}>V-uta</span>
             </div>

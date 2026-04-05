@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Channel } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
 
@@ -64,13 +65,15 @@ export default function ChannelsGrid({ channels }: ChannelsGridProps) {
                 <div className="relative w-full aspect-square">
                   <div className="absolute inset-0 bg-[var(--accent)]/0 group-hover:bg-[var(--accent)]/20 rounded-full blur-2xl transition-all duration-500 -z-10 group-hover:scale-110" />
                   
-                  <div className="w-full h-full rounded-full overflow-hidden ring-4 ring-[var(--border)] group-hover:ring-[var(--accent)]/50 transition-all duration-500 shadow-xl group-hover:shadow-[var(--accent-glow)]/20">
-                    {channel.image ? (
-                      <img
-                        src={channel.image}
-                        alt={channel.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
+                    <div className="w-full h-full rounded-full overflow-hidden ring-4 ring-[var(--border)] group-hover:ring-[var(--accent)]/50 transition-all duration-500 shadow-xl group-hover:shadow-[var(--accent-glow)]/20 relative">
+                      {channel.image ? (
+                        <Image
+                          src={channel.image}
+                          alt={channel.name}
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 15vw"
+                          className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
                     ) : (
                       <div className="w-full h-full bg-[var(--bg-tertiary)] flex items-center justify-center text-4xl font-black text-[var(--accent)]">
                         {channel.name[0]}

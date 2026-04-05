@@ -36,7 +36,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ initialTranslations }: LoginFormProps) {
-  const { T } = useLocale();
+  useLocale();
   const supabase = createClient();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

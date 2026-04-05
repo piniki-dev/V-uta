@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
+import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from './actions';
 import type { ITunesSearchResult } from './actions';
-import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData, Vtuber } from '@/types';
+import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Search, X, Music, Info, Pencil, Save, Trash2, AlertCircle, UserPlus, Building2 } from 'lucide-react';
@@ -176,46 +176,7 @@ export default function NewSongClient() {
     return () => window.removeEventListener('click', handleAnchorClick, true);
   }, [hasChanges, router, T]);
 
-  // バッチアイテムへの移動
-  const navigateToBatchItem = (index: number) => {
-    if (index < 0 || index >= batchArchives.length) return;
-
-    if (hasChanges) {
-      setModalConfig({
-        title: T('newSong.confirmDiscard'),
-        message: T('newSong.discardMessage'),
-        confirmText: T('newSong.move'),
-        cancelText: T('common.cancel'),
-        type: 'warning',
-      });
-      setOnConfirmAction(() => () => {
-        const item = batchArchives[index];
-        setCurrentBatchIndex(index);
-        setUrl(item.url);
-        handleFetchVideo(item.url, index, batchArchives);
-      });
-      setIsModalOpen(true);
-      return;
-    }
-
-    const item = batchArchives[index];
-    setCurrentBatchIndex(index);
-    setUrl(item.url);
-    handleFetchVideo(item.url, index, batchArchives);
-  };
-
-  // 自動読み込み
-  useEffect(() => {
-    if (initialUrl && !hasAutoFetched.current) {
-      hasAutoFetched.current = true;
-      setUrl(initialUrl);
-      // Fetch video immediately
-      handleFetchVideo(initialUrl);
-    }
-  }, [initialUrl]);
-
-
-  const handleFetchVideo = (manualUrl?: string, batchIndex?: number, batchData?: BatchArchive[]) => {
+  const handleFetchVideo = useCallback((manualUrl?: string, batchIndex?: number, batchData?: BatchArchive[]) => {
     const targetUrl = manualUrl || url;
     if (!targetUrl.trim()) return;
 
@@ -320,7 +281,46 @@ export default function NewSongClient() {
       }
       setStep(2);
     });
+  }, [url, batchArchives, T, setError, setSuccess, setMetadata, setIsCoverVideo, setStartTime, setEndTime, setAllSongs, setChannelDataForReg, setVtuberForm, setProductions, setIsVtuberModalOpen, setVideo, setStep]);
+
+  // バッチアイテムへの移動
+  const navigateToBatchItem = (index: number) => {
+    if (index < 0 || index >= batchArchives.length) return;
+
+    if (hasChanges) {
+      setModalConfig({
+        title: T('newSong.confirmDiscard'),
+        message: T('newSong.discardMessage'),
+        confirmText: T('newSong.move'),
+        cancelText: T('common.cancel'),
+        type: 'warning',
+      });
+      setOnConfirmAction(() => () => {
+        const item = batchArchives[index];
+        setCurrentBatchIndex(index);
+        setUrl(item.url);
+        handleFetchVideo(item.url, index, batchArchives);
+      });
+      setIsModalOpen(true);
+      return;
+    }
+
+    const item = batchArchives[index];
+    setCurrentBatchIndex(index);
+    setUrl(item.url);
+    handleFetchVideo(item.url, index, batchArchives);
   };
+
+  // 自動読み込み
+  useEffect(() => {
+    if (initialUrl && !hasAutoFetched.current) {
+      hasAutoFetched.current = true;
+      setUrl(initialUrl);
+      // Fetch video immediately
+      handleFetchVideo(initialUrl);
+    }
+  }, [initialUrl, handleFetchVideo]);
+
 
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

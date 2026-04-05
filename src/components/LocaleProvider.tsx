@@ -19,7 +19,6 @@ const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('ja');
-  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
           setLocaleState('en');
         }
       }
-      setMounted(true);
     }, 0);
     return () => clearTimeout(timer);
   }, [locale]);
@@ -122,7 +120,7 @@ export function useLocale() {
       setLocale: () => {},
       isJa: true,
       isEn: false,
-      t: (ja: string, en: string) => ja,
+      t: (ja: string, _en: string) => ja,
       T,
     } as LocaleContextType;
   }

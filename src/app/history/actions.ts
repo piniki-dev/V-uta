@@ -157,7 +157,7 @@ export async function getPlayHistory(limit = 50, offset = 0) {
     return { success: false, error: t.common.loginRequired };
   }
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('play_history')
     .select(`
       id,

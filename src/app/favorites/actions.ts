@@ -39,7 +39,7 @@ export async function isSongFavorited(songId: number): Promise<boolean> {
   const favPlaylist = await getFavoritesPlaylist(user.id);
   if (!favPlaylist) return false;
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('playlist_items')
     .select('id')
     .eq('playlist_id', favPlaylist.id)

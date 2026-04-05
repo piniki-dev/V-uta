@@ -1,6 +1,5 @@
 'use client';
 
-import { usePlayer } from '@/components/player/PlayerContext';
 import type { PlayerSong, SearchSongItem } from '@/types';
 import SongList from '@/components/song/SongList';
 

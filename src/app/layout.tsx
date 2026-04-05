@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Outfit, Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";

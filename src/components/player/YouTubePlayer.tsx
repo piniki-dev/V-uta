@@ -57,13 +57,17 @@ export default function YouTubePlayer() {
   const setPrivacyModeRef = useRef(setPrivacyMode);
   const showToastRef = useRef(showToast);
   const T_Ref = useRef(T);
+  const volumeRef = useRef(state.volume);
+  const isMutedRef = useRef(state.isMuted);
 
   // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
     isPlayingRef.current = state.isPlaying;
     isLoopingRef.current = state.isLooping;
     currentSongRef.current = state.currentSong;
-  }, [state.isPlaying, state.isLooping, state.currentSong]);
+    volumeRef.current = state.volume;
+    isMutedRef.current = state.isMuted;
+  }, [state.isPlaying, state.isLooping, state.currentSong, state.volume, state.isMuted]);
  
   // コールバック関数は最新のものを保持
   useEffect(() => {
@@ -78,7 +82,8 @@ export default function YouTubePlayer() {
   // YouTube Player の生成と維持
   useEffect(() => {
     // 曲がない場合は何もしないが、プレイヤー自体は一度作ったら維持する
-    if (!state.currentSong && !playerRef.current) return;
+    const currentSong = currentSongRef.current;
+    if (!currentSong && !playerRef.current) return;
 
     const initPlayer = async () => {
       await loadYouTubeAPI();
@@ -87,7 +92,7 @@ export default function YouTubePlayer() {
 
       // すでにプレイヤーが存在する場合は再生成しない
       if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
-        const song = state.currentSong;
+        const song = currentSongRef.current;
         if (song) {
           playerRef.current.loadVideoById({
             videoId: song.videoId,
@@ -95,7 +100,7 @@ export default function YouTubePlayer() {
             endSeconds: song.endSec,
           });
           // 明示的に再生を開始（特にバックグラウンド対策）
-          if (state.isPlaying) {
+          if (isPlayingRef.current) {
             playerRef.current.playVideo();
           }
         }
@@ -103,7 +108,8 @@ export default function YouTubePlayer() {
       }
 
       // プレイヤーが未生成、または壊れている場合は新規作成
-      if (state.currentSong) {
+      const songToInit = currentSongRef.current;
+      if (songToInit) {
         // コンテナをクリア
         containerRef.current.innerHTML = '';
         const playerDiv = document.createElement('div');
@@ -115,24 +121,24 @@ export default function YouTubePlayer() {
           host,
           width: '100%',
           height: '100%',
-          videoId: state.currentSong.videoId,
+          videoId: songToInit.videoId,
           playerVars: {
             autoplay: 1,
             controls: 0,
             disablekb: 1,
             modestbranding: 1,
             rel: 0,
-            start: state.currentSong.startSec,
-            end: state.currentSong.endSec,
+            start: songToInit.startSec,
+            end: songToInit.endSec,
             enablejsapi: 1,
             origin: window.location.origin,
           },
           events: {
             onReady: (event) => {
               playerRef.current = event.target;
-              event.target.setVolume(state.volume);
-              if (state.isMuted) event.target.mute();
-              if (state.isPlaying) event.target.playVideo();
+              event.target.setVolume(volumeRef.current);
+              if (isMutedRef.current) event.target.mute();
+              if (isPlayingRef.current) event.target.playVideo();
             },
             onStateChange: (event) => {
               if (event.data === window.YT.PlayerState.PAUSED) {

@@ -103,6 +103,7 @@ export default async function Image() {
           {/* Logo Section */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '32px', marginBottom: '32px' }}>
             {iconData ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={iconData}
                 alt="Icon"
