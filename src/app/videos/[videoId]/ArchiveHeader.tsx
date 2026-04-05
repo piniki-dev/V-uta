@@ -19,16 +19,16 @@ export default function ArchiveHeader({ video, songs }: Props) {
 
   const toPlayerSong = (song: Song): PlayerSong => ({
     id: song.id,
-    title: song.master_songs?.title || T('common.unknown'),
-    artist: song.master_songs?.artist || null,
-    title_en: song.master_songs?.title_en || null,
-    artist_en: song.master_songs?.artist_en || null,
-    artworkUrl: song.master_songs?.artwork_url || null,
+    title: song.master_song?.title || T('common.unknown'),
+    artist: song.master_song?.artist || null,
+    title_en: song.master_song?.title_en || null,
+    artist_en: song.master_song?.artist_en || null,
+    artworkUrl: song.master_song?.artwork_url || null,
     videoId: video.video_id,
     startSec: song.start_sec,
     endSec: song.end_sec,
-    channelName: video.channels?.name || T('common.unknown'),
-    channelThumbnailUrl: video.channels?.image || null,
+    channelName: video.channel?.name || T('common.unknown'),
+    channelThumbnailUrl: video.channel?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
   });
@@ -89,16 +89,16 @@ export default function ArchiveHeader({ video, songs }: Props) {
         </h1>
         
         <div className="mb-8">
-          {video.channels ? (
-            <Link href={`/channels/${video.channels.handle || video.channels.id}`} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
+          {video.channel ? (
+            <Link href={`/channels/${video.channel.handle || video.channel.id}`} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
               <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)] group-hover/ch:scale-110 transition-transform overflow-hidden border border-[var(--border)] group-hover/ch:border-[var(--accent)]">
-                {video.channels.image ? (
-                  <Image src={video.channels.image} alt="" width={32} height={32} className="w-full h-full object-cover" />
+                {video.channel.image ? (
+                  <Image src={video.channel.image} alt="" width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
-                  video.channels.name[0]
+                  video.channel.name[0]
                 )}
               </div>
-              <span className="truncate">{video.channels.name}</span>
+              <span className="truncate">{video.channel.name}</span>
             </Link>
           ) : (
             <p className="text-[var(--text-secondary)] text-sm font-medium">{T('common.unknown')}</p>

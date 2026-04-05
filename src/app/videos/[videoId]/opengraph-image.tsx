@@ -43,7 +43,7 @@ export default async function Image({
   // 動画情報の取得
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('*, channels(*)')
+    .select('*, channel:channels(*)')
     .eq('video_id', videoId)
     .single();
 
@@ -61,7 +61,7 @@ export default async function Image({
   if (track) {
     const { data: songs } = await supabase
       .from('songs')
-      .select('*, master_songs(*)')
+      .select('*, master_song:master_songs(*)')
       .eq('video_id', video.id)
       .eq('is_active', true)
       .order('start_sec', { ascending: true });
@@ -71,9 +71,9 @@ export default async function Image({
     }
   }
 
-  const title = songInfo ? (songInfo.master_songs?.title || "Unknown Song") : video.title;
-  const artist = songInfo ? (songInfo.master_songs?.artist || video.channels?.name) : video.channels?.name;
-  const artwork = songInfo?.master_songs?.artwork_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const title = songInfo ? (songInfo.master_song?.title || "Unknown Song") : video.title;
+  const artist = songInfo ? (songInfo.master_song?.artist || video.channel?.name) : video.channel?.name;
+  const artwork = songInfo?.master_song?.artwork_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   const blurBg = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   return new ImageResponse(

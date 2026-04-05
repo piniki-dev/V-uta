@@ -17,7 +17,7 @@ import Hero from '@/components/Hero';
 
 interface EditableSong {
   id?: number; // DB 登録済みの場合は ID がある
-  song: Partial<Song> & { master_songs?: Partial<MasterSong> }; // プレビュー用
+  song: Partial<Song> & { master_song?: Partial<MasterSong> }; // プレビュー用
   startTime: string;
   endTime: string;
   isEditing: boolean;
@@ -228,10 +228,10 @@ export default function NewSongClient() {
             })
             .map((s: ImportedSong) => ({
               song: {
-                master_songs: { title: s.title, artist: s.artist },
+                master_song: { title: s.title, artist: s.artist },
                 start_sec: parseTime(s.startTime) || 0,
                 end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
-              } as unknown as Partial<Song> & { master_songs: Partial<MasterSong> },
+              } as unknown as Partial<Song> & { master_song: Partial<MasterSong> },
               startTime: s.startTime,
               endTime: s.endTime || '',
               isEditing: false,
@@ -479,7 +479,7 @@ export default function NewSongClient() {
 
     const newSong: EditableSong = {
       song: {
-        master_songs: {
+        master_song: {
           title: selectedSong.title,
           artist: selectedSong.artist,
           artwork_url: selectedSong.artworkUrl || '',
@@ -488,7 +488,7 @@ export default function NewSongClient() {
         } as unknown as Partial<MasterSong>,
         start_sec: startSec,
         end_sec: endSec,
-      } as unknown as Partial<Song> & { master_songs?: Partial<MasterSong> },
+      } as unknown as Partial<Song> & { master_song?: Partial<MasterSong> },
       startTime,
       endTime,
       isEditing: false,
@@ -527,11 +527,11 @@ export default function NewSongClient() {
           .filter(s => s.isConfirmed || s.id) // 既存曲(idあり)または確定済み
           .map(item => ({
             id: item.id,
-            songTitle: item.song.master_songs?.title || '',
-            songArtist: item.song.master_songs?.artist || '',
-            artworkUrl: item.song.master_songs?.artwork_url || '',
-            itunesId: item.song.master_songs?.itunes_id || '',
-            durationSec: item.song.master_songs?.duration_sec || 0,
+            songTitle: item.song.master_song?.title || '',
+            songArtist: item.song.master_song?.artist || '',
+            artworkUrl: item.song.master_song?.artwork_url || '',
+            itunesId: item.song.master_song?.itunes_id || '',
+            durationSec: item.song.master_song?.duration_sec || 0,
             startSec: parseTime(item.startTime) || 0,
             endSec: parseTime(item.endTime) || 0,
             isDeleted: item.isDeleted,
@@ -699,14 +699,14 @@ export default function NewSongClient() {
             ...it,
             song: {
               ...it.song,
-              master_songs: {
+              master_song: {
                 title: track.title,
                 artist: track.artist,
                 artwork_url: track.artworkUrl || '',
                 itunes_id: track.trackId === -1 ? null : String(track.trackId),
                 duration_sec: track.durationSec,
               } as unknown as Partial<MasterSong>
-            } as unknown as Partial<Song> & { master_songs?: Partial<MasterSong> },
+            } as unknown as Partial<Song> & { master_song?: Partial<MasterSong> },
             endTime: newEndTime,
             isConfirmed: true,
             isChangingSong: false,
@@ -1209,10 +1209,10 @@ export default function NewSongClient() {
                       >
                         <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
                           <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
-                          {item.song.master_songs?.artwork_url ? (
+                          {item.song.master_song?.artwork_url ? (
                             <Image
-                              src={item.song.master_songs.artwork_url}
-                              alt={item.song.master_songs.title}
+                              src={item.song.master_song.artwork_url}
+                              alt={item.song.master_song.title}
                               width={40}
                               height={40}
                               className="edit-songs__artwork"
@@ -1224,10 +1224,10 @@ export default function NewSongClient() {
                           )}
                           <div className="edit-songs__info" style={{ flex: 1 }}>
                             <span className="edit-songs__title" style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                              {tl(item.song.master_songs?.title || '(不明)', item.song.master_songs?.title_en || item.song.master_songs?.title || '(Unknown)')}
+                              {tl(item.song.master_song?.title || '(不明)', item.song.master_song?.title_en || item.song.master_song?.title || '(Unknown)')}
                             </span>
                             <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
-                              {tl(item.song.master_songs?.artist || '-', item.song.master_songs?.artist_en || item.song.master_songs?.artist || '-')}
+                              {tl(item.song.master_song?.artist || '-', item.song.master_song?.artist_en || item.song.master_song?.artist || '-')}
                             </span>
                           </div>
                           {!isBatchMode && (

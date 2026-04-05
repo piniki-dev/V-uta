@@ -14,16 +14,16 @@ export default function ArchiveSongList({ video, songs }: Props) {
 
   const toPlayerSong = (song: Song): PlayerSong => ({
     id: song.id,
-    title: song.master_songs?.title || T('common.unknown'),
-    artist: song.master_songs?.artist || null,
-    title_en: song.master_songs?.title_en || null,
-    artist_en: song.master_songs?.artist_en || null,
-    artworkUrl: song.master_songs?.artwork_url || null,
+    title: song.master_song?.title || T('common.unknown'),
+    artist: song.master_song?.artist || null,
+    title_en: song.master_song?.title_en || null,
+    artist_en: song.master_song?.artist_en || null,
+    artworkUrl: song.master_song?.artwork_url || null,
     videoId: video.video_id,
     startSec: song.start_sec,
     endSec: song.end_sec,
-    channelName: video.channels?.name || T('common.unknown'),
-    channelThumbnailUrl: video.channels?.image || null,
+    channelName: video.channel?.name || T('common.unknown'),
+    channelThumbnailUrl: video.channel?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
   });

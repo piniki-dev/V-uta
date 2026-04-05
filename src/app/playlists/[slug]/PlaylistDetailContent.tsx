@@ -26,7 +26,7 @@ export default function PlaylistDetailContent({ playlist }: Props) {
 
   // お気に入りプレイリストの場合、同期された favoriteIds に基づいて表示をフィルタリング
   const displayItems = playlist.is_favorites
-    ? items.filter(item => item.songs && favoriteIds.has(item.songs.id))
+    ? items.filter(item => item.song && favoriteIds.has(item.song.id))
     : items;
 
   // 外部からの更新（追加など）があった場合に同期
@@ -40,19 +40,19 @@ export default function PlaylistDetailContent({ playlist }: Props) {
   }, [playlist.items, items]);
 
   const toPlayerSong = (item: PlaylistItem): PlayerSong => {
-    const song = item.songs;
+    const song = item.song;
     return {
       id: song?.id || 0,
-      title: song?.master_songs?.title || 'Unknown',
-      artist: song?.master_songs?.artist || null,
-      title_en: song?.master_songs?.title_en || null,
-      artist_en: song?.master_songs?.artist_en || null,
-      artworkUrl: song?.master_songs?.artwork_url || null,
+      title: song?.master_song?.title || 'Unknown',
+      artist: song?.master_song?.artist || null,
+      title_en: song?.master_song?.title_en || null,
+      artist_en: song?.master_song?.artist_en || null,
+      artworkUrl: song?.master_song?.artwork_url || null,
       videoId: song?.video?.video_id || '',
       startSec: song?.start_sec || 0,
       endSec: song?.end_sec || 0,
-      channelName: song?.video?.channels?.name || null,
-      channelThumbnailUrl: song?.video?.channels?.image || null,
+      channelName: song?.video?.channel?.name || null,
+      channelThumbnailUrl: song?.video?.channel?.image || null,
       thumbnailUrl: song?.video?.thumbnail_url || null,
       videoTitle: song?.video?.title || null
     };

@@ -62,10 +62,10 @@ export function ArchivesGrid({ videos }: ArchivesGridProps) {
               <h3 className="font-bold text-[15px] text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent)] transition-colors min-h-[2.4em]">
                 {video.title}
               </h3>
-              {video.channels?.name && (
+              {video.channel?.name && (
                 <p className="text-[11px] font-black uppercase tracking-wider text-[var(--text-tertiary)] mt-auto flex items-center gap-2">
                   <span className="w-1 h-1 bg-[var(--accent)] rounded-full" />
-                  {video.channels.name}
+                  {video.channel.name}
                 </p>
               )}
             </div>

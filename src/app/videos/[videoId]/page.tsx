@@ -24,7 +24,7 @@ export async function generateMetadata({
 
   const { data: video } = await supabase
     .from('videos')
-    .select('*, channels(*)')
+    .select('*, channel:channels(*)')
     .eq('video_id', videoId)
     .single();
 
@@ -33,17 +33,17 @@ export async function generateMetadata({
   // 収録曲リストを取得してdescriptionを生成
   const { data: songs } = await supabase
     .from('songs')
-    .select('*, master_songs(*)')
+    .select('*, master_song:master_songs(*)')
     .eq('video_id', video.id)
     .eq('is_active', true)
     .order('start_sec', { ascending: true });
 
   const songList = (songs || [])
-    .map(s => s.master_songs?.title)
+    .map(s => s.master_song?.title)
     .filter(Boolean)
     .join(', ');
   
-  const channelName = video.channels?.name || t.common.unknown;
+  const channelName = video.channel?.name || t.common.unknown;
   const description = songList 
     ? (locale === 'ja' 
         ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList} を連続再生・スキップして視聴できます。`
@@ -88,7 +88,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   // 動画取得 (video_id = YouTube ID)
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('*, channels(*)').eq('video_id', videoId).single();
+    .select('*, channel:channels(*)').eq('video_id', videoId).single();
 
   if (videoError || !video) {
     return (
@@ -105,7 +105,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   // 曲リスト取得 (master_songsをJOIN)
   const { data: songs } = await supabase
     .from('songs')
-    .select('*, master_songs(*)')
+    .select('*, master_song:master_songs(*)')
     .eq('video_id', video.id)
     .eq('is_active', true)
     .order('start_sec', { ascending: true });
@@ -114,11 +114,11 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   const typedSongs = (songs || []) as Song[];
 
   const songListText = typedSongs
-    .map(s => s.master_songs?.title)
+    .map(s => s.master_song?.title)
     .filter(Boolean)
     .join(', ');
 
-  const channelName = typedVideo.channels?.name || "Unknown VTuber";
+  const channelName = typedVideo.channel?.name || "Unknown VTuber";
   const songDescription = songListText
     ? (locale === 'ja'
         ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText} を連続再生・スキップして視聴できます。`
@@ -152,7 +152,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
     // Chapers (HasPart)
     "hasPart": typedSongs.map((song, i) => ({
       "@type": "Clip",
-      "name": song.master_songs?.title || "Unknown Song",
+      "name": song.master_song?.title || "Unknown Song",
       "startOffset": song.start_sec,
       "endOffset": song.end_sec,
       "url": `${baseUrl}/videos/${videoId}?track=${i + 1}`

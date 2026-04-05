@@ -22,19 +22,19 @@ export default function AutoPlayHandler({ songId, video, songs }: Props) {
   // Song -> PlayerSong への変換ロジック
   const toPlayerSong = useCallback((song: Song): PlayerSong => ({
     id: song.id,
-    title: song.master_songs?.title || T('common.unknown'),
-    artist: song.master_songs?.artist || null,
-    title_en: song.master_songs?.title_en || null,
-    artist_en: song.master_songs?.artist_en || null,
-    artworkUrl: song.master_songs?.artwork_url || null,
+    title: song.master_song?.title || T('common.unknown'),
+    artist: song.master_song?.artist || null,
+    title_en: song.master_song?.title_en || null,
+    artist_en: song.master_song?.artist_en || null,
+    artworkUrl: song.master_song?.artwork_url || null,
     videoId: video.video_id,
     startSec: song.start_sec,
     endSec: song.end_sec,
-    channelName: video.channels?.name || T('common.unknown'),
-    channelThumbnailUrl: video.channels?.image || null,
+    channelName: video.channel?.name || T('common.unknown'),
+    channelThumbnailUrl: video.channel?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
-  }), [T, video.channels?.image, video.channels?.name, video.thumbnail_url, video.title, video.video_id]);
+  }), [T, video.channel?.image, video.channel?.name, video.thumbnail_url, video.title, video.video_id]);
 
   useEffect(() => {
     // すでに自動再生したか、songId がない場合は何もしない
@@ -46,7 +46,7 @@ export default function AutoPlayHandler({ songId, video, songs }: Props) {
     const targetSong = songs.find(s => String(s.id) === String(songId));
     
     if (targetSong) {
-      console.log('[AutoPlay] target song found:', targetSong.master_songs?.title);
+      console.log('[AutoPlay] target song found:', targetSong.master_song?.title);
       const playerSong = toPlayerSong(targetSong);
       const playerSongs = songs.map(toPlayerSong);
       

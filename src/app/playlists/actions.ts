@@ -102,10 +102,10 @@ export async function getPlaylistDetail(slug: string): Promise<ActionResult<Play
       *,
       items:playlist_items (
         *,
-        songs:songs (
+        song:songs (
           *,
-          master_songs (*),
-          video:videos (*, channels (*))
+          master_song:master_songs (*),
+          video:videos (*, channel:channels (*))
         )
       )
     `)
@@ -139,10 +139,10 @@ export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist
       *,
       items:playlist_items (
         *,
-        songs:songs (
+        song:songs (
           *,
-          master_songs (*),
-          video:videos (*, channels (*))
+          master_song:master_songs (*),
+          video:videos (*, channel:channels (*))
         )
       )
     `)

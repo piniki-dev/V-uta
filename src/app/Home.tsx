@@ -15,7 +15,7 @@ export default async function Home() {
   // 重複を防ぐため、一度多めに取ってからアプリ側で ID をキーにして uniq にする
   const { data: videoData } = await supabase
     .from('videos')
-    .select('*, channels(*), songs!inner(id)')
+    .select('*, channel:channels(*), songs!inner(id)')
     .order('created_at', { ascending: false })
     .limit(24);
 

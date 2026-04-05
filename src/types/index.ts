@@ -20,7 +20,7 @@ export interface Vtuber {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
-  productions?: Production;
+  production?: Production; // 以前は productions
 }
 
 export interface Channel {
@@ -35,7 +35,7 @@ export interface Channel {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
-  vtubers?: Vtuber;
+  vtuber?: Vtuber; // 以前は vtubers
 }
 
 export interface Video {
@@ -55,7 +55,7 @@ export interface Video {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
-  channels?: Channel;
+  channel?: Channel; // 以前は channels
 }
 
 export interface MasterSong {
@@ -85,7 +85,7 @@ export interface Song {
   updated_at: string;
   updated_by: string | null;
   // JOINされた場合に含まれる
-  master_songs?: MasterSong;
+  master_song?: MasterSong; // 以前は master_songs
 }
 
 /** Song + 親 Video 情報を含む結合型 */
@@ -113,7 +113,7 @@ export interface PlaylistItem {
   song_id: number;
   position: number;
   added_at: string;
-  songs?: Song & { master_songs: MasterSong; video: Video };
+  song?: Song & { master_song: MasterSong; video: Video }; // 以前は songs
 }
 
 // ===== プレイヤー =====
@@ -198,18 +198,18 @@ export interface SearchSongItem {
   id: number;
   start_sec: number;
   end_sec: number;
-  master_songs?: {
+  master_song?: { // 以前は master_songs
     title: string;
     artist: string;
     title_en: string | null;
     artist_en: string | null;
     artwork_url: string | null;
   };
-  videos?: {
+  video?: { // 以前は videos
     video_id: string;
     title: string;
     thumbnail_url: string | null;
-    channels?: {
+    channel?: { // 以前は channels
       name: string;
       image: string | null;
     };

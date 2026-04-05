@@ -130,7 +130,7 @@ export async function fetchVideoPreview(
       // 登録済みの曲を取得
       const { data: songsData } = await supabase
         .from('songs')
-        .select('*, master_songs(*)')
+        .select('*, master_song:master_songs(*)')
         .eq('video_id', videoData.id)
         .order('start_sec', { ascending: true });
       
@@ -451,7 +451,7 @@ export async function registerSong(input: {
       end_sec: endSec,
       created_by: user.id,
     })
-    .select('*, master_songs(*)')
+    .select('*, master_song:master_songs(*)')
     .single();
 
   if (error) {
@@ -587,7 +587,7 @@ export async function registerFullArchive(input: {
             updated_by: user.id,
           })
           .eq('id', songInput.id)
-          .select('*, master_songs(*)')
+          .select('*, master_song:master_songs(*)')
           .single();
         if (error) throw new Error(`曲の更新に失敗しました: ${error.message}`);
         finalSongs.push(data as Song);
@@ -602,7 +602,7 @@ export async function registerFullArchive(input: {
             end_sec: songInput.endSec,
             created_by: user.id,
           })
-          .select('*, master_songs(*)')
+          .select('*, master_song:master_songs(*)')
           .single();
         if (error) throw new Error(`曲の登録に失敗しました: ${error.message}`);
         finalSongs.push(data as Song);
@@ -680,7 +680,7 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
       *,
       songs (
         *,
-        master_songs (*)
+        master_song:master_songs (*)
       )
     `)
     .eq('channel_record_id', channel.id)
@@ -736,7 +736,7 @@ export async function updateSong(input: {
       end_sec: endSec,
     })
     .eq('id', input.songId)
-    .select('*, master_songs(*)')
+    .select('*, master_song:master_songs(*)')
     .single();
 
   if (error) {
@@ -825,7 +825,7 @@ export async function updateSongMaster(input: {
     .from('songs')
     .update({ master_song_id: masterSong.id })
     .eq('id', input.songId)
-    .select('*, master_songs(*)')
+    .select('*, master_song:master_songs(*)')
     .single();
 
   if (error) {

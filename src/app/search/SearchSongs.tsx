@@ -11,18 +11,18 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
   const toPlayerSong = (item: SearchSongItem): PlayerSong => {
     return {
       id: item.id,
-      title: item.master_songs?.title || '',
-      artist: item.master_songs?.artist || null,
-      title_en: item.master_songs?.title_en || null,
-      artist_en: item.master_songs?.artist_en || null,
-      artworkUrl: item.master_songs?.artwork_url || null,
-      videoId: item.videos?.video_id || '',
+      title: item.master_song?.title || '',
+      artist: item.master_song?.artist || null,
+      title_en: item.master_song?.title_en || null,
+      artist_en: item.master_song?.artist_en || null,
+      artworkUrl: item.master_song?.artwork_url || null,
+      videoId: item.video?.video_id || '',
       startSec: item.start_sec,
       endSec: item.end_sec,
-      channelName: item.videos?.channels?.name || null,
-      channelThumbnailUrl: item.videos?.channels?.image || null,
-      thumbnailUrl: item.videos?.thumbnail_url || null,
-      videoTitle: item.videos?.title || ''
+      channelName: item.video?.channel?.name || null,
+      channelThumbnailUrl: item.video?.channel?.image || null,
+      thumbnailUrl: item.video?.thumbnail_url || null,
+      videoTitle: item.video?.title || ''
     };
   };
 

@@ -26,21 +26,21 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
   const loaderRef = useRef<HTMLDivElement>(null);
 
   const toPlayerSong = useCallback((item: HistoryItem): PlayerSong => {
-    const { songs } = item;
+    const { song } = item;
     return {
-      id: songs.id,
-      title: songs.master_songs?.title || '',
-      artist: songs.master_songs?.artist || null,
-      title_en: songs.master_songs?.title_en || null,
-      artist_en: songs.master_songs?.artist_en || null,
-      artworkUrl: songs.master_songs?.artwork_url || null,
-      videoId: songs.videos.video_id,
-      startSec: songs.start_sec,
-      endSec: songs.end_sec,
-      channelName: songs.videos.channels?.name || null,
-      channelThumbnailUrl: songs.videos.channels?.image || null,
-      thumbnailUrl: songs.videos.thumbnail_url || null,
-      videoTitle: songs.videos.title,
+      id: song.id,
+      title: song.master_song?.title || '',
+      artist: song.master_song?.artist || null,
+      title_en: song.master_song?.title_en || null,
+      artist_en: song.master_song?.artist_en || null,
+      artworkUrl: song.master_song?.artwork_url || null,
+      videoId: song.video.video_id,
+      startSec: song.start_sec,
+      endSec: song.end_sec,
+      channelName: song.video.channel?.name || null,
+      channelThumbnailUrl: song.video.channel?.image || null,
+      thumbnailUrl: song.video.thumbnail_url || null,
+      videoTitle: song.video.title,
       playedAt: item.played_at
     };
   }, []);

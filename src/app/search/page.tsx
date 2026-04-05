@@ -40,8 +40,8 @@ export default async function SearchPage({
         .from('songs')
         .select(`
           id, start_sec, end_sec,
-          master_songs!inner (title, artist, title_en, artist_en, artwork_url),
-          videos (video_id, title, thumbnail_url, channels (name, image))
+          master_song:master_songs!inner (title, artist, title_en, artist_en, artwork_url),
+          video:videos (video_id, title, thumbnail_url, channel:channels (name, image))
         `)
         .or(`title.ilike.%${decodedQuery}%,artist.ilike.%${decodedQuery}%,title_en.ilike.%${decodedQuery}%,artist_en.ilike.%${decodedQuery}%`, { foreignTable: 'master_songs' })
         .limit(50),
@@ -51,7 +51,7 @@ export default async function SearchPage({
         .from('videos')
         .select(`
           *,
-          channels (name)
+          channel:channels (name)
         `)
         .ilike('title', `%${decodedQuery}%`)
         .limit(20),

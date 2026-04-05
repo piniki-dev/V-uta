@@ -16,22 +16,22 @@ export type HistoryItem = {
   play_duration: number | null;
   source_type: string | null;
   source_id: string | null;
-  songs: {
+  song: { // 以前は songs
     id: number;
     start_sec: number;
     end_sec: number;
-    master_songs: {
+    master_song: { // 以前は master_songs
       title: string;
       artist: string;
       title_en?: string | null;
       artist_en?: string | null;
       artwork_url: string | null;
     } | null;
-    videos: {
+    video: { // 以前は videos
       video_id: string;
       title: string;
       thumbnail_url: string | null;
-      channels: {
+      channel: { // 以前は channels
         name: string;
         image: string | null;
       } | null;
@@ -165,20 +165,20 @@ export async function getPlayHistory(limit = 50, offset = 0) {
       play_duration,
       source_type,
       source_id,
-      songs (
+      song:songs (
         id,
         start_sec,
         end_sec,
-        master_songs (
+        master_song:master_songs (
           title,
           artist,
           artwork_url
         ),
-        videos (
+        video:videos (
           video_id,
           title,
           thumbnail_url,
-          channels (
+          channel:channels (
             name,
             image
           )

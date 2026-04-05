@@ -118,7 +118,7 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
                   </h3>
                   <p className="text-[11px] font-black uppercase tracking-wider text-[var(--text-tertiary)] mt-auto flex items-center gap-2">
                     <span className="w-1 h-1 bg-[var(--accent)] rounded-full" />
-                    {video.channels?.name || T('common.unknown')}
+                    {video.channel?.name || T('common.unknown')}
                   </p>
                 </div>
               </Link>

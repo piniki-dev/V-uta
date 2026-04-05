@@ -198,11 +198,11 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
                                 items={video.songs}
                                 mapToPlayerSong={(s) => ({
                                   id: s.id,
-                                  title: s.master_songs?.title || T('common.unknown'),
-                                  artist: s.master_songs?.artist || T('common.unknown'),
-                                  title_en: s.master_songs?.title_en || null,
-                                  artist_en: s.master_songs?.artist_en || null,
-                                  artworkUrl: s.master_songs?.artwork_url || null,
+                                  title: s.master_song?.title || T('common.unknown'),
+                                  artist: s.master_song?.artist || T('common.unknown'),
+                                  title_en: s.master_song?.title_en || null,
+                                  artist_en: s.master_song?.artist_en || null,
+                                  artworkUrl: s.master_song?.artwork_url || null,
                                   videoId: video.video_id,
                                   startSec: s.start_sec,
                                   endSec: s.end_sec,

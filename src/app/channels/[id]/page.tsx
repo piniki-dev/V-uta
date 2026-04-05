@@ -79,7 +79,7 @@ export default async function ChannelPage({ params }: PageProps) {
 
   // アーティスト用の構造化データ
   // 型定義上は vtubers ですが、alias で vtuber として取得されています
-  const vtuber = (channel as any).vtuber || channel.vtubers;
+  const vtuber = channel.vtuber;
 
   const artistData = {
     "@context": "https://schema.org",

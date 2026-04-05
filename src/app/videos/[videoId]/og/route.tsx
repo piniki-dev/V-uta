@@ -37,7 +37,7 @@ export async function GET(
   // 動画情報の取得
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('*, channels(*)')
+    .select('*, channel:channels(*)')
     .eq('video_id', videoId)
     .single();
 
@@ -50,7 +50,7 @@ export async function GET(
   if (trackNum) {
     const { data: songs } = await supabase
       .from('songs')
-      .select('*, master_songs(*)')
+      .select('*, master_song:master_songs(*)')
       .eq('video_id', video.id)
       .eq('is_active', true)
       .order('start_sec', { ascending: true });
@@ -60,8 +60,8 @@ export async function GET(
     }
   }
 
-  const title = songInfo ? (songInfo.master_songs?.title || "Unknown Song") : video.title;
-  const channelName = video.channels?.name || "Unknown VTuber";
+  const title = songInfo ? (songInfo.master_song?.title || "Unknown Song") : video.title;
+  const channelName = video.channel?.name || "Unknown VTuber";
   const youtubeThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   return new ImageResponse(
