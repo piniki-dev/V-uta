@@ -5,6 +5,7 @@ import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
+import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic, Shield } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export default function FullPlayer() {
     togglePrivacyMode,
   } = usePlayer();
   const { t, T } = useLocale();
+  const { showToast } = useToast();
   const { isOpen: isSidebarOpen } = useSidebar();
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
@@ -127,7 +129,12 @@ export default function FullPlayer() {
                    </div>
                    <div className="flex items-center gap-4">
                      <button 
-                      onClick={togglePrivacyMode}
+                      onClick={() => {
+                        togglePrivacyMode();
+                        showToast(!state.isPrivacyMode ? T('player.privacyModeEnabled') : T('player.privacyModeDisabled'), {
+                          type: 'privacy'
+                        });
+                      }}
                       className={`transition-colors active:scale-90 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
                       title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
                      >

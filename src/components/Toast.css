@@ -1,0 +1,105 @@
+.toast-container {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Desktop Bottom-Right (Default) */
+@media (min-width: 769px) {
+  .toast-container--bottom-right {
+    bottom: calc(var(--player-height) + 24px);
+    right: 24px;
+    align-items: flex-end;
+  }
+}
+
+/* Mobile Bottom Center */
+@media (max-width: 768px) {
+  .toast-container {
+    bottom: calc(var(--player-height) + 16px);
+    left: 16px;
+    right: 16px;
+    align-items: center;
+  }
+}
+
+.toast-item {
+  pointer-events: auto;
+  max-width: 400px;
+  width: auto;
+  min-width: 300px;
+  background: rgba(var(--bg-primary-rgb), 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.toast-item--info {
+  border-left: 4px solid var(--accent);
+}
+
+.toast-item--success {
+  border-left: 4px solid var(--success);
+}
+
+.toast-item--error {
+  border-left: 4px solid var(--error);
+}
+
+.toast-item__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toast-item--info .toast-item__icon { color: var(--accent); }
+.toast-item--success .toast-item__icon { color: var(--success); }
+.toast-item--error .toast-item__icon { color: var(--error); }
+
+.toast-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-item__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  color: var(--text-primary);
+}
+
+.toast-item__message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.toast-item__close {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  padding: 4px;
+  margin: -4px -4px 0 0;
+  transition: color var(--transition);
+}
+
+.toast-item__close:hover {
+  color: var(--text-primary);
+}
+
+/* PiP Offset Support */
+@media (max-width: 768px) {
+  .toast-item {
+    min-width: 0;
+    width: 100%;
+  }
+}

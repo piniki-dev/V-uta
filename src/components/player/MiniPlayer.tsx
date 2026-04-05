@@ -1,6 +1,7 @@
 'use client';
 
 import { usePlayer } from './PlayerContext';
+import { useToast } from '../ToastProvider';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import FavoriteButton from '@/components/song/FavoriteButton';
@@ -40,7 +41,8 @@ export default function MiniPlayer() {
     setVideoRatioMode,
     togglePrivacyMode,
   } = usePlayer();
-  const { t, T } = useLocale();
+  const { T, t } = useLocale();
+  const { showToast } = useToast();
 
   // モバイルかつフルプレイヤーが開いている場合のみ非表示にする
   // デスクトップではFullPlayerが開いていてもMiniPlayerを表示し続ける（ユーザーの要望）
@@ -168,7 +170,13 @@ export default function MiniPlayer() {
           </span>
 
           <button
-            onClick={(e) => { e.stopPropagation(); togglePrivacyMode(); }}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              togglePrivacyMode();
+              showToast(!state.isPrivacyMode ? T('player.privacyModeEnabled') : T('player.privacyModeDisabled'), {
+                type: 'privacy'
+              });
+            }}
             onPointerDown={(e) => e.stopPropagation()}
             className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.isPrivacyMode ? 'active' : ''}`}
             title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}

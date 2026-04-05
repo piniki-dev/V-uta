@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from './PlayerContext';
+import { useToast } from '../ToastProvider';
+import { useLocale } from '@/components/LocaleProvider';
 
 declare global {
   interface Window {
@@ -43,6 +45,8 @@ function loadYouTubeAPI(): Promise<void> {
 
 export default function YouTubePlayer() {
   const { state, setTime, pause, nextSong, stop, playerRef, togglePrivacyMode, setPrivacyMode } = usePlayer();
+  const { showToast } = useToast();
+  const { T } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const isPlayingRef = useRef(state.isPlaying);
   const isLoopingRef = useRef(state.isLooping);
@@ -133,6 +137,11 @@ export default function YouTubePlayer() {
                     if (isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
                       console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
                       setPrivacyMode(true, false);
+                      showToast(T('player.autoPrivacyModeMessage'), {
+                        title: T('player.autoPrivacyModeTitle'),
+                        type: 'privacy',
+                        duration: Infinity,
+                      });
                     }
                   }, 1000);
                 }
@@ -154,6 +163,11 @@ export default function YouTubePlayer() {
                 if (!state.isPrivacyMode) {
                   console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
                   setPrivacyMode(true, false);
+                  showToast(T('player.autoPrivacyModeMessage'), {
+                    title: T('player.autoPrivacyModeTitle'),
+                    type: 'privacy',
+                    duration: Infinity,
+                  });
                 }
               } else {
                 console.error(`[V-uta] YouTube Player Error: ${event.data}`);

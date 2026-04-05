@@ -9,6 +9,7 @@ import PersistentPlayer from "@/components/player/PersistentPlayer";
 import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
 import { createClient } from "@/utils/supabase/server";
@@ -114,23 +115,25 @@ export default async function RootLayout({
           <ThemeProvider>
             <FavoritesProvider>
               <PlayerProvider>
-                <SidebarProvider>
-                  <Header />
-                  <div className="app-layout mesh-bg">
-                    <Sidebar initialUser={user} initialPlaylists={initialPlaylists} />
-                    <LayoutWrapper>
-                      <main className="main-content">
-                        <div className="flex-1">
-                          {children}
-                        </div>
-                        <Footer />
-                      </main>
-                    </LayoutWrapper>
-                  </div>
-                  <MiniPlayer />
-                  <FullPlayer />
-                  <PersistentPlayer />
-                </SidebarProvider>
+                <ToastProvider>
+                  <SidebarProvider>
+                    <Header />
+                    <div className="app-layout mesh-bg">
+                      <Sidebar initialUser={user} initialPlaylists={initialPlaylists} />
+                      <LayoutWrapper>
+                        <main className="main-content">
+                          <div className="flex-1">
+                            {children}
+                          </div>
+                          <Footer />
+                        </main>
+                      </LayoutWrapper>
+                    </div>
+                    <MiniPlayer />
+                    <FullPlayer />
+                    <PersistentPlayer />
+                  </SidebarProvider>
+                </ToastProvider>
               </PlayerProvider>
             </FavoritesProvider>
           </ThemeProvider>
