@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 import Hero from '@/components/Hero';
 import { Shield } from 'lucide-react';
+import JsonLd from '@/components/JsonLd';
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
@@ -19,9 +20,30 @@ export default async function PrivacyPage() {
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
+
+  const breadcrumbData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": t.sidebar.home,
+        "item": baseUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": t.legal.privacy,
+        "item": `${baseUrl}/privacy`
+      }
+    ]
+  };
 
   return (
     <div className="min-h-screen pb-20">
+      <JsonLd data={breadcrumbData} />
       <Hero 
         title={t.legal.privacy}
         description={t.legal.privacyContent.intro}

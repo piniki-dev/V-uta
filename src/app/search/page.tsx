@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 import type { Video, Channel, SearchSongItem } from '@/types';
+import JsonLd from '@/components/JsonLd';
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ q: string }> }) {
   const { q } = await searchParams;
@@ -70,14 +71,38 @@ export default async function SearchPage({
 
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const t = translations[locale];
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
+
+  const breadcrumbData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": t.sidebar.home,
+        "item": baseUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": t.sidebar.search,
+        "item": query ? `${baseUrl}/search?q=${query}` : `${baseUrl}/search`
+      }
+    ]
+  };
 
   return (
-    <SearchView 
-      query={query ? decodeURIComponent(query) : ''} 
-      songs={songs} 
-      videos={videos}
-      channels={channels}
-      locale={locale}
-    />
+    <>
+      <JsonLd data={breadcrumbData} />
+      <SearchView 
+        query={query ? decodeURIComponent(query) : ''} 
+        songs={songs} 
+        videos={videos}
+        channels={channels}
+        locale={locale}
+      />
+    </>
   );
 }

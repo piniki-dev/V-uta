@@ -54,10 +54,24 @@ export default async function HomePage() {
     }
   };
 
+  const organizationData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": t.common.siteTitle,
+    "url": baseUrl,
+    "logo": `${baseUrl}/icon-512.png`, // 仮
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "url": `${baseUrl}/contact`
+    }
+  };
+
   return (
     <>
       <JsonLd data={websiteData} />
       <JsonLd data={softwareData} />
+      <JsonLd data={organizationData} />
       <Home />
     </>
   );

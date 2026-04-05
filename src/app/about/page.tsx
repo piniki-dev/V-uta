@@ -3,6 +3,7 @@ import { Info, MessageCircle, Shield, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
+import JsonLd from '@/components/JsonLd';
 
 export default async function AboutPage() {
   const cookieStore = await cookies();
@@ -23,8 +24,29 @@ export default async function AboutPage() {
     return typeof current === 'string' ? current : key;
   };
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
+  const breadcrumbData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": T('sidebar.home'),
+        "item": baseUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": T('legal.about'),
+        "item": `${baseUrl}/about`
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen">
+      <JsonLd data={breadcrumbData} />
       <Hero
         title={T('legal.about')}
         description={T('legal.aboutContent.description')}
