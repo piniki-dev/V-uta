@@ -5,6 +5,8 @@ import { useLocale } from '@/components/LocaleProvider';
 import Link from 'next/link';
 
 interface Channel {
+  id: number;
+  handle: string | null;
   name: string | null;
   image: string | null;
 }
@@ -42,7 +44,7 @@ export default function HomeChannelSection({ channels }: HomeChannelSectionProps
             viewport={{ once: true }}
           >
             <Link 
-              href={`/search?q=${encodeURIComponent(channel.name || '')}`}
+              href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
               className="flex flex-col items-center gap-3 group"
             >
               <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-transparent group-hover:border-[var(--accent)] transition-all duration-300 shadow-lg">

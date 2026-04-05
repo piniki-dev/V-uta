@@ -31,7 +31,9 @@ export default async function Home() {
 
   // 3. 人気チャンネル (ランキングデータから抽出)
   // 上位50曲に含まれるチャンネルから、ユニークなものを抽出
-  const popularChannels = Array.from(new Map(allRankingSongs.map(s => [s.channelName, { 
+  const popularChannels = Array.from(new Map(allRankingSongs.map(s => [s.channelId, { 
+    id: s.channelId,
+    handle: s.channelHandle,
     name: s.channelName, 
     image: s.channelThumbnailUrl 
   }])).values()).slice(0, 12);

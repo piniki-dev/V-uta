@@ -49,7 +49,9 @@ export interface RankingResult {
   artwork_url: string | null;
   video_id: string;
   video_title: string | null;
+  channel_id: number;
   channel_name: string | null;
+  channel_handle: string | null;
   channel_image: string | null;
   start_sec: number;
   end_sec: number;
@@ -65,7 +67,9 @@ export interface FormattedRankingSong {
   artworkUrl: string | null;
   videoId: string;
   videoTitle: string | null;
+  channelId: number;
   channelName: string | null;
+  channelHandle: string | null;
   channelThumbnailUrl: string | null;
   startSec: number;
   endSec: number;
@@ -251,7 +255,9 @@ export async function getSongRankings(params: {
     artworkUrl: item.artwork_url,
     videoId: item.video_id,
     videoTitle: item.video_title,
+    channelId: item.channel_id,
     channelName: item.channel_name,
+    channelHandle: item.channel_handle,
     channelThumbnailUrl: item.channel_image,
     startSec: item.start_sec,
     endSec: item.end_sec,
