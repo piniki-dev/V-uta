@@ -193,7 +193,7 @@ interface PlayerContextType {
   setPipPosition: (position: PipPosition) => void;
   setVideoRatioMode: (mode: 'auto' | '16/9' | '9/16') => void;
   togglePrivacyMode: () => void;
-  setPrivacyMode: (isPrivacyMode: boolean) => void;
+  setPrivacyMode: (isPrivacyMode: boolean, persist?: boolean) => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -556,9 +556,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(PRIVACY_STORAGE_KEY, (!state.isPrivacyMode).toString());
   }, [state.isPrivacyMode]);
 
-  const setPrivacyMode = useCallback((isPrivacyMode: boolean) => {
+  const setPrivacyMode = useCallback((isPrivacyMode: boolean, persist: boolean = true) => {
     dispatch({ type: 'SET_PRIVACY_MODE', isPrivacyMode });
-    localStorage.setItem(PRIVACY_STORAGE_KEY, isPrivacyMode.toString());
+    if (persist) {
+      localStorage.setItem(PRIVACY_STORAGE_KEY, isPrivacyMode.toString());
+    }
   }, []);
 
   return (

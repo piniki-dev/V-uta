@@ -42,7 +42,7 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export default function YouTubePlayer() {
-  const { state, setTime, pause, nextSong, stop, playerRef, togglePrivacyMode } = usePlayer();
+  const { state, setTime, pause, nextSong, stop, playerRef, togglePrivacyMode, setPrivacyMode } = usePlayer();
   const containerRef = useRef<HTMLDivElement>(null);
   const isPlayingRef = useRef(state.isPlaying);
   const isLoopingRef = useRef(state.isLooping);
@@ -132,7 +132,7 @@ export default function YouTubePlayer() {
                   setTimeout(() => {
                     if (isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
                       console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
-                      togglePrivacyMode();
+                      setPrivacyMode(true, false);
                     }
                   }, 1000);
                 }
@@ -153,7 +153,7 @@ export default function YouTubePlayer() {
               if (event.data === 101 || event.data === 150 || event.data === 5) {
                 if (!state.isPrivacyMode) {
                   console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
-                  togglePrivacyMode();
+                  setPrivacyMode(true, false);
                 }
               } else {
                 console.error(`[V-uta] YouTube Player Error: ${event.data}`);
