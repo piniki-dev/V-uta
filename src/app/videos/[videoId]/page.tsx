@@ -30,17 +30,41 @@ export async function generateMetadata({
 
   if (!video) return { title: t.archive.notFound };
 
+  // 収録曲リストを取得してdescriptionを生成
+  const { data: songs } = await supabase
+    .from('songs')
+    .select('*, master_songs(*)')
+    .eq('video_id', video.id)
+    .eq('is_active', true)
+    .order('start_sec', { ascending: true });
+
+  const songList = (songs || [])
+    .map(s => s.master_songs?.title)
+    .filter(Boolean)
+    .join(', ');
+  
+  const channelName = video.channels?.name || t.common.unknown;
+  const description = songList 
+    ? (locale === 'ja' 
+        ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList} を連続再生・スキップして視聴できます。`
+        : `Karaoke archive by ${channelName}. Setlist: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList}. Play and skip through songs.`)
+    : (locale === 'ja'
+        ? `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`
+        : `Karaoke archive by ${channelName}. No songs registered yet.`);
+
   const ogUrl = track ? `${baseUrl}/videos/${videoId}/og?track=${track}` : `${baseUrl}/videos/${videoId}/og`;
 
   return {
-    title: `${video.title} | ${video.channels?.name || t.common.unknown} | ${t.common.siteTitle}`,
-    description: video.description,
+    title: `${video.title} | ${channelName} | ${t.common.siteTitle}`,
+    description,
     openGraph: {
       images: [ogUrl],
+      description,
     },
     twitter: {
       card: 'summary_large_image',
       images: [ogUrl],
+      description,
     }
   };
 }
@@ -89,6 +113,20 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   const typedVideo = video as Video;
   const typedSongs = (songs || []) as Song[];
 
+  const songListText = typedSongs
+    .map(s => s.master_songs?.title)
+    .filter(Boolean)
+    .join(', ');
+
+  const channelName = typedVideo.channels?.name || "Unknown VTuber";
+  const songDescription = songListText
+    ? (locale === 'ja'
+        ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText} を連続再生・スキップして視聴できます。`
+        : `Karaoke archive by ${channelName}. Setlist: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText}. Play and skip through songs.`)
+    : (locale === 'ja'
+        ? `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`
+        : `Karaoke archive by ${channelName}. No songs registered yet.`);
+
   // track パラメータ (1-indexed) から songId を特定
   const trackNum = typeof sParams.track === 'string' ? parseInt(sParams.track) : null;
   let resolvedSongId = songId;
@@ -101,7 +139,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
     "@context": "https://schema.org",
     "@type": "MusicVideo",
     "name": typedVideo.title,
-    "description": typedVideo.description,
+    "description": songDescription,
     "thumbnailUrl": `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
     "uploadDate": typedVideo.published_at || typedVideo.created_at,
     "url": `${baseUrl}/videos/${videoId}`,
@@ -109,7 +147,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
     "duration": typedVideo.duration ? `PT${typedVideo.duration}S` : undefined,
     "creator": {
       "@type": "MusicGroup",
-      "name": typedVideo.channels?.name || "Unknown VTuber"
+      "name": channelName
     },
     // Chapers (HasPart)
     "hasPart": typedSongs.map((song, i) => ({
