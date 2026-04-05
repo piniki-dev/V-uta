@@ -154,6 +154,7 @@ export interface PlayerState {
   currentHistoryId: number | null;
   playSessionKey: number;
   pipPosition: PipPosition;
+  isPrivacyMode: boolean;
 }
 
 // ===== YouTube API =====

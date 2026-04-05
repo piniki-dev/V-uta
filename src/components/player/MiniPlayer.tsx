@@ -20,7 +20,8 @@ import {
   ArrowUpLeft,
   ArrowUpRight,
   ArrowDownLeft,
-  ArrowDownRight
+  ArrowDownRight,
+  Shield
 } from 'lucide-react';
 
 export default function MiniPlayer() {
@@ -37,6 +38,7 @@ export default function MiniPlayer() {
     toggleFullPlayer,
     setPipPosition,
     setVideoRatioMode,
+    togglePrivacyMode,
   } = usePlayer();
   const { t, T } = useLocale();
 
@@ -164,6 +166,15 @@ export default function MiniPlayer() {
           <span className="mini-player__time">
             {formatTime(state.currentTime)} / {formatTime(duration)}
           </span>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); togglePrivacyMode(); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.isPrivacyMode ? 'active' : ''}`}
+            title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
+          >
+            <Shield size={18} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
+          </button>
 
           <button
             onClick={(e) => { e.stopPropagation(); toggleLoop(); }}

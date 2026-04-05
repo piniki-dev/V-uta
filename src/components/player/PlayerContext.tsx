@@ -26,10 +26,13 @@ type PlayerAction =
   | { type: 'ADD_SONG_LAST'; song: PlayerSong }
   | { type: 'SET_PIP_POSITION'; position: PipPosition }
   | { type: 'SET_VIDEO_RATIO'; ratio: string }
-  | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' };
+  | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' }
+  | { type: 'TOGGLE_PRIVACY_MODE' }
+  | { type: 'SET_PRIVACY_MODE'; isPrivacyMode: boolean };
 
 // ===== Constants =====
 const VOLUME_STORAGE_KEY = 'vuta-player-volume';
+const PRIVACY_STORAGE_KEY = 'vuta-player-privacy';
 
 // ===== Reducer =====
 
@@ -50,6 +53,7 @@ const initialState: PlayerState = {
   pipPosition: 'bottom-right',
   videoRatio: '16/9',
   videoRatioMode: 'auto',
+  isPrivacyMode: false,
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -157,6 +161,10 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, videoRatio: action.ratio };
     case 'SET_VIDEO_RATIO_MODE':
       return { ...state, videoRatioMode: action.mode, videoRatio: action.mode === 'auto' ? state.videoRatio : action.mode };
+    case 'TOGGLE_PRIVACY_MODE':
+      return { ...state, isPrivacyMode: !state.isPrivacyMode };
+    case 'SET_PRIVACY_MODE':
+      return { ...state, isPrivacyMode: action.isPrivacyMode };
     default:
       return state;
   }
@@ -184,6 +192,8 @@ interface PlayerContextType {
   addSongLast: (song: PlayerSong) => void;
   setPipPosition: (position: PipPosition) => void;
   setVideoRatioMode: (mode: 'auto' | '16/9' | '9/16') => void;
+  togglePrivacyMode: () => void;
+  setPrivacyMode: (isPrivacyMode: boolean) => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -216,6 +226,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!isNaN(vol)) {
           dispatch({ type: 'SET_VOLUME', volume: vol });
         }
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // プライバシーモードの初期ロード
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const savedPrivacy = localStorage.getItem(PRIVACY_STORAGE_KEY);
+      if (savedPrivacy !== null) {
+        dispatch({ type: 'SET_PRIVACY_MODE', isPrivacyMode: savedPrivacy === 'true' });
       }
     }, 0);
     return () => clearTimeout(timer);
@@ -529,6 +550,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_VIDEO_RATIO_MODE', mode });
   }, []);
 
+  const togglePrivacyMode = useCallback(() => {
+    dispatch({ type: 'TOGGLE_PRIVACY_MODE' });
+    // 次回の初期ロードのために保存 (Reducerの後の値を想定して !state.isPrivacyMode)
+    localStorage.setItem(PRIVACY_STORAGE_KEY, (!state.isPrivacyMode).toString());
+  }, [state.isPrivacyMode]);
+
+  const setPrivacyMode = useCallback((isPrivacyMode: boolean) => {
+    dispatch({ type: 'SET_PRIVACY_MODE', isPrivacyMode });
+    localStorage.setItem(PRIVACY_STORAGE_KEY, isPrivacyMode.toString());
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -551,6 +583,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         addSongLast,
         setPipPosition,
         setVideoRatioMode,
+        togglePrivacyMode,
+        setPrivacyMode,
         playerRef,
       }}
     >

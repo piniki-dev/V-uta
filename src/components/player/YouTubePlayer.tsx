@@ -42,8 +42,9 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export default function YouTubePlayer() {
-  const { state, setTime, pause, nextSong, stop, playerRef } = usePlayer();
+  const { state, setTime, pause, nextSong, stop, playerRef, togglePrivacyMode } = usePlayer();
   const containerRef = useRef<HTMLDivElement>(null);
+  const isPlayingRef = useRef(state.isPlaying);
   const isLoopingRef = useRef(state.isLooping);
   const currentSongRef = useRef(state.currentSong);
   const nextSongRef = useRef(nextSong);
@@ -52,9 +53,10 @@ export default function YouTubePlayer() {
 
   // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
+    isPlayingRef.current = state.isPlaying;
     isLoopingRef.current = state.isLooping;
     currentSongRef.current = state.currentSong;
-  }, [state.isLooping, state.currentSong]);
+  }, [state.isPlaying, state.isLooping, state.currentSong]);
  
   // コールバック関数は最新のものを保持
   useEffect(() => {
@@ -98,7 +100,9 @@ export default function YouTubePlayer() {
         playerDiv.id = 'yt-player';
         containerRef.current.appendChild(playerDiv);
 
+        const host = state.isPrivacyMode ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
         new window.YT.Player('yt-player', {
+          host,
           width: '100%',
           height: '100%',
           videoId: state.currentSong.videoId,
@@ -121,6 +125,19 @@ export default function YouTubePlayer() {
               if (state.isPlaying) event.target.playVideo();
             },
             onStateChange: (event) => {
+              if (event.data === window.YT.PlayerState.PAUSED) {
+                // 再生中のはずなのに停止した場合（同時再生制限などの可能性）
+                if (isPlayingRef.current) {
+                  // 1秒待っても停止したままならプライバシーモードに切り替えて再起動
+                  setTimeout(() => {
+                    if (isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
+                      console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
+                      togglePrivacyMode();
+                    }
+                  }, 1000);
+                }
+              }
+
               if (event.data === window.YT.PlayerState.ENDED) {
                 if (isLoopingRef.current && currentSongRef.current) {
                   // ループ: 区間先頭に戻す
@@ -131,6 +148,17 @@ export default function YouTubePlayer() {
                 }
               }
             },
+            onError: (event) => {
+              // エラーコード 101/150 (埋め込み禁止、または同時再生制限) の場合はプライバシーモードでリトライ
+              if (event.data === 101 || event.data === 150 || event.data === 5) {
+                if (!state.isPrivacyMode) {
+                  console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
+                  togglePrivacyMode();
+                }
+              } else {
+                console.error(`[V-uta] YouTube Player Error: ${event.data}`);
+              }
+            }
           },
         });
       }
@@ -140,10 +168,8 @@ export default function YouTubePlayer() {
 
     // アンマウント時のみ破棄
     return () => {
-      // ここでは何もしない (PersistentPlayer でラップされているため、
-      // ページ遷移しても Player コンポーネント自体が生き残り、インスタンスを保持し続ける)
     };
-  }, [state.currentSong?.id, state.currentSong?.videoId, state.playSessionKey, playerRef]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.playSessionKey, state.isPrivacyMode, playerRef]);
 
   // 再生位置の定期追跡
   useEffect(() => {

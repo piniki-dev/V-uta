@@ -92,6 +92,8 @@ export const translations = {
       ratioAuto: '自動',
       ratio169: '16:9 (横長)',
       ratio916: '9:16 (縦長)',
+      privacyMode: 'プライバシーモード',
+      privacyModeDescription: '他のデバイスでの再生による停止を回避します（Premium特典は無効になります）',
     },
     archive: {
       title: '曲名',
@@ -464,6 +466,8 @@ export const translations = {
       ratioAuto: 'Auto',
       ratio169: '16:9 (Landscape)',
       ratio916: '9:16 (Vertical)',
+      privacyMode: 'Privacy Mode',
+      privacyModeDescription: 'Avoid playback stops due to other devices (Premium benefits will be disabled)',
     },
     archive: {
       title: 'Title',

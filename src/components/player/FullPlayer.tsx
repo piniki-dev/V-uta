@@ -6,7 +6,7 @@ import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic } from 'lucide-react';
+import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic, Shield } from 'lucide-react';
 
 export default function FullPlayer() {
   const {
@@ -19,6 +19,7 @@ export default function FullPlayer() {
     prevSong,
     toggleLoop,
     closeFullPlayer,
+    togglePrivacyMode,
   } = usePlayer();
   const { t, T } = useLocale();
   const { isOpen: isSidebarOpen } = useSidebar();
@@ -124,12 +125,22 @@ export default function FullPlayer() {
                        <SkipForward size={32} fill="currentColor" />
                      </button>
                    </div>
-                   <button 
-                    onClick={toggleLoop}
-                    className={`transition-colors active:scale-90 ${state.isLooping ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
-                   >
-                     <Repeat size={24} />
-                   </button>
+                   <div className="flex items-center gap-4">
+                     <button 
+                      onClick={togglePrivacyMode}
+                      className={`transition-colors active:scale-90 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                      title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
+                     >
+                       <Shield size={24} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
+                     </button>
+                     <button 
+                      onClick={toggleLoop}
+                      className={`transition-colors active:scale-90 ${state.isLooping ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                      title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
+                     >
+                       <Repeat size={24} />
+                     </button>
+                   </div>
                 </div>
               </div>
 
