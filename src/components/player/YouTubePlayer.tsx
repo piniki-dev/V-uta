@@ -63,76 +63,85 @@ export default function YouTubePlayer() {
     setTimeRef.current = setTime;
   }, [nextSong, stop, setTime]);
 
-  // YouTube Player 初期化
+  // YouTube Player の生成と維持
   useEffect(() => {
-    if (!state.currentSong) return;
+    // 曲がない場合は何もしないが、プレイヤー自体は一度作ったら維持する
+    if (!state.currentSong && !playerRef.current) return;
 
     const initPlayer = async () => {
       await loadYouTubeAPI();
 
       if (!containerRef.current) return;
 
-      // 既存プレイヤーを破棄
-      if (playerRef.current) {
-        try {
-          playerRef.current.destroy();
-        } catch (e) {
-          console.error('Error destroying player:', e);
+      // すでにプレイヤーが存在する場合は再生成しない
+      if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        const song = state.currentSong;
+        if (song) {
+          playerRef.current.loadVideoById({
+            videoId: song.videoId,
+            startSeconds: song.startSec,
+            endSeconds: song.endSec,
+          });
+          // 明示的に再生を開始（特にバックグラウンド対策）
+          if (state.isPlaying) {
+            playerRef.current.playVideo();
+          }
         }
-        playerRef.current = null;
+        return;
       }
 
-      // コンテナに div を追加
-      containerRef.current.innerHTML = '';
-      const playerDiv = document.createElement('div');
-      playerDiv.id = 'yt-player';
-      containerRef.current.appendChild(playerDiv);
+      // プレイヤーが未生成、または壊れている場合は新規作成
+      if (state.currentSong) {
+        // コンテナをクリア
+        containerRef.current.innerHTML = '';
+        const playerDiv = document.createElement('div');
+        playerDiv.id = 'yt-player';
+        containerRef.current.appendChild(playerDiv);
 
-      new window.YT.Player('yt-player', {
-        width: '100%',
-        height: '100%',
-        videoId: state.currentSong!.videoId,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          disablekb: 1,
-          modestbranding: 1,
-          rel: 0,
-          start: state.currentSong!.startSec,
-          end: state.currentSong!.endSec,
-          enablejsapi: 1,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: (event) => {
-            playerRef.current = event.target;
-            event.target.setVolume(state.volume);
-            if (state.isMuted) event.target.mute();
+        new window.YT.Player('yt-player', {
+          width: '100%',
+          height: '100%',
+          videoId: state.currentSong.videoId,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            modestbranding: 1,
+            rel: 0,
+            start: state.currentSong.startSec,
+            end: state.currentSong.endSec,
+            enablejsapi: 1,
+            origin: window.location.origin,
           },
-          onStateChange: (event) => {
-            if (event.data === window.YT.PlayerState.ENDED) {
-              if (isLoopingRef.current && currentSongRef.current) {
-                // ループ: 区間先頭に戻す
-                event.target.seekTo(currentSongRef.current.startSec, true);
-                event.target.playVideo();
-              } else {
-                nextSongRef.current();
+          events: {
+            onReady: (event) => {
+              playerRef.current = event.target;
+              event.target.setVolume(state.volume);
+              if (state.isMuted) event.target.mute();
+              if (state.isPlaying) event.target.playVideo();
+            },
+            onStateChange: (event) => {
+              if (event.data === window.YT.PlayerState.ENDED) {
+                if (isLoopingRef.current && currentSongRef.current) {
+                  // ループ: 区間先頭に戻す
+                  event.target.seekTo(currentSongRef.current.startSec, true);
+                  event.target.playVideo();
+                } else {
+                  nextSongRef.current();
+                }
               }
-            }
+            },
           },
-        },
-      });
+        });
+      }
     };
 
     initPlayer();
 
+    // アンマウント時のみ破棄
     return () => {
-      if (playerRef.current) {
-        try {
-          playerRef.current.destroy();
-        } catch (e) {}
-        playerRef.current = null;
-      }
+      // ここでは何もしない (PersistentPlayer でラップされているため、
+      // ページ遷移しても Player コンポーネント自体が生き残り、インスタンスを保持し続ける)
     };
   }, [state.currentSong?.id, state.currentSong?.videoId, state.playSessionKey, playerRef]);
 
