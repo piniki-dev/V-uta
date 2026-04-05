@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePlayer } from './PlayerContext';
 import { useToast } from '../ToastProvider';
 import { useLocale } from '@/components/LocaleProvider';
@@ -44,7 +44,7 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export default function YouTubePlayer() {
-  const { state, setTime, pause, nextSong, stop, playerRef, togglePrivacyMode, setPrivacyMode } = usePlayer();
+  const { state, setTime, nextSong, stop, playerRef, setPrivacyMode } = usePlayer();
   const { showToast } = useToast();
   const { T } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +54,9 @@ export default function YouTubePlayer() {
   const nextSongRef = useRef(nextSong);
   const stopRef = useRef(stop);
   const setTimeRef = useRef(setTime);
+  const setPrivacyModeRef = useRef(setPrivacyMode);
+  const showToastRef = useRef(showToast);
+  const T_Ref = useRef(T);
 
   // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
@@ -67,7 +70,10 @@ export default function YouTubePlayer() {
     nextSongRef.current = nextSong;
     stopRef.current = stop;
     setTimeRef.current = setTime;
-  }, [nextSong, stop, setTime]);
+    setPrivacyModeRef.current = setPrivacyMode;
+    showToastRef.current = showToast;
+    T_Ref.current = T;
+  }, [nextSong, stop, setTime, setPrivacyMode, showToast, T]);
 
   // YouTube Player の生成と維持
   useEffect(() => {
@@ -136,9 +142,9 @@ export default function YouTubePlayer() {
                   setTimeout(() => {
                     if (isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
                       console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
-                      setPrivacyMode(true, false);
-                      showToast(T('player.autoPrivacyModeMessage'), {
-                        title: T('player.autoPrivacyModeTitle'),
+                      setPrivacyModeRef.current(true, false);
+                      showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
+                        title: T_Ref.current('player.autoPrivacyModeTitle'),
                         type: 'privacy',
                         duration: Infinity,
                       });
@@ -162,9 +168,9 @@ export default function YouTubePlayer() {
               if (event.data === 101 || event.data === 150 || event.data === 5) {
                 if (!state.isPrivacyMode) {
                   console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
-                  setPrivacyMode(true, false);
-                  showToast(T('player.autoPrivacyModeMessage'), {
-                    title: T('player.autoPrivacyModeTitle'),
+                  setPrivacyModeRef.current(true, false);
+                  showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
+                    title: T_Ref.current('player.autoPrivacyModeTitle'),
                     type: 'privacy',
                     duration: Infinity,
                   });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from './PlayerContext';
 import { useLocale } from '@/components/LocaleProvider';
 import type { PlayerSong, Song, Video } from '@/types';
@@ -20,7 +20,7 @@ export default function AutoPlayHandler({ songId, video, songs }: Props) {
   const hasAutoPlayed = useRef(false);
 
   // Song -> PlayerSong への変換ロジック
-  const toPlayerSong = (song: Song): PlayerSong => ({
+  const toPlayerSong = useCallback((song: Song): PlayerSong => ({
     id: song.id,
     title: song.master_songs?.title || T('common.unknown'),
     artist: song.master_songs?.artist || null,
@@ -34,7 +34,7 @@ export default function AutoPlayHandler({ songId, video, songs }: Props) {
     channelThumbnailUrl: video.channels?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
-  });
+  }), [T, video.channels?.image, video.channels?.name, video.thumbnail_url, video.title, video.video_id]);
 
   useEffect(() => {
     // すでに自動再生したか、songId がない場合は何もしない
@@ -68,7 +68,7 @@ export default function AutoPlayHandler({ songId, video, songs }: Props) {
     } else {
       console.warn('[AutoPlay] target song not found in list. songId:', songId);
     }
-  }, [songId, video.video_id, songs, playWithSource]); // T を依存関係から削除
+  }, [songId, video.video_id, songs, playWithSource, toPlayerSong]);
 
   return null;
 }

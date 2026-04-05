@@ -8,13 +8,9 @@ import FavoriteButton from '@/components/song/FavoriteButton';
 import * as Slider from '@radix-ui/react-slider';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { 
-  Square, 
-  Layout, 
-  ChevronUp, 
   Maximize2, 
   Minimize2, 
   PictureInPicture,
-  Crop,
   Smartphone,
   Monitor,
   LayoutPanelLeft,
@@ -134,7 +130,11 @@ export default function MiniPlayer() {
           </button>
 
           <button
-            onClick={(e) => { e.stopPropagation(); state.isPlaying ? pause() : resume(); }}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (state.isPlaying) pause();
+              else resume();
+            }}
             onPointerDown={(e) => e.stopPropagation()}
             className="mini-player__btn mini-player__btn--play"
             title={state.isPlaying ? T('player.pause') : T('player.play')}

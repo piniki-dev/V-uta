@@ -9,7 +9,6 @@ export default function PersistentPlayer() {
   const { state } = usePlayer();
   const { isOpen: isSidebarOpen } = useSidebar();
   const videoWindowRef = useRef<HTMLDivElement>(null);
-  const originalParentRef = useRef<HTMLElement | null>(null);
 
   // モバイル + フルプレイヤー時: ポータルターゲットの座標を取得してvideo-windowを重ねる
   // DOM移動しないのでiframeの再読み込みが発生しない

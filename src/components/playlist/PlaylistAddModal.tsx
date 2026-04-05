@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback } from 'react';
 import { getPlaylists, createPlaylist, addSongToPlaylist } from '@/app/playlists/actions';
 import type { Playlist } from '@/types';
-import { Plus, Check, Loader2, X, Lock, Globe, ExternalLink, ListMusic } from 'lucide-react';
+import { Plus, Check, Loader2, X, ExternalLink, ListMusic } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from '@/components/LocaleProvider';
 import { useRouter } from 'next/navigation';

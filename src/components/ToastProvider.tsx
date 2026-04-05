@@ -23,7 +23,6 @@ export const useToast = () => {
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { state } = usePlayer();
-  const [pipOffset, setPipOffset] = useState(0);
 
   const hideToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -49,19 +48,17 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [hideToast]);
 
   // PiPの位置に応じたオフセット計算
-  useEffect(() => {
+  const pipOffset = React.useMemo(() => {
+    if (typeof window === 'undefined') return 0;
     const isDesktop = window.innerWidth >= 769;
     const isBottomRightPip = !state.isFullPlayerOpen && state.pipPosition === 'bottom-right' && state.currentSong;
 
     if (isDesktop && isBottomRightPip) {
       // PiPの高さ + 余白
-      // 16/9想定: 280 / (16/9) = 157.5
-      // 9/16想定: 160 / (9/16) = 284.4
       const pipHeight = state.videoRatio === '9/16' ? 285 : 158;
-      setPipOffset(pipHeight + 16);
-    } else {
-      setPipOffset(0);
+      return pipHeight + 16;
     }
+    return 0;
   }, [state.pipPosition, state.isFullPlayerOpen, state.currentSong, state.videoRatio]);
 
   return (

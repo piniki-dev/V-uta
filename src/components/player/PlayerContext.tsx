@@ -212,8 +212,8 @@ export function usePlayer(): PlayerContextType {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
-  const isMounted = useRef(false);
   const isFirstMount = useRef(true);
+  const isFullPlayerOpenRef = useRef(state.isFullPlayerOpen);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -242,6 +242,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    isFullPlayerOpenRef.current = state.isFullPlayerOpen;
+  }, [state.isFullPlayerOpen]);
+
   // ページ遷移時にフルプレイヤーを閉じる
   useEffect(() => {
     // 初回マウント（ランディング時）は無視する
@@ -251,7 +255,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (state.isFullPlayerOpen) {
+    if (isFullPlayerOpenRef.current) {
       dispatch({ type: 'CLOSE_FULL_PLAYER' });
     }
   }, [pathname, searchParams]);
@@ -287,7 +291,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
 
     fetchDimensions();
-  }, [state.currentSong?.videoId, state.videoRatioMode]);
+  }, [state.currentSong, state.videoRatioMode, dispatch]);
 
   // 累積再生時間の追跡
   const accumulatedTimeRef = useRef(0);
