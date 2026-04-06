@@ -165,7 +165,7 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
             <motion.section key={date} variants={itemVariants}>
               <div className="flex items-center gap-3 mb-6">
                 <Calendar size={18} className="text-[var(--accent)]" />
-                <h2 className="text-lg font-black text-[var(--text-primary)]">{formatDateLabel(date)}</h2>
+                <h2 className="text-lg font-black text-[var(--text-primary)]" suppressHydrationWarning>{formatDateLabel(date)}</h2>
                 <div className="h-px bg-[var(--border)] flex-1 ml-2" />
               </div>
 

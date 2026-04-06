@@ -17,8 +17,13 @@ interface LocaleContextType {
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('ja');
+interface LocaleProviderProps {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}
+
+export function LocaleProvider({ children, initialLocale = 'ja' }: LocaleProviderProps) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const router = useRouter();
 
   useEffect(() => {

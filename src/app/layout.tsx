@@ -109,7 +109,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${outfit.variable} ${plusJakarta.variable} ${notoSansJP.variable}`}>
-        <LocaleProvider>
+        <LocaleProvider initialLocale={locale}>
           <ThemeProvider>
             <FavoritesProvider>
               <PlayerProvider>
