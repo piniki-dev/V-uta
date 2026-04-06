@@ -44,7 +44,7 @@ export default function SongRow({
   onClick
 }: SongRowProps) {
   const { playWithSource, state } = usePlayer();
-  const { t, locale } = useLocale();
+  const { t, locale, isMounted } = useLocale();
 
   const isCurrentSong = (() => {
     if (state.currentSong?.id !== song.id) return false;
@@ -120,8 +120,8 @@ export default function SongRow({
             </div>
           ) : (
             showPlayedAt && song.playedAt ? (
-              <span className="text-[11px] font-medium opacity-80" suppressHydrationWarning>
-                {new Date(song.playedAt).toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+              <span className="text-[11px] font-medium opacity-80">
+                {isMounted ? new Date(song.playedAt).toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
               </span>
             ) : (
               String(index + 1).padStart(2, '0')
@@ -217,14 +217,14 @@ export default function SongRow({
       ) : showTimeInfo ? (
         <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-tertiary)] font-medium tabular-nums group-hover:text-[var(--accent)] transition-colors">
           <Clock size={14} className="opacity-40" />
-          <span suppressHydrationWarning>{formatTime(song.startSec)} - {formatTime(song.endSec)}</span>
+          <span>{formatTime(song.startSec)} - {formatTime(song.endSec)}</span>
         </div>
       ) : (
         <div className="hidden md:block" />
       )}
 
       {/* 4. Duration */}
-      <div className="hidden sm:block text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums group-hover:text-[var(--accent)] transition-colors" suppressHydrationWarning>
+      <div className="hidden sm:block text-right text-[var(--text-secondary)] font-bold text-sm tabular-nums group-hover:text-[var(--accent)] transition-colors">
         {formatTime(song.endSec - song.startSec)}
       </div>
 

@@ -29,7 +29,7 @@ export default function Sidebar({
   const [user, setUser] = useState<SupabaseUser | null>(initialUser);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(!!initialUser);
   const playlists = initialPlaylists;
-  const { T } = useLocale();
+  const { T, isMounted } = useLocale();
   const hasPlayer = !!playerState.currentSong;
   const router = useRouter();
   const supabase = createClient();
@@ -104,7 +104,7 @@ export default function Sidebar({
 
           {/* ユーザー情報 (モバイル用) */}
           <div className="sidebar__user md:hidden">
-            {user ? (
+            {isMounted && (user ? (
               <div className="sidebar__user-info">
                 {user.user_metadata?.avatar_url ? (
                   <Image src={user.user_metadata.avatar_url} alt="" width={40} height={40} className="sidebar__avatar" />
@@ -120,7 +120,7 @@ export default function Sidebar({
               <button className="sidebar__login-btn" onClick={handleLogin}>
                 {T('auth.signInWithGoogle')}
               </button>
-            )}
+            ))}
           </div>
 
           <nav className="sidebar__nav">

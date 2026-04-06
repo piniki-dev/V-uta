@@ -11,6 +11,7 @@ interface LocaleContextType {
   setLocale: (locale: Locale) => void;
   isJa: boolean;
   isEn: boolean;
+  isMounted: boolean;
   t: (ja: string, en: string) => string;
   T: (key: string, params?: Record<string, string | number>) => string;
 }
@@ -24,9 +25,13 @@ interface LocaleProviderProps {
 
 export function LocaleProvider({ children, initialLocale = 'ja' }: LocaleProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    setTimeout(() => setIsMounted(true), 0);
+    
+    // 同期的な setState による警告を避けるため、非同期に設定を同期
     const timer = setTimeout(() => {
       const savedLocale = localStorage.getItem('vuta-locale') as Locale;
       if (savedLocale && (savedLocale === 'ja' || savedLocale === 'en')) {
@@ -43,6 +48,7 @@ export function LocaleProvider({ children, initialLocale = 'ja' }: LocaleProvide
         }
       }
     }, 0);
+
     return () => clearTimeout(timer);
   }, [locale]);
 
@@ -92,6 +98,7 @@ export function LocaleProvider({ children, initialLocale = 'ja' }: LocaleProvide
         setLocale,
         isJa: locale === 'ja',
         isEn: locale === 'en',
+        isMounted,
         t,
         T,
       }}
@@ -125,6 +132,7 @@ export function useLocale() {
       setLocale: () => {},
       isJa: true,
       isEn: false,
+      isMounted: false,
       t: (ja: string, _en: string) => ja,
       T,
     } as LocaleContextType;

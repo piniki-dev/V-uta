@@ -18,7 +18,7 @@ interface HistoryListProps {
 
 export default function HistoryList({ initialHistory }: HistoryListProps) {
   const { playWithSource } = usePlayer();
-  const { locale, T } = useLocale();
+  const { locale, T, isMounted } = useLocale();
   const [history, setHistory] = useState(initialHistory);
   const [offset, setOffset] = useState(initialHistory.length);
   const [hasMore, setHasMore] = useState(initialHistory.length === 50);
@@ -87,34 +87,44 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
     playWithSource(song, [song], 'history', String(item.id));
   };
 
-  // 今日の日付と昨日の日付をレンダリング外で計算
-  const { today, yesterday } = useMemo(() => {
+  // 今日の日付と昨日の日付をマウント後に計算（ハイドレーションエラー防止）
+  const dateLabels = useMemo(() => {
+    if (!isMounted) return { today: '', yesterday: '' };
     const now = new Date();
     const t = now.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
     const y = new Date(now.getTime() - 86400000).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
     return { today: t, yesterday: y };
-  }, [locale]);
+  }, [isMounted, locale]);
 
-  // 日付ごとにグループ化
-  const groupedHistory = history.reduce((groups: Record<string, HistoryItem[]>, item: HistoryItem) => {
-    const date = new Date(item.played_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
+  // 日付ごとにグループ化 (ハイドレーションのために安定したキーを使用)
+  const groupedHistory = useMemo(() => {
+    return history.reduce((groups: Record<string, HistoryItem[]>, item: HistoryItem) => {
+      // サーバーとクライアントで一致するように、toLocaleDateString ではなく安定した形式でグループ化キーを作成
+      const d = new Date(item.played_at);
+      const dateKey = `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(item);
+      return groups;
+    }, {});
+  }, [history]);
+
+  const formatDateLabel = useCallback((dateKey: string) => {
+    const d = new Date(dateKey);
+    const dateStr = d.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       weekday: 'short'
     });
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(item);
-    return groups;
-  }, {});
 
-  const formatDateLabel = useCallback((dateStr: string) => {
-    if (dateStr === today) return T('history.today');
-    if (dateStr === yesterday) return T('history.yesterday');
+    if (!isMounted) return dateStr;
+    if (dateStr === dateLabels.today) return T('history.today');
+    if (dateStr === dateLabels.yesterday) return T('history.yesterday');
     return dateStr;
-  }, [today, yesterday, T]);
+  }, [dateLabels, locale, T, isMounted]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -161,11 +171,11 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
           initial="hidden"
           animate="visible"
         >
-          {Object.entries(groupedHistory).map(([date, items]: [string, HistoryItem[]]) => (
-            <motion.section key={date} variants={itemVariants}>
+          {Object.entries(groupedHistory).map(([dateKey, items]: [string, HistoryItem[]]) => (
+            <motion.section key={dateKey} variants={itemVariants}>
               <div className="flex items-center gap-3 mb-6">
                 <Calendar size={18} className="text-[var(--accent)]" />
-                <h2 className="text-lg font-black text-[var(--text-primary)]" suppressHydrationWarning>{formatDateLabel(date)}</h2>
+                <h2 className="text-lg font-black text-[var(--text-primary)]">{formatDateLabel(dateKey)}</h2>
                 <div className="h-px bg-[var(--border)] flex-1 ml-2" />
               </div>
 

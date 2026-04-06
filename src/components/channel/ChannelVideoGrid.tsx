@@ -20,7 +20,7 @@ interface ChannelVideoGridProps {
 
 export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridProps) {
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
-  const { T, locale } = useLocale();
+  const { T, locale, isMounted } = useLocale();
   const [cols, setCols] = useState(4);
 
   // ウィンドウサイズに応じて列数を更新 (矢印位置の計算に使用)
@@ -130,7 +130,7 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
                       <div className="mt-auto">
                         <div className="flex justify-between text-[11px] text-[var(--text-tertiary)] mb-4 font-medium">
                           <span className="flex items-center gap-1.5">
-                            <Calendar size={12} className="text-[var(--text-tertiary)]" /> <span suppressHydrationWarning>{video.published_at ? new Date(video.published_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US') : 'N/A'}</span>
+                            <Calendar size={12} className="text-[var(--text-tertiary)]" /> <span>{isMounted && video.published_at ? new Date(video.published_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US') : '--/--/--'}</span>
                           </span>
                           <span className="flex items-center gap-1.5">
                             <Music size={12} className="text-[var(--text-tertiary)]" /> {video.songs.length} {T('archive.songs')}

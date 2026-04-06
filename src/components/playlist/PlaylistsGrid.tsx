@@ -11,7 +11,7 @@ interface PlaylistsGridProps {
 }
 
 export default function PlaylistsGrid({ playlists }: PlaylistsGridProps) {
-  const { T, locale } = useLocale();
+  const { T, locale, isMounted } = useLocale();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -79,7 +79,7 @@ export default function PlaylistsGrid({ playlists }: PlaylistsGridProps) {
                 {playlist.is_favorites ? T('playlist.favoritesDescription') : (playlist.description || T('playlist.noDescription'))}
               </p>
               <div className="flex items-center justify-between pt-4 border-t border-[var(--border)] text-xs text-[var(--text-tertiary)]">
-                <span suppressHydrationWarning>{new Date(playlist.created_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US')}</span>
+                <span>{isMounted ? new Date(playlist.created_at).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US') : '--/--/--'}</span>
                 <span className="group-hover:text-[var(--accent)] font-bold transition-colors">{T('common.details')} →</span>
               </div>
             </Link>

@@ -17,14 +17,24 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   // モバイル初期化時に画面幅に応じて閉じる
   useEffect(() => {
-    const checkMobile = () => {
+    // 起動時の初期チェック（setTimeout で同期 setState を回避）
+    const timer = setTimeout(() => {
+      if (window.innerWidth <= 768) {
+        setIsOpen(false);
+      }
+    }, 0);
+
+    const handleResize = () => {
       if (window.innerWidth <= 768) {
         setIsOpen(false);
       }
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const toggle = () => setIsOpen(prev => !prev);
