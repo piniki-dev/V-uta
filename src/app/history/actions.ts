@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -227,7 +228,7 @@ export async function getSongRankings(params: {
   groupByMaster?: boolean;
   limit?: number;
   offset?: number;
-  supabase?: any;
+  supabase?: SupabaseClient;
 }): Promise<{ success: boolean; data?: FormattedRankingSong[]; error?: string }> {
   const supabase = params.supabase || await createClient();
 
