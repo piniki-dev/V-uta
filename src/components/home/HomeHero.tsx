@@ -10,19 +10,18 @@ export default function HomeHero() {
   return (
     <motion.section 
       className="relative overflow-hidden border-b border-[var(--border)] py-24 md:py-32 mb-12 mesh-bg"
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      transition={{ duration: 1.2 }}
-      viewport={{ once: true }}
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8 }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg-primary)]/5 to-[var(--bg-primary)]/20 pointer-events-none" />
       
       <div className="container relative z-10 w-full px-6 flex flex-col items-center text-center">
         <motion.h1 
           className="text-4xl md:text-8xl font-black mb-8 tracking-tighter leading-[1.05]"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="block text-[var(--text-primary)] opacity-90">{T('home.heroTitle1')}</span>
           <span className="hero__accent glow-text block mt-2">{T('home.heroTitle2')}</span>

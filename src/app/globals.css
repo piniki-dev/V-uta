@@ -19,10 +19,8 @@
   --accent-glow-lg: rgba(255, 78, 142, 0.2);
   --accent-subtle: rgba(255, 78, 142, 0.08);
 
-  --mesh-gradient: radial-gradient(at 0% 0%, hsla(339, 100%, 65%, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(271, 91%, 65%, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 100%, hsla(239, 84%, 67%, 0.15) 0, transparent 50%),
-    radial-gradient(at 0% 100%, hsla(339, 100%, 65%, 0.1) 0, transparent 50%);
+  --mesh-gradient: radial-gradient(at 20% 20%, hsla(339, 100%, 65%, 0.12) 0, transparent 70%),
+    radial-gradient(at 80% 80%, hsla(271, 91%, 65%, 0.12) 0, transparent 70%);
 
   --border: #2e2e2e;
   --border-light: #3a3a3a;
@@ -79,10 +77,8 @@
 
   --accent-glow: rgba(255, 78, 142, 0.15);
   --accent-subtle: rgba(255, 78, 142, 0.05);
-  --mesh-gradient: radial-gradient(at 0% 0%, hsla(339, 100%, 65%, 0.08) 0, transparent 60%),
-    radial-gradient(at 100% 0%, hsla(271, 91%, 65%, 0.08) 0, transparent 60%),
-    radial-gradient(at 100% 100%, hsla(239, 84%, 67%, 0.08) 0, transparent 60%),
-    radial-gradient(at 0% 100%, hsla(339, 100%, 65%, 0.05) 0, transparent 60%);
+  --mesh-gradient: radial-gradient(at 20% 20%, hsla(339, 100%, 65%, 0.08) 0, transparent 70%),
+    radial-gradient(at 80% 80%, hsla(271, 91%, 65%, 0.08) 0, transparent 70%);
   --theme-header-gradient: linear-gradient(180deg, #f0f0f0 0%, #f9f9f9 100%);
 }
 

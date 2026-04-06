@@ -57,9 +57,8 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
     <section>
       <motion.div 
         className="flex items-center gap-4 mb-12"
-        initial={{ opacity: 0, x: -20 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 1, x: 0 }}
+        animate={{ opacity: 1, x: 0 }}
       >
         <div className="w-2 h-10 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full shadow-[0_0_20px_var(--accent-glow)]" />
         <h2 className="text-3xl font-black tracking-tight text-[var(--text-primary)] glow-text-subtle">

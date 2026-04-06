@@ -2,12 +2,10 @@ import { Outfit, Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import { PlayerProvider } from "@/components/player/PlayerContext";
-import MiniPlayer from "@/components/player/MiniPlayer";
-import FullPlayer from "@/components/player/FullPlayer";
-import PersistentPlayer from "@/components/player/PersistentPlayer";
 import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import DynamicPlayer from "@/components/player/DynamicPlayer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
@@ -20,19 +18,19 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 const outfit = Outfit({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "700", "900"],
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "700"],
 });
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-jp",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "700"],
 });
 
 import { translations } from "@/lib/translations";
@@ -129,9 +127,7 @@ export default async function RootLayout({
                         </main>
                       </LayoutWrapper>
                     </div>
-                    <MiniPlayer />
-                    <FullPlayer />
-                    <PersistentPlayer />
+                    <DynamicPlayer />
                   </SidebarProvider>
                 </ToastProvider>
               </PlayerProvider>

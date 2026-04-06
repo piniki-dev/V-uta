@@ -25,9 +25,8 @@ export default function HomeChannelSection({ channels }: HomeChannelSectionProps
     <section>
       <motion.div 
         className="flex items-center gap-4 mb-8"
-        initial={{ opacity: 0, x: -20 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 1, x: 0 }}
+        animate={{ opacity: 1, x: 0 }}
       >
         <div className="w-2 h-8 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full" />
         <h2 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">

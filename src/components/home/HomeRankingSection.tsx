@@ -80,8 +80,8 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <motion.div 
           className="flex items-center gap-4"
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 1, x: 0 }}
+          animate={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
         >
           <div className="w-2 h-8 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full" />
