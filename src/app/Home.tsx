@@ -8,24 +8,26 @@ import { getSongRankings } from '@/app/history/actions';
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // 1. 最近のアーカイブ (曲データがあるもののみ)
-  // supabase の inner join を利用して songs が存在する videos のみ取得
-  // 重複を防ぐため、一度多めに取ってからアプリ側で ID をキーにして uniq にする
-  const { data: videoData } = await supabase
-    .from('videos')
-    .select('*, channel:channels(*), songs!inner(id)')
-    .order('created_at', { ascending: false })
-    .limit(24);
+
+  // 1. & 2. & 3. データの並列取得 (Parallel Data Fetching)
+  // 全てのクエリを並列化することで、モバイル等の環境での TTFB を改善します
+  const [userRes, videoRes, rankingRes] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('videos')
+      .select('*, channel:channels(*), songs!inner(id)')
+      .order('created_at', { ascending: false })
+      .limit(24),
+    getSongRankings({ days: 7, limit: 50, supabase })
+  ]);
+
+  const { data: { user } } = userRes;
+  const { data: videoData } = videoRes;
 
   const videos = ((videoData as unknown as Video[]) || [])
     .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
     .slice(0, 12);
 
-  // 2. ランキングデータ (初期表示は Weekly: 7日間)
-  // チャンネル抽出用に多めに取得（50件）し、ランキング表示用にはその一部を使用
-  const rankingRes = await getSongRankings({ days: 7, limit: 50 });
   const allRankingSongs = (rankingRes.success && rankingRes.data) ? rankingRes.data : [];
   const initialRanking = allRankingSongs.slice(0, 10);
 

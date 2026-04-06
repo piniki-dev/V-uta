@@ -227,8 +227,9 @@ export async function getSongRankings(params: {
   groupByMaster?: boolean;
   limit?: number;
   offset?: number;
+  supabase?: any;
 }): Promise<{ success: boolean; data?: FormattedRankingSong[]; error?: string }> {
-  const supabase = await createClient();
+  const supabase = params.supabase || await createClient();
 
   const { data, error } = await supabase.rpc('get_song_rankings', {
     p_channel_id: params.channelId,
