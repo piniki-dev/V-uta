@@ -105,6 +105,7 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
                       src={video.thumbnail_url}
                       alt={video.title}
                       fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />

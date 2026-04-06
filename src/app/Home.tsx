@@ -42,8 +42,8 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* 未ログイン時のみヒーローセクションを表示 */}
-      {!user && <HomeHero />}
+      {/* ヒーローセクション (内部でハイドレーション安全に表示切り替え) */}
+      <HomeHero initialUser={user} />
 
       <div className="container mx-auto px-6 space-y-24 py-12 pb-48">
         

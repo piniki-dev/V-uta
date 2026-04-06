@@ -134,7 +134,7 @@ export default function Sidebar({
               <span>{T('sidebar.addSong')}</span>
             </Link>
 
-            {user ? (
+            {isMounted && (user ? (
               <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
                 <div className="sidebar__icon-box"><History size={22} /></div>
                 <span>{T('sidebar.history')}</span>
@@ -144,7 +144,7 @@ export default function Sidebar({
                 <div className="sidebar__icon-box"><History size={22} /></div>
                 <span>{T('sidebar.history')}</span>
               </div>
-            )}
+            ))}
 
             <Link href="/channels" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><User size={22} /></div>
@@ -153,54 +153,56 @@ export default function Sidebar({
 
             <div className="sidebar__divider" />
 
-            {/* プレイリストセクション */}
-            <div className={`sidebar__section ${!user ? 'opacity-40 pointer-events-none' : ''}`}>
-              <button 
-                className="sidebar__link w-full"
-                onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
-                disabled={!user}
-              >
-                <div className="sidebar__icon-box"><ListMusic size={22} /></div>
-                <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
-                {isPlaylistOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-              </button>
-              
-              <AnimatePresence>
-                {isPlaylistOpen && (
-                  <motion.div 
-                    className="sidebar__subnav"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ display: 'flex', flexDirection: 'column' }}
-                  >
-                    <div className="sidebar__sublink-container">
-                      <Link href="/playlists" className="sidebar__sublink font-bold text-[var(--accent)]" onClick={handleLinkClick}>
-                        {T('sidebar.allPlaylists')}
-                      </Link>
-                    </div>
-                    {playlists.map(playlist => (
-                      <div key={playlist.id} className="sidebar__sublink-container">
-                        <Link 
-                          href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.slug}`}
-                          className="sidebar__sublink"
-                          onClick={handleLinkClick}
-                        >
-                          {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
+            {/* プレイリストセクション (マウント後に表示制御) */}
+            {isMounted && (
+              <div className={`sidebar__section ${!user ? 'opacity-40 pointer-events-none' : ''}`}>
+                <button 
+                  className="sidebar__link w-full"
+                  onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
+                  disabled={!user}
+                >
+                  <div className="sidebar__icon-box"><ListMusic size={22} /></div>
+                  <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
+                  {isPlaylistOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                </button>
+                
+                <AnimatePresence>
+                  {isPlaylistOpen && (
+                    <motion.div 
+                      className="sidebar__subnav"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ display: 'flex', flexDirection: 'column' }}
+                    >
+                      <div className="sidebar__sublink-container">
+                        <Link href="/playlists" className="sidebar__sublink font-bold text-[var(--accent)]" onClick={handleLinkClick}>
+                          {T('sidebar.allPlaylists')}
                         </Link>
                       </div>
-                    ))}
-                    {user && playlists.length === 0 && (
-                      <div className="sidebar__empty">{T('sidebar.noPlaylists')}</div>
-                    )}
-                    {!user && (
-                      <div className="sidebar__empty">{T('sidebar.signInToView')}</div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                      {playlists.map(playlist => (
+                        <div key={playlist.id} className="sidebar__sublink-container">
+                          <Link 
+                            href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.slug}`}
+                            className="sidebar__sublink"
+                            onClick={handleLinkClick}
+                          >
+                            {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
+                          </Link>
+                        </div>
+                      ))}
+                      {user && playlists.length === 0 && (
+                        <div className="sidebar__empty">{T('sidebar.noPlaylists')}</div>
+                      )}
+                      {!user && (
+                        <div className="sidebar__empty">{T('sidebar.signInToView')}</div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             <div className="sidebar__divider" />
 
@@ -216,7 +218,7 @@ export default function Sidebar({
             </div>
           </nav>
 
-          {user && (
+          {isMounted && user && (
             <div className="sidebar__footer md:hidden mt-auto pt-4">
               <button className="sidebar__logout" onClick={handleLogout}>
                 <LogOut size={20} />

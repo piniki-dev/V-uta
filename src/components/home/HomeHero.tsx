@@ -3,9 +3,23 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useLocale } from '@/components/LocaleProvider';
+import type { User } from '@supabase/supabase-js';
 
-export default function HomeHero() {
-  const { T } = useLocale();
+interface HomeHeroProps {
+  initialUser: User | null;
+}
+
+export default function HomeHero({ initialUser }: HomeHeroProps) {
+  const { T, isMounted } = useLocale();
+
+  // ハイドレーション前、またはログイン済みの場合は非表示にする (サーバー側の判定と一致させる)
+  if (!isMounted) {
+    if (initialUser) return null;
+  } else {
+    // マウント後は最新の状態を使用して判定（AuthButton と同様のロジック）
+    // ただし HomeHero は初期にゲストにだけ見せるものであるため、基本は initialUser に従う
+    if (initialUser) return null;
+  }
 
   return (
     <motion.section 
