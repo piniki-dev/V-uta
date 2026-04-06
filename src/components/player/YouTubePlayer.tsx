@@ -33,8 +33,14 @@ function loadYouTubeAPI(): Promise<void> {
     apiLoading = true;
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
+    
+    // 安全なスクリプト挿入
     const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    if (firstScriptTag && firstScriptTag.parentNode) {
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    } else {
+      (document.head || document.body).appendChild(tag);
+    }
 
     window.onYouTubeIframeAPIReady = () => {
       apiLoaded = true;
@@ -81,6 +87,8 @@ export default function YouTubePlayer() {
 
   // YouTube Player の生成と維持
   useEffect(() => {
+    let isMounted = true;
+
     // 曲がない場合は何もしないが、プレイヤー自体は一度作ったら維持する
     const currentSong = currentSongRef.current;
     if (!currentSong && !playerRef.current) return;
@@ -88,20 +96,24 @@ export default function YouTubePlayer() {
     const initPlayer = async () => {
       await loadYouTubeAPI();
 
-      if (!containerRef.current) return;
+      if (!isMounted || !containerRef.current) return;
 
-      // すでにプレイヤーが存在する場合は再生成しない
+      // すでにプレイヤーが存在し、機能している場合は再生成しない
       if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
         const song = currentSongRef.current;
         if (song) {
-          playerRef.current.loadVideoById({
-            videoId: song.videoId,
-            startSeconds: song.startSec,
-            endSeconds: song.endSec,
-          });
-          // 明示的に再生を開始（特にバックグラウンド対策）
-          if (isPlayingRef.current) {
-            playerRef.current.playVideo();
+          try {
+            playerRef.current.loadVideoById({
+              videoId: song.videoId,
+              startSeconds: song.startSec,
+              endSeconds: song.endSec,
+            });
+            // 明示的に再生を開始（特にバックグラウンド対策）
+            if (isPlayingRef.current) {
+              playerRef.current.playVideo();
+            }
+          } catch (e) {
+            console.error('[V-uta] Failed to load video into existing player:', e);
           }
         }
         return;
@@ -113,87 +125,105 @@ export default function YouTubePlayer() {
         // コンテナをクリア
         containerRef.current.innerHTML = '';
         const playerDiv = document.createElement('div');
-        playerDiv.id = 'yt-player';
         containerRef.current.appendChild(playerDiv);
 
         const host = state.isPrivacyMode ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
-        new window.YT.Player('yt-player', {
-          host,
-          width: '100%',
-          height: '100%',
-          videoId: songToInit.videoId,
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            modestbranding: 1,
-            rel: 0,
-            start: songToInit.startSec,
-            end: songToInit.endSec,
-            enablejsapi: 1,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: (event) => {
-              playerRef.current = event.target;
-              event.target.setVolume(volumeRef.current);
-              if (isMutedRef.current) event.target.mute();
-              if (isPlayingRef.current) event.target.playVideo();
+        
+        try {
+          // 文字列 ID ではなく、DOM 要素を直接渡す (b.parentNode エラー対策)
+          new window.YT.Player(playerDiv, {
+            host,
+            width: '100%',
+            height: '100%',
+            videoId: songToInit.videoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 0,
+              disablekb: 1,
+              modestbranding: 1,
+              rel: 0,
+              start: songToInit.startSec,
+              end: songToInit.endSec,
+              enablejsapi: 1,
+              origin: window.location.origin,
             },
-            onStateChange: (event) => {
-              if (event.data === window.YT.PlayerState.PAUSED) {
-                // 再生中のはずなのに停止した場合（同時再生制限などの可能性）
-                if (isPlayingRef.current) {
-                  // 1秒待っても停止したままならプライバシーモードに切り替えて再起動
-                  setTimeout(() => {
-                    if (isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
-                      console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
-                      setPrivacyModeRef.current(true, false);
-                      showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
-                        title: T_Ref.current('player.autoPrivacyModeTitle'),
-                        type: 'privacy',
-                        duration: Infinity,
-                      });
-                    }
-                  }, 1000);
+            events: {
+              onReady: (event) => {
+                if (!isMounted) {
+                  event.target.destroy();
+                  return;
                 }
-              }
+                playerRef.current = event.target;
+                event.target.setVolume(volumeRef.current);
+                if (isMutedRef.current) event.target.mute();
+                if (isPlayingRef.current) event.target.playVideo();
+              },
+              onStateChange: (event) => {
+                if (event.data === window.YT.PlayerState.PAUSED) {
+                  // 再生中のはずなのに停止した場合（同時再生制限などの可能性）
+                  if (isPlayingRef.current) {
+                    // 1秒待っても停止したままならプライバシーモードに切り替えて再起動
+                    setTimeout(() => {
+                      if (isMounted && isPlayingRef.current && playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED) {
+                        console.warn('[V-uta] Unexpected pause detected. Auto-switching to Privacy Mode to resume playback.');
+                        setPrivacyModeRef.current(true, false);
+                        showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
+                          title: T_Ref.current('player.autoPrivacyModeTitle'),
+                          type: 'privacy',
+                          duration: Infinity,
+                        });
+                      }
+                    }, 1000);
+                  }
+                }
 
-              if (event.data === window.YT.PlayerState.ENDED) {
-                if (isLoopingRef.current && currentSongRef.current) {
-                  // ループ: 区間先頭に戻す
-                  event.target.seekTo(currentSongRef.current.startSec, true);
-                  event.target.playVideo();
+                if (event.data === window.YT.PlayerState.ENDED) {
+                  if (isLoopingRef.current && currentSongRef.current) {
+                    // ループ: 区間先頭に戻す
+                    event.target.seekTo(currentSongRef.current.startSec, true);
+                    event.target.playVideo();
+                  } else {
+                    nextSongRef.current();
+                  }
+                }
+              },
+              onError: (event) => {
+                // エラーコード 101/150 (埋め込み禁止、または同時再生制限) の場合はプライバシーモードでリトライ
+                if (event.data === 101 || event.data === 150 || event.data === 5) {
+                  if (!state.isPrivacyMode) {
+                    console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
+                    setPrivacyModeRef.current(true, false);
+                    showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
+                      title: T_Ref.current('player.autoPrivacyModeTitle'),
+                      type: 'privacy',
+                      duration: Infinity,
+                    });
+                  }
                 } else {
-                  nextSongRef.current();
+                  console.error(`[V-uta] YouTube Player Error: ${event.data}`);
                 }
               }
             },
-            onError: (event) => {
-              // エラーコード 101/150 (埋め込み禁止、または同時再生制限) の場合はプライバシーモードでリトライ
-              if (event.data === 101 || event.data === 150 || event.data === 5) {
-                if (!state.isPrivacyMode) {
-                  console.warn(`[V-uta] Player error (${event.data}) detected. Retrying with Privacy Mode...`);
-                  setPrivacyModeRef.current(true, false);
-                  showToastRef.current(T_Ref.current('player.autoPrivacyModeMessage'), {
-                    title: T_Ref.current('player.autoPrivacyModeTitle'),
-                    type: 'privacy',
-                    duration: Infinity,
-                  });
-                }
-              } else {
-                console.error(`[V-uta] YouTube Player Error: ${event.data}`);
-              }
-            }
-          },
-        });
+          });
+        } catch (e) {
+          console.error('[V-uta] Failed to initialize YouTube Player:', e);
+        }
       }
     };
 
     initPlayer();
 
-    // アンマウント時のみ破棄
+    // クリーンアップ
     return () => {
+      isMounted = false;
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        try {
+          playerRef.current.destroy();
+          playerRef.current = null;
+        } catch (e) {
+          console.error('[V-uta] Error during player destruction:', e);
+        }
+      }
     };
   }, [state.currentSong?.id, state.currentSong?.videoId, state.playSessionKey, state.isPrivacyMode, playerRef]);
 
