@@ -74,12 +74,12 @@ export default function PersistentPlayer() {
     };
   }, [state.isFullPlayerOpen]);
 
-  if (!state.currentSong) return null;
+  const isHidden = !state.currentSong;
 
   return (
     <div 
       ref={videoWindowRef}
-      className={`video-window ${state.isFullPlayerOpen ? 'video-window--full' : 'video-window--pip'} ${isSidebarOpen ? 'sidebar-open' : ''}`}
+      className={`video-window ${state.isFullPlayerOpen ? 'video-window--full' : 'video-window--pip'} ${isSidebarOpen ? 'sidebar-open' : ''} ${isHidden ? 'video-window--hidden' : ''}`}
       data-full={state.isFullPlayerOpen}
       data-pip-position={state.pipPosition}
       data-video-ratio={state.videoRatio}

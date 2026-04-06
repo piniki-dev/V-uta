@@ -424,7 +424,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       artist_name: song.channelName,
       source_type: isContinuingContext ? state.sourceType : 'direct',
     });
-  }, [state.currentHistoryId, state.playlist, state.sourceType, state.sourceId, getPlaybackMetrics]);
+
+    // iOS/Mobile Autoplay 対策: ユーザー操作ハンドラ内で直接再生を開始する
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById({
+          videoId: song.videoId,
+          startSeconds: song.startSec,
+          endSeconds: song.endSec,
+        });
+        playerRef.current.playVideo();
+      } catch (e) {
+        console.warn('[V-uta] Direct play call failed:', e);
+      }
+    }
+  }, [state.currentHistoryId, state.playlist, state.sourceType, state.sourceId, getPlaybackMetrics, playerRef]);
 
   const playWithSource = useCallback((song: PlayerSong, playlist?: PlayerSong[], sourceType?: string, sourceId?: string) => {
     if (state.currentHistoryId) {
@@ -443,7 +457,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
 
     dispatch({ type: 'PLAY', song, playlist, sourceType, sourceId });
-  }, [state.currentHistoryId, getPlaybackMetrics]);
+
+    // iOS/Mobile Autoplay 対策: ユーザー操作ハンドラ内で直接再生を開始する
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById({
+          videoId: song.videoId,
+          startSeconds: song.startSec,
+          endSeconds: song.endSec,
+        });
+        playerRef.current.playVideo();
+      } catch (e) {
+        console.warn('[V-uta] Direct playWithSource call failed:', e);
+      }
+    }
+  }, [state.currentHistoryId, getPlaybackMetrics, playerRef]);
 
   const pause = useCallback(() => {
     if (state.currentHistoryId) {

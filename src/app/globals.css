@@ -1434,6 +1434,12 @@ input[type="range"]:hover::-webkit-slider-thumb {
   justify-content: center;
 }
 
+.video-window--hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 .video-window--pip {
   width: 280px;
   aspect-ratio: 16 / 9 !important;
