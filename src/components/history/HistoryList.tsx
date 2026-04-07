@@ -112,6 +112,10 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
   }, [history]);
 
   const formatDateLabel = useCallback((dateKey: string) => {
+    // マウント前は安定した dateKey (YYYY/MM/DD) をそのまま返すことで
+    // サーバー/クライアント間の表示不一致（ハイドレーションエラー）を防ぐ
+    if (!isMounted) return dateKey;
+
     const d = new Date(dateKey);
     const dateStr = d.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
       year: 'numeric',
@@ -120,7 +124,6 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
       weekday: 'short'
     });
 
-    if (!isMounted) return dateStr;
     if (dateStr === dateLabels.today) return T('history.today');
     if (dateStr === dateLabels.yesterday) return T('history.yesterday');
     return dateStr;
