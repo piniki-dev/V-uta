@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from './PlayerContext';
 import { useToast } from '../ToastProvider';
 import { useLocale } from '@/components/LocaleProvider';
@@ -65,6 +65,18 @@ export default function YouTubePlayer() {
   const T_Ref = useRef(T);
   const volumeRef = useRef(state.volume);
   const isMutedRef = useRef(state.isMuted);
+  const lastNextSongTimeRef = useRef<number>(0);
+
+  // 曲の切り替えをデバウンスするラッパー関数
+  const triggerNextSong = useCallback(() => {
+    const now = Date.now();
+    if (now - lastNextSongTimeRef.current < 1500) {
+      console.warn('[V-uta] nextSong call ignored due to debounce (1.5s limit).');
+      return;
+    }
+    lastNextSongTimeRef.current = now;
+    nextSongRef.current();
+  }, []);
 
   // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
@@ -75,6 +87,8 @@ export default function YouTubePlayer() {
     isMutedRef.current = state.isMuted;
   }, [state.isPlaying, state.isLooping, state.currentSong, state.volume, state.isMuted]);
  
+  const triggerNextSongRef = useRef(triggerNextSong);
+
   // コールバック関数は最新のものを保持
   useEffect(() => {
     nextSongRef.current = nextSong;
@@ -83,7 +97,8 @@ export default function YouTubePlayer() {
     setPrivacyModeRef.current = setPrivacyMode;
     showToastRef.current = showToast;
     T_Ref.current = T;
-  }, [nextSong, stop, setTime, setPrivacyMode, showToast, T]);
+    triggerNextSongRef.current = triggerNextSong;
+  }, [nextSong, stop, setTime, setPrivacyMode, showToast, T, triggerNextSong]);
 
   // YouTube Player の生成と維持 (マウント時に一度だけ実行、またはプライバシーモード変更時)
   useEffect(() => {
@@ -166,7 +181,16 @@ export default function YouTubePlayer() {
                   event.target.seekTo(currentSongRef.current.startSec, true);
                   event.target.playVideo();
                 } else {
-                  nextSongRef.current();
+                  // 誤検知防止: 再生位置が終了予定秒数より大幅に前なら無視する（ロード時の初期化イベントなど）
+                  const currentSong = currentSongRef.current;
+                  if (currentSong) {
+                    const currentTime = event.target.getCurrentTime();
+                    if (currentTime < currentSong.endSec - 3) {
+                      console.log('[V-uta] Ignored ENDED event: current time is far from endSec', currentTime, currentSong.endSec);
+                      return;
+                    }
+                  }
+                  triggerNextSongRef.current();
                 }
               }
             },
@@ -229,7 +253,7 @@ export default function YouTubePlayer() {
             if (isLoopingRef.current) {
               playerRef.current.seekTo(currentSongRef.current.startSec, true);
             } else {
-              nextSongRef.current();
+              triggerNextSongRef.current();
               return;
             }
           }
