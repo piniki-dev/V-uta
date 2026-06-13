@@ -66,6 +66,8 @@ export function parseCsv(csvText: string): string[][] {
   return lines;
 }
 
+
+
 /**
  * CSVデータ（二次元配列）を BatchArchive 型に変換する
  */
