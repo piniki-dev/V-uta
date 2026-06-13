@@ -794,38 +794,178 @@ export default function ImportSongsClient() {
           {success && <div className="alert alert--success mb-6">{success}</div>}
 
           {batchArchives.length === 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="card p-8 flex flex-col items-center text-center gap-6">
-                <div className="w-16 h-16 bg-[var(--accent-subtle)] text-[var(--accent)] rounded-2xl flex items-center justify-center shadow-inner border border-[var(--accent)]/10">
-                  <FileUp size={32} />
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="card p-8 flex flex-col items-center text-center gap-6">
+                  <div className="w-16 h-16 bg-[var(--accent-subtle)] text-[var(--accent)] rounded-2xl flex items-center justify-center shadow-inner border border-[var(--accent)]/10">
+                    <FileUp size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">{T('newSong.fromCsv')}</h3>
+                    <p className="text-[var(--text-secondary)] text-sm">{T('newSong.csvDescription')}</p>
+                  </div>
+                  <label className="btn btn--primary w-full cursor-pointer">
+                    {T('newSong.selectFile')}
+                    <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
+                  </label>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">{T('newSong.fromCsv')}</h3>
-                  <p className="text-[var(--text-secondary)] text-sm">{T('newSong.csvDescription')}</p>
+
+                <div className="card p-8 flex flex-col items-center text-center gap-6">
+                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner border border-emerald-500/10">
+                    <Table size={32} />
+                  </div>
+                  <div className="w-full">
+                    <h3 className="text-xl font-bold mb-2">{T('newSong.fromGoogleSheet')}</h3>
+                    <input 
+                      type="text" 
+                      className="form-input w-full mb-4" 
+                      placeholder={T('newSong.enterGsUrl')}
+                      value={gsUrl}
+                      onChange={(e) => setGsUrl(e.target.value)}
+                    />
+                  </div>
+                  <button className="btn btn--secondary w-full" onClick={handleGsImport} disabled={!gsUrl.trim()}>
+                    {T('newSong.fetch')}
+                  </button>
                 </div>
-                <label className="btn btn--primary w-full cursor-pointer">
-                  {T('newSong.selectFile')}
-                  <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
-                </label>
               </div>
 
-              <div className="card p-8 flex flex-col items-center text-center gap-6">
-                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner border border-emerald-500/10">
-                  <Table size={32} />
+              {/* インポートフォーマット解説カード */}
+              <div className="card p-6 md:p-8 space-y-6 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[var(--border)] pb-5">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                      <Info className="text-[var(--accent)]" size={22} />
+                      {T('newSong.importGuideTitle')}
+                    </h3>
+                    <p className="text-[var(--text-secondary)] text-xs mt-1">
+                      {T('newSong.importGuideSubtitle')}
+                    </p>
+                  </div>
+                  <a
+                    href={locale === 'en' ? '/template_import_en.csv' : '/template_import.csv'}
+                    download
+                    className="btn btn--secondary btn--sm flex items-center gap-2 whitespace-nowrap text-xs font-bold"
+                  >
+                    <FileUp size={14} className="rotate-180" />
+                    {T('newSong.csvTemplateDownload')}
+                  </a>
                 </div>
-                <div className="w-full">
-                  <h3 className="text-xl font-bold mb-2">{T('newSong.fromGoogleSheet')}</h3>
-                  <input 
-                    type="text" 
-                    className="form-input w-full mb-4" 
-                    placeholder={T('newSong.enterGsUrl')}
-                    value={gsUrl}
-                    onChange={(e) => setGsUrl(e.target.value)}
-                  />
+
+                {/* テーブル仕様説明 */}
+                <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                  <table className="w-full text-left border-collapse text-xs min-w-[600px]">
+                    <thead>
+                      <tr className="border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider">
+                        <th className="py-3 px-4 font-black">{T('newSong.columnName')}</th>
+                        <th className="py-3 px-4 font-black w-24">{T('newSong.columnRequired')}</th>
+                        <th className="py-3 px-4 font-black w-24">{T('newSong.columnType')}</th>
+                        <th className="py-3 px-4 font-black">{T('newSong.columnDescription')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]/50 text-[var(--text-primary)]">
+                      <tr>
+                        <td className="py-4 px-4 font-mono font-bold text-[var(--accent)]">
+                          {locale === 'en' ? 'url' : '動画URL / url'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded font-bold text-[10px] tracking-wide">
+                            {T('newSong.requiredLabel')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[var(--text-secondary)]">URL</td>
+                        <td className="py-4 px-4 text-[var(--text-secondary)] leading-relaxed">
+                          {T('newSong.formatUrlDesc')}
+                          <div className="mt-1 font-mono text-[10px] opacity-75">
+                            ex) https://www.youtube.com/watch?v=j_vHt_7PbUg
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-4 font-mono font-bold text-[var(--accent)]">
+                          {locale === 'en' ? 'title' : '曲名 / title'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded font-bold text-[10px] tracking-wide">
+                            {T('newSong.requiredLabel')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[var(--text-secondary)]">String</td>
+                        <td className="py-4 px-4 text-[var(--text-secondary)] leading-relaxed">
+                          {T('newSong.formatTitleDesc')}
+                          <div className="mt-1 font-mono text-[10px] opacity-75">
+                            {locale === 'en' ? 'ex) Suki no Oto' : 'ex) スキノオト'}
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-4 font-mono font-bold text-[var(--accent)]">
+                          {locale === 'en' ? 'artist' : '歌手 / artist'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] px-2.5 py-1 rounded font-bold text-[10px] tracking-wide">
+                            {T('newSong.optionalLabel')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[var(--text-secondary)]">String</td>
+                        <td className="py-4 px-4 text-[var(--text-secondary)] leading-relaxed">
+                          {T('newSong.formatArtistDesc')}
+                          <div className="mt-1 font-mono text-[10px] opacity-75">
+                            {locale === 'en' ? 'ex) Nekoma Shiroa' : 'ex) 猫魔しろあ'}
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-4 font-mono font-bold text-[var(--accent)]">
+                          {locale === 'en' ? 'start' : '開始時間 / start'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded font-bold text-[10px] tracking-wide">
+                            {T('newSong.requiredLabel')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[var(--text-secondary)]">Time</td>
+                        <td className="py-4 px-4 text-[var(--text-secondary)] leading-relaxed">
+                          {T('newSong.formatStartDesc')}
+                          <div className="mt-1 font-mono text-[10px] opacity-75">
+                            ex) 0:47:47 / 2867
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-4 font-mono font-bold text-[var(--accent)]">
+                          {locale === 'en' ? 'end' : '終了時間 / end'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] px-2.5 py-1 rounded font-bold text-[10px] tracking-wide">
+                            {T('newSong.optionalLabel')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[var(--text-secondary)]">Time</td>
+                        <td className="py-4 px-4 text-[var(--text-secondary)] leading-relaxed">
+                          {T('newSong.formatEndDesc')}
+                          <div className="mt-1 font-mono text-[10px] opacity-75">
+                            ex) 0:51:08 / 3068
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                <button className="btn btn--secondary w-full" onClick={handleGsImport} disabled={!gsUrl.trim()}>
-                  {T('newSong.fetch')}
-                </button>
+
+                {/* Googleスプレッドシートガイド手順 */}
+                <div className="border-t border-[var(--border)] pt-6">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                    <Table size={16} className="text-emerald-500" />
+                    {T('newSong.googleSheetGuideTitle')}
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-2 text-xs text-[var(--text-secondary)] leading-relaxed pl-1">
+                    <li>{T('newSong.googleSheetStep1')}</li>
+                    <li>{T('newSong.googleSheetStep2')}</li>
+                    <li>{T('newSong.googleSheetStep3')}</li>
+                    <li>{T('newSong.googleSheetStep4')}</li>
+                  </ol>
+                </div>
               </div>
             </div>
           ) : (
