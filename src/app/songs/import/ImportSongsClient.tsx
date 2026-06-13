@@ -397,8 +397,6 @@ export default function ImportSongsClient() {
             start_sec: parseTime(s.startTime) || 0,
             end_sec: s.endTime ? parseTime(s.endTime) || 0 : 0
           },
-          startTime: s.startTime,
-          endTime: s.endTime || '',
           isEditing: false,
           isChangingSong: false,
           searchQuery: `${s.title} ${s.artist || ''}`.trim(),
@@ -1061,7 +1059,7 @@ export default function ImportSongsClient() {
                     />
                   </div>
                   <button 
-                    onClick={handleModalSearch}
+                    onClick={() => handleModalSearch()}
                     disabled={isModalSearching}
                     className="btn btn--primary aspect-square p-0 w-12 h-12 flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 rounded-xl"
                   >
