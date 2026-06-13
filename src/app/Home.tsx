@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
 import type { Video } from '@/types';
-import HomeHero from '@/components/home/HomeHero';
 import HomeVideoGrid from '@/components/home/HomeVideoGrid';
 import HomeRankingSection from '@/components/home/HomeRankingSection';
 import HomeChannelSection from '@/components/home/HomeChannelSection';
@@ -11,8 +10,7 @@ export default async function Home() {
 
   // 1. & 2. & 3. データの並列取得 (Parallel Data Fetching)
   // 全てのクエリを並列化することで、モバイル等の環境での TTFB を改善します
-  const [userRes, videoRes, rankingRes] = await Promise.all([
-    supabase.auth.getUser(),
+  const [videoRes, rankingRes] = await Promise.all([
     supabase
       .from('videos')
       .select('*, channel:channels(*), songs!inner(id)')
@@ -21,7 +19,6 @@ export default async function Home() {
     getSongRankings({ days: 7, limit: 50, supabase })
   ]);
 
-  const { data: { user } } = userRes;
   const { data: videoData } = videoRes;
 
   const videos = ((videoData as unknown as Video[]) || [])
@@ -42,9 +39,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* ヒーローセクション (内部でハイドレーション安全に表示切り替え) */}
-      <HomeHero initialUser={user} />
-
       <div className="container mx-auto px-6 space-y-24 py-12 pb-48">
         
         {/* 楽曲ランキング (リスト形式) */}
