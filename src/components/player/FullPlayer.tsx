@@ -33,19 +33,36 @@ export default function FullPlayer() {
   const isDraggingRef = useRef(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const dragControls = useDragControls();
-  const SHEET_HEIGHT = 480;
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
+  const MINI_PLAYER_HEIGHT = 80;
   const COLLAPSED_Y = 0; // top基準では0が「ヘッダーだけ見える」状態
-  const EXPANDED_Y = -(SHEET_HEIGHT - 72); // -408px: シート全体を展開
+  const [sheetHeight, setSheetHeight] = useState(480);
+  const expandedY = -(sheetHeight - 72); // シート最大展開時のY値（ミニプレーヤー分を確保）
   const sheetY = useMotionValue(COLLAPSED_Y);
 
   // isQueueOpen 変化時にアニメーション
   useEffect(() => {
-    animate(sheetY, isQueueOpen ? EXPANDED_Y : COLLAPSED_Y, {
+    animate(sheetY, isQueueOpen ? expandedY : COLLAPSED_Y, {
       type: 'spring',
       damping: 25,
       stiffness: 200,
     });
-  }, [isQueueOpen, sheetY, COLLAPSED_Y, EXPANDED_Y]);
+  }, [isQueueOpen, sheetY, expandedY]);
+
+  // コンテナ高さを測定してシート最大展開量を動的計算
+  // シート top-[calc(100%-72px)] + expandedY = MINI_PLAYER_HEIGHT になるよう sheetHeight を設定
+  useEffect(() => {
+    const container = mobileContainerRef.current;
+    if (!container) return;
+    const updateHeight = () => {
+      const h = container.clientHeight;
+      setSheetHeight(Math.max(h - MINI_PLAYER_HEIGHT, 300));
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [state.isFullPlayerOpen]);
 
   // 再生中の曲への自動スクロール
   useEffect(() => {
@@ -90,16 +107,69 @@ export default function FullPlayer() {
       <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]/40 pointer-events-none" />
 
       {/* モバイル版 UI - ライトモード・ダークモード両対応のセマンティックカラーを使用 */}
-      <div className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-clip">
-        {/* ヘッダー */}
-        <div className="shrink-0 flex justify-start mb-4 z-20">
-          <button 
-            onClick={closeFullPlayer}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm"
-          >
-            <ChevronDown size={24} />
-          </button>
-        </div>
+      <div ref={mobileContainerRef} className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-clip">
+        {/* ミニプレーヤー（シート全展開時のみ表示） */}
+        <AnimatePresence>
+          {isQueueOpen && (
+            <motion.div
+              className="absolute top-0 left-0 right-0 z-[1025] flex items-center gap-3 px-4 bg-[var(--bg-primary)] border-b border-[var(--border)]"
+              style={{ height: MINI_PLAYER_HEIGHT }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <button
+                onClick={closeFullPlayer}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm shrink-0"
+              >
+                <ChevronDown size={18} />
+              </button>
+              {/* ミニプレーヤーのビデオポータル（PersistentPlayerがここに追従） */}
+              <div
+                id="mobile-mini-player-portal"
+                className="h-12 aspect-video rounded-xl overflow-hidden relative bg-black shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate text-[var(--text-primary)] leading-tight">
+                  {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] truncate">
+                  {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
+                </p>
+              </div>
+              <button
+                onClick={state.isPlaying ? pause : resume}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] active:scale-90 transition-transform shrink-0"
+              >
+                {state.isPlaying
+                  ? <Pause size={20} fill="currentColor" />
+                  : <Play size={20} fill="currentColor" className="ml-0.5" />
+                }
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ヘッダー（シート展開時は非表示） */}
+        <AnimatePresence>
+          {!isQueueOpen && (
+            <motion.div
+              className="shrink-0 flex justify-start mb-4 z-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <button
+                onClick={closeFullPlayer}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm"
+              >
+                <ChevronDown size={24} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* メインビジュアル - layoutアニメーションで位置をスムーズに移動 */}
         <motion.div 
@@ -232,12 +302,13 @@ export default function FullPlayer() {
         </AnimatePresence>
 
         <motion.div 
-          className="absolute top-[calc(100%-72px)] left-0 right-0 h-[480px] bg-[var(--bg-secondary)] rounded-t-[40px] z-[1020] flex flex-col shadow-2xl border-t border-white/5"
-          style={{ y: sheetY }}
+          key={`${sheetHeight}-${state.isFullPlayerOpen}`}
+          className="absolute top-[calc(100%-72px)] left-0 right-0 bg-[var(--bg-secondary)] rounded-t-[40px] z-[1020] flex flex-col shadow-2xl border-t border-white/5"
+          style={{ y: sheetY, height: sheetHeight }}
           drag="y"
           dragControls={dragControls}
           dragListener={false}
-          dragConstraints={{ top: EXPANDED_Y, bottom: 0 }}
+          dragConstraints={{ top: expandedY, bottom: 0 }}
           dragElastic={0}
           onDragEnd={(e, info) => {
             if (!isQueueOpen) {
@@ -254,7 +325,7 @@ export default function FullPlayer() {
                 setIsQueueOpen(false);
               } else {
                 // 閾値未満なら元の位置に戻す
-                animate(sheetY, EXPANDED_Y, { type: 'spring', damping: 25, stiffness: 200 });
+                animate(sheetY, expandedY, { type: 'spring', damping: 25, stiffness: 200 });
               }
             }
           }}

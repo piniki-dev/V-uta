@@ -39,7 +39,15 @@ export default function PersistentPlayer() {
       
       // ブレイクポイント(md=768px未満)で同期先を切り替え
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        portalTarget = document.getElementById('mobile-video-portal');
+        // ミニプレーヤーポータルが有効なサイズを持つ場合はそちらを優先（シート全展開時）
+        const miniPortal = document.getElementById('mobile-mini-player-portal');
+        const normalPortal = document.getElementById('mobile-video-portal');
+        if (miniPortal) {
+          const miniRect = miniPortal.getBoundingClientRect();
+          portalTarget = (miniRect.width > 0 && miniRect.height > 0) ? miniPortal : normalPortal;
+        } else {
+          portalTarget = normalPortal;
+        }
       } else {
         portalTarget = document.querySelector('.full-player__video-placeholder');
       }
@@ -57,7 +65,7 @@ export default function PersistentPlayer() {
           videoWindow.style.right = 'auto';
           videoWindow.style.bottom = 'auto';
           videoWindow.style.zIndex = '3000';
-          videoWindow.style.borderRadius = '32px';
+          videoWindow.style.borderRadius = portalTarget?.id === 'mobile-mini-player-portal' ? '12px' : '32px';
           videoWindow.style.overflow = 'hidden';
         }
       }
