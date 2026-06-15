@@ -1433,7 +1433,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
   /* FullPlayer(500) < VideoWindow(3000) */
   transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
-  background: var(--bg-primary);
+  background: black;
   pointer-events: none;
   display: flex;
   align-items: center;

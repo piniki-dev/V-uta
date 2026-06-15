@@ -89,7 +89,7 @@ export default function MiniPlayer() {
               <motion.div
                 layoutId="mobile-video-portal"
                 id="mobile-video-portal"
-                className="w-[85px] h-[48px] rounded-xl bg-black overflow-hidden relative"
+                className="w-[85px] h-[48px] rounded-xl overflow-hidden relative"
               />
             </div>
           )}
@@ -100,7 +100,7 @@ export default function MiniPlayer() {
               <motion.div
                 layoutId="desktop-video-portal"
                 id="desktop-video-portal"
-                className="w-[85px] h-[48px] rounded-xl bg-black overflow-hidden relative"
+                className="w-[85px] h-[48px] rounded-xl overflow-hidden relative"
               />
             </div>
           )}

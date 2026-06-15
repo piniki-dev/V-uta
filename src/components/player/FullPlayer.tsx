@@ -352,7 +352,7 @@ export default function FullPlayer() {
               overflow: 'hidden',
               zIndex: 1015,
             }}
-            className="bg-black relative pointer-events-none"
+            className="relative pointer-events-none"
           />
         )}
 
