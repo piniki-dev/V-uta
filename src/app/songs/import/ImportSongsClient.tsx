@@ -99,6 +99,15 @@ export default function ImportSongsClient() {
   const progressRef = useRef(progress);
   const currentBatchIndexRef = useRef(currentBatchIndex);
   const contentRef = useRef<HTMLDivElement>(null);
+  const autoNextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCloseModal = useCallback(() => {
+    if (autoNextTimeoutRef.current) {
+      clearTimeout(autoNextTimeoutRef.current);
+      autoNextTimeoutRef.current = null;
+    }
+    setSaveStatus('idle');
+  }, []);
 
   useEffect(() => {
     allSongsRef.current = allSongs;
@@ -512,6 +521,10 @@ export default function ImportSongsClient() {
   }, [batchArchives, locale, T]);
 
   const goToNextItem = useCallback(() => {
+    if (autoNextTimeoutRef.current) {
+      clearTimeout(autoNextTimeoutRef.current);
+      autoNextTimeoutRef.current = null;
+    }
     setSaveStatus('idle');
     const nextIndex = currentBatchIndex + 1;
     if (nextIndex < batchArchives.length) {
@@ -571,14 +584,12 @@ export default function ImportSongsClient() {
         if (isAutoNext) {
           const nextIndex = currentBatchIndex + 1;
           if (nextIndex < batchArchives.length) {
-            setTimeout(() => {
-              setSaveStatus(prev => {
-                if (prev === 'success') {
-                  startProcessingItem(nextIndex);
-                  return 'idle';
-                }
-                return prev;
-              });
+            if (autoNextTimeoutRef.current) {
+              clearTimeout(autoNextTimeoutRef.current);
+            }
+            autoNextTimeoutRef.current = setTimeout(() => {
+              setSaveStatus('idle');
+              startProcessingItem(nextIndex);
             }, 2000);
           }
         }
@@ -1506,7 +1517,7 @@ export default function ImportSongsClient() {
           className="modal-overlay" 
           onClick={() => {
             if (saveStatus === 'success' || saveStatus === 'error') {
-              setSaveStatus('idle');
+              handleCloseModal();
             }
           }}
         >
@@ -1558,7 +1569,7 @@ export default function ImportSongsClient() {
                 ) : null}
                 <button
                   className="btn btn--secondary btn--full"
-                  onClick={() => setSaveStatus('idle')}
+                  onClick={handleCloseModal}
                 >
                   {T('common.close')}
                 </button>
@@ -1574,7 +1585,7 @@ export default function ImportSongsClient() {
                 </button>
                 <button
                   className="btn btn--secondary btn--full"
-                  onClick={() => setSaveStatus('idle')}
+                  onClick={handleCloseModal}
                 >
                   {T('common.close')}
                 </button>
