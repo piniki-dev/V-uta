@@ -59,6 +59,8 @@ export default function ImportSongsClient() {
   const [gsUrl, setGsUrl] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [saveErrorMsg, setSaveErrorMsg] = useState('');
 
   // Current Video States (similar to NewSongClient)
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
@@ -129,9 +131,10 @@ export default function ImportSongsClient() {
 
   // 変更があるかどうか（離脱警告の対象）
   const hasChanges = useMemo(() => {
+    if (saveStatus === 'success' || saveStatus === 'error') return false;
     // 一括処理のバッチがあり、未完了の動画が1つでもある場合に警告を出す
     return batchArchives.length > 0 && Object.values(progress).some(p => p.status !== 'completed');
-  }, [batchArchives, progress]);
+  }, [batchArchives, progress, saveStatus]);
 
   // ブラウザのナビゲーション（タブ閉じ、戻る等）に対しても警告
   useEffect(() => {
@@ -508,10 +511,20 @@ export default function ImportSongsClient() {
     proceedToItem();
   }, [batchArchives, locale, T]);
 
-  const handleSaveBatch = async () => {
+  const goToNextItem = useCallback(() => {
+    setSaveStatus('idle');
+    const nextIndex = currentBatchIndex + 1;
+    if (nextIndex < batchArchives.length) {
+      startProcessingItem(nextIndex);
+    }
+  }, [currentBatchIndex, batchArchives, startProcessingItem]);
+
+  const performSave = useCallback(async () => {
     if (!metadata) return;
     setError('');
     setSuccess('');
+    setSaveStatus('saving');
+    setSaveErrorMsg('');
 
     // 保存対象
     const songsToRegister = allSongs
@@ -530,33 +543,56 @@ export default function ImportSongsClient() {
       }));
 
     startTransition(async () => {
-      const result = await registerFullArchive({
-        videoMetadata: metadata,
-        songs: songsToRegister,
-      });
+      try {
+        const result = await registerFullArchive({
+          videoMetadata: metadata,
+          songs: songsToRegister,
+        });
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      setSuccess(T('newSong.saveSuccess'));
-      
-      // 進捗を完了にする
-      const currentUrl = batchArchives[currentBatchIndex].url;
-      setProgress(prev => ({
-        ...prev,
-        [currentUrl]: { ...prev[currentUrl], status: 'completed' }
-      }));
-
-      // 自動遷移
-      if (isAutoNext) {
-        const nextIndex = currentBatchIndex + 1;
-        if (nextIndex < batchArchives.length) {
-          setTimeout(() => startProcessingItem(nextIndex), 1000);
+        if (!result.success) {
+          setError(result.error);
+          setSaveErrorMsg(result.error);
+          setSaveStatus('error');
+          return;
         }
+
+        setSuccess(T('newSong.saveSuccess'));
+        
+        // 進捗を完了にする
+        const currentUrl = batchArchives[currentBatchIndex].url;
+        setProgress(prev => ({
+          ...prev,
+          [currentUrl]: { ...prev[currentUrl], status: 'completed' }
+        }));
+
+        setSaveStatus('success');
+
+        // 自動遷移
+        if (isAutoNext) {
+          const nextIndex = currentBatchIndex + 1;
+          if (nextIndex < batchArchives.length) {
+            setTimeout(() => {
+              setSaveStatus(prev => {
+                if (prev === 'success') {
+                  startProcessingItem(nextIndex);
+                  return 'idle';
+                }
+                return prev;
+              });
+            }, 2000);
+          }
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : T('common.errorOccurred');
+        setError(msg);
+        setSaveErrorMsg(msg);
+        setSaveStatus('error');
       }
     });
+  }, [metadata, allSongs, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem]);
+
+  const handleSaveBatch = () => {
+    performSave();
   };
 
   const handleRegisterVtuber = async () => {
@@ -1460,6 +1496,90 @@ export default function ImportSongsClient() {
                 {modalConfig.confirmText}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 保存状況・完了モーダル */}
+      {saveStatus !== 'idle' && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            if (saveStatus === 'success' || saveStatus === 'error') {
+              setSaveStatus('idle');
+            }
+          }}
+        >
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-body" style={{ textAlign: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="modal-icon" style={{ border: 'none', background: 'transparent' }}>
+                    <Loader2 size={48} className="text-[var(--accent)] animate-spin" />
+                  </div>
+                  <h3 className="modal-title" style={{ marginTop: '16px' }}>{T('newSong.saving')}</h3>
+                  <p className="modal-text">
+                    {T('newSong.saving')}...
+                  </p>
+                </>
+              )}
+              {saveStatus === 'success' && (
+                <>
+                  <div className="modal-icon modal-icon--info">
+                    <Save size={32} />
+                  </div>
+                  <h3 className="modal-title">{T('newSong.saveComplete')}</h3>
+                  <p className="modal-text">
+                    {T('newSong.saveCompleteMessage')}
+                  </p>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <div className="modal-icon modal-icon--danger">
+                    <AlertCircle size={32} />
+                  </div>
+                  <h3 className="modal-title">{T('newSong.saveError')}</h3>
+                  <p className="modal-text text-sm text-[var(--text-secondary)] mt-2" style={{ wordBreak: 'break-word' }}>
+                    {saveErrorMsg}
+                  </p>
+                </>
+              )}
+            </div>
+            {saveStatus === 'success' && (
+              <div className="modal-footer" style={{ flexDirection: 'column', gap: '8px' }}>
+                {currentBatchIndex + 1 < batchArchives.length ? (
+                  <button
+                    className="btn btn--primary btn--full"
+                    onClick={goToNextItem}
+                  >
+                    {T('newSong.nextVideo')}
+                  </button>
+                ) : null}
+                <button
+                  className="btn btn--secondary btn--full"
+                  onClick={() => setSaveStatus('idle')}
+                >
+                  {T('common.close')}
+                </button>
+              </div>
+            )}
+            {saveStatus === 'error' && (
+              <div className="modal-footer" style={{ flexDirection: 'column', gap: '8px' }}>
+                <button
+                  className="btn btn--primary btn--full"
+                  onClick={performSave}
+                >
+                  {T('newSong.retry')}
+                </button>
+                <button
+                  className="btn btn--secondary btn--full"
+                  onClick={() => setSaveStatus('idle')}
+                >
+                  {T('common.close')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
