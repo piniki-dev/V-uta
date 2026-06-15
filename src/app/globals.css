@@ -1431,7 +1431,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
   position: fixed;
   z-index: 3000;
   /* FullPlayer(500) < VideoWindow(3000) */
-  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1), visibility 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
   background: black;
   pointer-events: none;
@@ -1454,7 +1454,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
   border: 1px solid var(--border);
   background: var(--bg-primary);
   /* Match theme instead of hardcoded black */
-  transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1), visibility 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   display: flex;
   align-items: center;
   justify-content: center;

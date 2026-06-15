@@ -17,6 +17,7 @@ export default function PersistentPlayer() {
     if (!videoWindow) return;
 
     let animationFrameId: number;
+    let syncEndTime = Date.now() + 1000; // 初期ロード/切り替え時から1秒間同期する
 
     // ポータルターゲット(モバイル・デスクトップ別)の座標にvideo-windowを重ねる
     const syncPosition = () => {
@@ -50,15 +51,28 @@ export default function PersistentPlayer() {
         }
       }
 
-      // 次のフレームでも同期を続ける（アニメーションやリサイズ追従のため）
-      animationFrameId = requestAnimationFrame(syncPosition);
+      // 指定時間内であれば次のフレームでも同期を続ける（開閉アニメーションなどの追従のため）
+      if (Date.now() < syncEndTime) {
+        animationFrameId = requestAnimationFrame(syncPosition);
+      }
     };
 
     // 同期ループ開始
     syncPosition();
+
+    // リサイズや画面向き変更時に一定時間同期を再開して追従させる
+    const handleResize = () => {
+      syncEndTime = Date.now() + 500; // 0.5秒間同期を回す
+      syncPosition();
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
     
     return () => {
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, [state.isFullPlayerOpen]);
 
