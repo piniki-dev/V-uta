@@ -488,128 +488,83 @@ export async function registerFullArchive(input: {
   }
 
   try {
-    // 1. 動画の登録/取得
-    const videoResult = await registerVideo(input.videoMetadata);
-    if (!videoResult.success) return { success: false, error: videoResult.error };
-    const video = videoResult.data;
+    const songsToRegister = [];
 
-    const finalSongs: Song[] = [];
-
-    // 2. 曲の処理
+    // 1. 各曲について、事前に必要な外部API（iTunes）のデータを取得して整形
     for (const songInput of input.songs) {
       if (songInput.isDeleted) {
-        if (songInput.id) {
-          const { error } = await supabase.from('songs').delete().eq('id', songInput.id);
-          if (error) throw new Error(`曲の削除に失敗しました: ${error.message}`);
-        }
+        songsToRegister.push({
+          id: songInput.id,
+          isDeleted: true,
+        });
         continue;
       }
 
-      // master_songs の存在チェック（itunes_id または 曲名+アーティスト名）
-      let masterSong = null;
+      let titleJa = songInput.songTitle.trim();
+      let artistJa = songInput.songArtist.trim() || 'Unknown';
+      let titleEn = null;
+      let artistEn = null;
+
       if (songInput.itunesId) {
-        const { data: byItunes } = await supabase
-          .from('master_songs')
-          .select()
-          .eq('itunes_id', String(songInput.itunesId))
-          .maybeSingle();
-        masterSong = byItunes;
-      }
-
-      if (!masterSong) {
-        const { data: byTitle } = await supabase
-          .from('master_songs')
-          .select()
-          .eq('title', songInput.songTitle.trim())
-          .eq('artist', songInput.songArtist.trim() || 'Unknown')
-          .maybeSingle();
-        masterSong = byTitle;
-      }
-
-      if (!masterSong) {
-        let titleJa = songInput.songTitle.trim();
-        let artistJa = songInput.songArtist.trim() || 'Unknown';
-        let titleEn = null;
-        let artistEn = null;
-
-        if (songInput.itunesId) {
-          const otherLocale = songInput.searchLocale === 'en' ? 'ja' : 'en';
-          const country = otherLocale === 'en' ? 'us' : 'jp';
-          const lang = otherLocale === 'en' ? 'en_us' : 'ja_jp';
-          const otherInfo = await getTrackById(songInput.itunesId, country, lang);
-          if (otherInfo) {
-            if (songInput.searchLocale === 'en') {
-              titleEn = songInput.songTitle.trim();
-              artistEn = songInput.songArtist.trim();
-              titleJa = otherInfo.trackName;
-              artistJa = otherInfo.artistName;
-            } else {
-              titleJa = songInput.songTitle.trim();
-              artistJa = songInput.songArtist.trim();
-              titleEn = otherInfo.trackName;
-              artistEn = otherInfo.artistName;
-            }
+        const otherLocale = songInput.searchLocale === 'en' ? 'ja' : 'en';
+        const country = otherLocale === 'en' ? 'us' : 'jp';
+        const lang = otherLocale === 'en' ? 'en_us' : 'ja_jp';
+        const otherInfo = await getTrackById(songInput.itunesId, country, lang);
+        if (otherInfo) {
+          if (songInput.searchLocale === 'en') {
+            titleEn = songInput.songTitle.trim();
+            artistEn = songInput.songArtist.trim();
+            titleJa = otherInfo!.trackName;
+            artistJa = otherInfo!.artistName;
           } else {
-            if (songInput.searchLocale === 'en') {
-              titleEn = songInput.songTitle.trim();
-              artistEn = songInput.songArtist.trim();
-            }
+            titleJa = songInput.songTitle.trim();
+            artistJa = songInput.songArtist.trim();
+            titleEn = otherInfo!.trackName;
+            artistEn = otherInfo!.artistName;
+          }
+        } else {
+          if (songInput.searchLocale === 'en') {
+            titleEn = songInput.songTitle.trim();
+            artistEn = songInput.songArtist.trim();
           }
         }
-
-        const { data: newMaster, error: masterInsertError } = await supabase
-          .from('master_songs')
-          .insert({
-            title: titleJa,
-            artist: artistJa,
-            title_en: titleEn,
-            artist_en: artistEn,
-            artwork_url: songInput.artworkUrl || null,
-            itunes_id: songInput.itunesId ? String(songInput.itunesId) : null,
-            duration_sec: songInput.durationSec > 0 ? songInput.durationSec : null,
-            created_by: user.id,
-          })
-          .select()
-          .single();
-        
-        if (masterInsertError) throw new Error(`原曲情報の登録に失敗しました: ${masterInsertError.message}`);
-        masterSong = newMaster;
       }
 
-      if (songInput.id) {
-        // 更新
-        const { data, error } = await supabase
-          .from('songs')
-          .update({
-            master_song_id: masterSong.id,
-            start_sec: songInput.startSec,
-            end_sec: songInput.endSec,
-            updated_by: user.id,
-          })
-          .eq('id', songInput.id)
-          .select('*, master_song:master_songs(*)')
-          .single();
-        if (error) throw new Error(`曲の更新に失敗しました: ${error.message}`);
-        finalSongs.push(data as Song);
-      } else {
-        // 新規登録
-        const { data, error } = await supabase
-          .from('songs')
-          .insert({
-            video_id: video.id,
-            master_song_id: masterSong.id,
-            start_sec: songInput.startSec,
-            end_sec: songInput.endSec,
-            created_by: user.id,
-          })
-          .select('*, master_song:master_songs(*)')
-          .single();
-        if (error) throw new Error(`曲の登録に失敗しました: ${error.message}`);
-        finalSongs.push(data as Song);
-      }
+      songsToRegister.push({
+        id: songInput.id,
+        titleJa,
+        artistJa,
+        titleEn,
+        artistEn,
+        artworkUrl: songInput.artworkUrl || null,
+        itunesId: songInput.itunesId ? String(songInput.itunesId) : null,
+        durationSec: songInput.durationSec || 0,
+        startSec: songInput.startSec,
+        endSec: songInput.endSec,
+        isDeleted: false,
+      });
     }
 
-    return { success: true, data: { video, songs: finalSongs } };
+    // 2. トランザクション保護された RPC を呼び出してDB処理を一括実行
+    const { data, error } = await supabase.rpc('register_full_archive_transaction', {
+      p_video_id: input.videoMetadata.videoId,
+      p_video_title: input.videoMetadata.title,
+      p_video_description: input.videoMetadata.description,
+      p_video_thumbnail_url: input.videoMetadata.thumbnailUrl,
+      p_video_published_at: input.videoMetadata.publishedAt,
+      p_video_duration: input.videoMetadata.duration,
+      p_video_is_stream: input.videoMetadata.isStream,
+      p_channel_yt_id: input.videoMetadata.channelId,
+      p_songs: songsToRegister,
+    });
+
+    if (error) {
+      throw new Error(`${t.common.saveError}: ${error.message}`);
+    }
+
+    // RPC から返却された型付き JSON データをマッピングして返却
+    const result = data as { video: Video; songs: Song[] };
+    return { success: true, data: result };
   } catch (e) {
     const message = e instanceof Error ? e.message : t.common.saveError;
     return { success: false, error: message };
