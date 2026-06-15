@@ -512,7 +512,13 @@ export default function FullPlayer() {
               maxHeight: '100%',
             }}
           >
-            <div className="full-player__video-placeholder w-full h-full" />
+            {state.isFullPlayerOpen && (
+              <motion.div
+                layoutId="desktop-video-portal"
+                id="desktop-video-portal"
+                className="w-full h-full"
+              />
+            )}
           </div>
 
 

@@ -12,14 +12,9 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { 
   Maximize2, 
   Minimize2, 
-  PictureInPicture,
   Smartphone,
   Monitor,
   LayoutPanelLeft,
-  ArrowUpLeft,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowDownRight,
   Shield,
   Repeat,
   Repeat1
@@ -37,7 +32,6 @@ export default function MiniPlayer() {
     prevSong,
     seekTo,
     toggleFullPlayer,
-    setPipPosition,
     setVideoRatioMode,
     togglePrivacyMode,
   } = usePlayer();
@@ -100,8 +94,19 @@ export default function MiniPlayer() {
             </div>
           )}
 
-          {/* デスクトップ用、またはフルプレイヤーオープン時 */}
-          <div className={`${!state.isFullPlayerOpen ? 'hidden md:block' : 'block'} shrink-0`}>
+          {/* デスクトップ用ビデオポータル（16:9） */}
+          {typeof window !== 'undefined' && !state.isFullPlayerOpen && (
+            <div className="hidden md:block shrink-0">
+              <motion.div
+                layoutId="desktop-video-portal"
+                id="desktop-video-portal"
+                className="w-[85px] h-[48px] rounded-xl bg-black overflow-hidden relative"
+              />
+            </div>
+          )}
+
+          {/* デスクトップ用サムネイル（フルプレイヤーオープン時のみ表示） */}
+          <div className={`${!state.isFullPlayerOpen ? 'hidden' : 'block'} shrink-0`}>
             {state.currentSong.thumbnailUrl && (
               <Image
                 src={state.currentSong.thumbnailUrl}
@@ -304,58 +309,7 @@ export default function MiniPlayer() {
             </DropdownMenu.Root>
           )}
 
-          {/* PiP 位置設定 (PiP中のみ表示) */}
-          {!state.isFullPlayerOpen && (
-            <DropdownMenu.Root modal={false}>
-              <DropdownMenu.Trigger asChild>
-                <button 
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="mini-player__btn" 
-                  title={T('player.changePosition')}
-                >
-                  <PictureInPicture size={18} />
-                </button>
-              </DropdownMenu.Trigger>
 
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content className="pip-menu-content" sideOffset={10} align="end">
-                  <DropdownMenu.Item 
-                    className={`pip-menu-item ${state.pipPosition === 'top-left' ? 'active' : ''}`}
-                    onSelect={() => setPipPosition('top-left')}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowUpLeft size={16} />
-                    <span>{T('player.topLeft')}</span>
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item 
-                    className={`pip-menu-item ${state.pipPosition === 'top-right' ? 'active' : ''}`}
-                    onSelect={() => setPipPosition('top-right')}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowUpRight size={16} />
-                    <span>{T('player.topRight')}</span>
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item 
-                    className={`pip-menu-item ${state.pipPosition === 'bottom-left' ? 'active' : ''}`}
-                    onSelect={() => setPipPosition('bottom-left')}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowDownLeft size={16} />
-                    <span>{T('player.bottomLeft')}</span>
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item 
-                    className={`pip-menu-item ${state.pipPosition === 'bottom-right' ? 'active' : ''}`}
-                    onSelect={() => setPipPosition('bottom-right')}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowDownRight size={16} />
-                    <span>{T('player.bottomRight')}</span>
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          )}
 
           {/* フルプレーヤートグル (1番右) */}
           <button

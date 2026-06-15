@@ -16,24 +16,6 @@ export default function PersistentPlayer() {
     const videoWindow = videoWindowRef.current;
     if (!videoWindow) return;
 
-    const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
-
-    // デスクトップ環境でフルプレイヤーが閉じている場合のみ、同期を止めてスタイルをクリアする
-    if (!state.isFullPlayerOpen && !isMobile()) {
-      // フルプレイヤー閉じ時: inline styleをリセット、CSSクラスがPIP表示を制御
-      videoWindow.style.position = '';
-      videoWindow.style.width = '';
-      videoWindow.style.height = '';
-      videoWindow.style.top = '';
-      videoWindow.style.left = '';
-      videoWindow.style.right = '';
-      videoWindow.style.bottom = '';
-      videoWindow.style.zIndex = '';
-      videoWindow.style.borderRadius = '';
-      videoWindow.style.overflow = '';
-      return;
-    }
-
     let animationFrameId: number;
 
     // ポータルターゲット(モバイル・デスクトップ別)の座標にvideo-windowを重ねる
@@ -44,7 +26,7 @@ export default function PersistentPlayer() {
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         portalTarget = document.getElementById('mobile-video-portal');
       } else {
-        portalTarget = document.querySelector('.full-player__video-placeholder');
+        portalTarget = document.getElementById('desktop-video-portal');
       }
 
       if (portalTarget && videoWindow) {
