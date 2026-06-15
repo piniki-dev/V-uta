@@ -5,7 +5,7 @@ import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
-import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
 import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
 
 import Image from 'next/image';
@@ -34,11 +34,64 @@ export default function FullPlayer() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const dragControls = useDragControls();
   const mobileContainerRef = useRef<HTMLDivElement>(null);
+  const placeholderRef = useRef<HTMLDivElement>(null);
+  const miniPlaceholderRef = useRef<HTMLDivElement>(null);
   const MINI_PLAYER_HEIGHT = 80;
   const COLLAPSED_Y = 0; // top基準では0が「ヘッダーだけ見える」状態
   const [sheetHeight, setSheetHeight] = useState(480);
   const expandedY = -(sheetHeight - 72); // シート最大展開時のY値（ミニプレーヤー分を確保）
   const sheetY = useMotionValue(COLLAPSED_Y);
+
+  // プレースホルダーの相対座標管理
+  const [coords, setCoords] = useState({
+    normal: { top: 150, left: 24, width: 300, height: 168 },
+    mini: { top: 16, left: 60, width: 85, height: 48 }
+  });
+
+  const updateCoords = () => {
+    const container = mobileContainerRef.current;
+    const placeholder = placeholderRef.current;
+    const miniPlaceholder = miniPlaceholderRef.current;
+    if (!container || !placeholder || !miniPlaceholder) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const placeholderRect = placeholder.getBoundingClientRect();
+    const miniPlaceholderRect = miniPlaceholder.getBoundingClientRect();
+
+    if (placeholderRect.width > 0 && miniPlaceholderRect.width > 0) {
+      setCoords({
+        normal: {
+          top: placeholderRect.top - containerRect.top,
+          left: placeholderRect.left - containerRect.left,
+          width: placeholderRect.width,
+          height: placeholderRect.height,
+        },
+        mini: {
+          top: miniPlaceholderRect.top - containerRect.top,
+          left: miniPlaceholderRect.left - containerRect.left,
+          width: miniPlaceholderRect.width,
+          height: miniPlaceholderRect.height,
+        }
+      });
+    }
+  };
+
+  // 進捗率 0 (閉) 〜 1 (開)
+  const progress = useTransform(sheetY, [0, expandedY], [0, 1]);
+
+  // 進捗率に応じたポータルのスタイル補間
+  const portalWidth = useTransform(progress, [0, 1], [coords.normal.width, coords.mini.width]);
+  const portalHeight = useTransform(progress, [0, 1], [coords.normal.height, coords.mini.height]);
+  const portalTop = useTransform(progress, [0, 1], [coords.normal.top, coords.mini.top]);
+  const portalLeft = useTransform(progress, [0, 1], [coords.normal.left, coords.mini.left]);
+  const portalBorderRadius = useTransform(progress, [0, 1], [32, 12]);
+
+  // 通常UI・ミニUIのフェードとインタラクションの制御
+  const normalUiOpacity = useTransform(progress, [0, 0.3], [1, 0]);
+  const normalUiPointerEvents = useTransform(progress, (v) => v < 0.3 ? 'auto' : 'none');
+
+  const miniUiOpacity = useTransform(progress, [0.7, 1], [0, 1]);
+  const miniUiPointerEvents = useTransform(progress, (v) => v > 0.7 ? 'auto' : 'none');
 
   // isQueueOpen 変化時にアニメーション
   useEffect(() => {
@@ -57,11 +110,23 @@ export default function FullPlayer() {
     const updateHeight = () => {
       const h = container.clientHeight;
       setSheetHeight(Math.max(h - MINI_PLAYER_HEIGHT, 300));
+      // 高さが変わったので座標も更新
+      setTimeout(updateCoords, 50);
     };
     updateHeight();
     const observer = new ResizeObserver(updateHeight);
     observer.observe(container);
     return () => observer.disconnect();
+  }, [state.isFullPlayerOpen]);
+
+  // プレイヤーが開かれた際、レイアウト完了後に座標を再測定
+  useEffect(() => {
+    if (state.isFullPlayerOpen) {
+      const timer = setTimeout(() => {
+        updateCoords();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [state.isFullPlayerOpen]);
 
   // 再生中の曲への自動スクロール
@@ -108,185 +173,185 @@ export default function FullPlayer() {
 
       {/* モバイル版 UI - ライトモード・ダークモード両対応のセマンティックカラーを使用 */}
       <div ref={mobileContainerRef} className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-clip">
-        {/* ミニプレーヤー（シート全展開時のみ表示） */}
-        <AnimatePresence>
-          {isQueueOpen && (
-            <motion.div
-              className="absolute top-0 left-0 right-0 z-[1025] flex items-center gap-3 px-4 bg-[var(--bg-primary)] border-b border-[var(--border)]"
-              style={{ height: MINI_PLAYER_HEIGHT }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <button
-                onClick={closeFullPlayer}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm shrink-0"
-              >
-                <ChevronDown size={18} />
-              </button>
-              {/* ミニプレーヤーのビデオポータル（PersistentPlayerがここに追従） */}
-              <div
-                id="mobile-mini-player-portal"
-                className="h-12 aspect-video rounded-xl overflow-hidden relative bg-black shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate text-[var(--text-primary)] leading-tight">
-                  {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
-                </p>
-                <p className="text-xs text-[var(--text-secondary)] truncate">
-                  {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
-                </p>
-              </div>
-              <button
-                onClick={state.isPlaying ? pause : resume}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] active:scale-90 transition-transform shrink-0"
-              >
-                {state.isPlaying
-                  ? <Pause size={20} fill="currentColor" />
-                  : <Play size={20} fill="currentColor" className="ml-0.5" />
-                }
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ヘッダー（シート展開時は非表示） */}
-        <AnimatePresence>
-          {!isQueueOpen && (
-            <motion.div
-              className="shrink-0 flex justify-start mb-4 z-20"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <button
-                onClick={closeFullPlayer}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm"
-              >
-                <ChevronDown size={24} />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* メインビジュアル - layoutアニメーションで位置をスムーズに移動 */}
-        <motion.div 
-          layout
-          className={`flex-1 flex justify-center min-h-0 overflow-hidden ${isQueueOpen ? 'items-start mt-2' : 'items-center'}`}
+        {/* ミニプレーヤー（常にマウント、opacityとpointerEventsでフェード） */}
+        <motion.div
+          className="absolute top-0 left-0 right-0 z-[1025] flex items-center gap-3 px-4 bg-[var(--bg-primary)] border-b border-[var(--border)]"
+          style={{ 
+            height: MINI_PLAYER_HEIGHT,
+            opacity: miniUiOpacity,
+            pointerEvents: miniUiPointerEvents
+          }}
         >
-          <motion.div 
-            layout
-            id="mobile-video-portal"
-            className="w-full max-h-full aspect-video rounded-[32px] overflow-hidden relative"
+          <button
+            onClick={closeFullPlayer}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm shrink-0"
+          >
+            <ChevronDown size={18} />
+          </button>
+          
+          {/* ミニビデオポータルプレースホルダー */}
+          <div
+            ref={miniPlaceholderRef}
+            className="h-12 aspect-video rounded-xl opacity-0 pointer-events-none shrink-0"
           />
+
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm truncate text-[var(--text-primary)] leading-tight">
+              {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
+            </p>
+            <p className="text-xs text-[var(--text-secondary)] truncate">
+              {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
+            </p>
+          </div>
+          <button
+            onClick={state.isPlaying ? pause : resume}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] active:scale-90 transition-transform shrink-0"
+          >
+            {state.isPlaying
+              ? <Pause size={20} fill="currentColor" />
+              : <Play size={20} fill="currentColor" className="ml-0.5" />
+            }
+          </button>
         </motion.div>
 
-        {/* コントロール・曲情報領域 (キューが開いている時は非表示・縮小) */}
-        <AnimatePresence>
-          {!isQueueOpen && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="flex flex-col shrink-0 overflow-hidden"
+        {/* 通常UI（常にマウント、opacityとpointerEventsでフェードアウト） */}
+        <motion.div
+          style={{
+            opacity: normalUiOpacity,
+            pointerEvents: normalUiPointerEvents
+          }}
+          className="flex flex-col flex-1 min-h-0 overflow-hidden"
+        >
+          {/* ヘッダー */}
+          <div className="shrink-0 flex justify-start mb-4 z-20">
+            <button
+              onClick={closeFullPlayer}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] active:scale-90 transition-transform shadow-sm"
             >
-              {/* 曲名情報 */}
-              <div className="shrink-0 space-y-1 mt-4">
-                <h2 className="text-2xl font-black text-[var(--text-primary)] truncate leading-tight">
-                  {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
-                </h2>
-                <p className="text-lg font-bold text-[var(--text-secondary)] truncate">
-                  {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
-                </p>
+              <ChevronDown size={24} />
+            </button>
+          </div>
+
+          {/* メインビジュアルプレースホルダー */}
+          <div className="flex-1 flex justify-center items-center min-h-0 overflow-hidden">
+            <div 
+              ref={placeholderRef}
+              className="w-full max-h-full aspect-video rounded-[32px] opacity-0 pointer-events-none"
+            />
+          </div>
+
+          {/* コントロール・曲情報領域 */}
+          <div className="flex flex-col shrink-0 overflow-hidden">
+            {/* 曲名情報 */}
+            <div className="shrink-0 space-y-1 mt-4">
+              <h2 className="text-2xl font-black text-[var(--text-primary)] truncate leading-tight">
+                {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
+              </h2>
+              <p className="text-lg font-bold text-[var(--text-secondary)] truncate">
+                {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
+              </p>
+            </div>
+
+            {/* コントロール・シークバー */}
+            <div className="shrink-0 mt-4 mb-12 space-y-8">
+              <div className="space-y-3">
+                 <div className="relative w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+                    <motion.div 
+                      className="absolute top-0 left-0 h-full bg-[var(--accent)] shadow-[0_0_15px_var(--accent-glow)]"
+                      style={{ width: `${duration > 0 ? (state.currentTime / duration) * 100 : 0}%` }}
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={duration > 0 ? (state.currentTime / duration) * 100 : 0}
+                      onChange={handleSeek}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                 </div>
+                 <div className="flex justify-between text-[11px] font-bold text-[var(--text-tertiary)] tabular-nums">
+                   <span>{formatTime(state.currentTime)}</span>
+                   <span>{formatTime(duration)}</span>
+                 </div>
               </div>
 
-              {/* コントロール・シークバー */}
-              <div className="shrink-0 mt-4 mb-12 space-y-8">
-                <div className="space-y-3">
-                   <div className="relative w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                      <motion.div 
-                        className="absolute top-0 left-0 h-full bg-[var(--accent)] shadow-[0_0_15px_var(--accent-glow)]"
-                        style={{ width: `${duration > 0 ? (state.currentTime / duration) * 100 : 0}%` }}
-                      />
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={duration > 0 ? (state.currentTime / duration) * 100 : 0}
-                        onChange={handleSeek}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                   </div>
-                   <div className="flex justify-between text-[11px] font-bold text-[var(--text-tertiary)] tabular-nums">
-                     <span>{formatTime(state.currentTime)}</span>
-                     <span>{formatTime(duration)}</span>
-                   </div>
-                </div>
-
-                <div className="flex items-center justify-between px-2">
-                   <button className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors">
-                     <Music size={20} className="opacity-0 pointer-events-none" /> {/* Spacer */}
+              <div className="flex items-center justify-between px-2">
+                 <button className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors">
+                   <Music size={20} className="opacity-0 pointer-events-none" /> {/* Spacer */}
+                 </button>
+                 <div className="flex items-center gap-8">
+                   <button onClick={prevSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
+                     <SkipBack size={32} fill="currentColor" />
                    </button>
-                   <div className="flex items-center gap-8">
-                     <button onClick={prevSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
-                       <SkipBack size={32} fill="currentColor" />
-                     </button>
-                     <button 
-                      onClick={state.isPlaying ? pause : resume}
-                      className="w-20 h-20 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                     >
-                       {state.isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
-                     </button>
-                     <button onClick={nextSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
-                       <SkipForward size={32} fill="currentColor" />
-                     </button>
-                   </div>
-                   <div className="flex items-center gap-4">
-                     <button 
-                      onClick={() => {
-                        togglePrivacyMode();
-                        showToast(!state.isPrivacyMode ? T('player.privacyModeEnabled') : T('player.privacyModeDisabled'), {
-                          type: 'privacy'
-                        });
-                      }}
-                      className={`transition-colors active:scale-90 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
-                      title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
-                     >
-                       <Shield size={24} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
-                     </button>
-                     <button 
-                      onClick={() => {
-                        toggleLoop();
-                        const nextMode = state.loopMode === 'none' ? 'all' : state.loopMode === 'all' ? 'one' : 'none';
-                        showToast(
-                          nextMode === 'all'
-                            ? T('player.loopAll')
-                            : nextMode === 'one'
-                            ? T('player.loopOne')
-                            : T('player.loopNone'),
-                          { type: 'info' }
-                        );
-                      }}
-                      className={`transition-colors active:scale-90 ${state.loopMode !== 'none' ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
-                      title={
-                        state.loopMode === 'all'
+                   <button 
+                    onClick={state.isPlaying ? pause : resume}
+                    className="w-20 h-20 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                   >
+                     {state.isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
+                   </button>
+                   <button onClick={nextSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
+                     <SkipForward size={32} fill="currentColor" />
+                   </button>
+                 </div>
+                 <div className="flex items-center gap-4">
+                   <button 
+                    onClick={() => {
+                      togglePrivacyMode();
+                      showToast(!state.isPrivacyMode ? T('player.privacyModeEnabled') : T('player.privacyModeDisabled'), {
+                        type: 'privacy'
+                      });
+                    }}
+                    className={`transition-colors active:scale-90 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                    title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
+                   >
+                     <Shield size={24} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
+                   </button>
+                   <button 
+                    onClick={() => {
+                      toggleLoop();
+                      const nextMode = state.loopMode === 'none' ? 'all' : state.loopMode === 'all' ? 'one' : 'none';
+                      showToast(
+                        nextMode === 'all'
                           ? T('player.loopAll')
-                          : state.loopMode === 'one'
+                          : nextMode === 'one'
                           ? T('player.loopOne')
-                          : T('player.loopNone')
-                      }
-                     >
-                       {state.loopMode === 'one' ? <Repeat1 size={24} /> : <Repeat size={24} />}
-                     </button>
-                   </div>
-                </div>
+                          : T('player.loopNone'),
+                        { type: 'info' }
+                      );
+                    }}
+                    className={`transition-colors active:scale-90 ${state.loopMode !== 'none' ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                    title={
+                      state.loopMode === 'all'
+                        ? T('player.loopAll')
+                        : state.loopMode === 'one'
+                        ? T('player.loopOne')
+                        : T('player.loopNone')
+                    }
+                   >
+                     {state.loopMode === 'one' ? <Repeat1 size={24} /> : <Repeat size={24} />}
+                   </button>
+                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* シームレスに移動する共通ビデオポータル */}
+        <motion.div
+          id="mobile-video-portal"
+          style={{
+            position: 'absolute',
+            width: portalWidth,
+            height: portalHeight,
+            top: portalTop,
+            left: portalLeft,
+            borderRadius: portalBorderRadius,
+            overflow: 'hidden',
+            zIndex: 1015,
+          }}
+          className="bg-black relative pointer-events-none"
+        />
 
         {/* モバイルキュー表示 (Bottom Sheet) */}
         <AnimatePresence>
