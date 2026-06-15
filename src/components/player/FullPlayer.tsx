@@ -6,7 +6,7 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate } from 'framer-motion';
-import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, ListMusic, Shield, Trash2, Volume2 } from 'lucide-react';
+import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
 
 import Image from 'next/image';
 
