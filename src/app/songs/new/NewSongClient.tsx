@@ -330,6 +330,8 @@ export default function NewSongClient() {
     setSelectedSong(manualSong);
     setIsManualInput(false);
     setSearchResults([]);
+    setManualTitle('');
+    setManualArtist('');
   };
 
   const handleClearSelection = () => {
@@ -385,6 +387,8 @@ export default function NewSongClient() {
     setSearchQuery('');
     setStartTime('');
     setEndTime('');
+    setManualTitle('');
+    setManualArtist('');
   };
 
   const handleSaveAll = () => {
@@ -871,6 +875,7 @@ export default function NewSongClient() {
                           setIsManualInput(!isManualInput);
                           if (!isManualInput) {
                             setManualTitle(searchQuery);
+                            setManualArtist('');
                             setSearchResults([]);
                           }
                         }}
