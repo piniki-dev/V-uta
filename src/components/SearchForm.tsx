@@ -16,13 +16,8 @@ export default function SearchForm() {
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
-    if (q !== query) {
-      const timer = setTimeout(() => {
-        setQuery(q);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, query]);
+    setQuery(q);
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
