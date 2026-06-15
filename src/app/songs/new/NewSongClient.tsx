@@ -863,7 +863,12 @@ export default function NewSongClient() {
                               <span className="search-results__title font-bold block truncate">{track.title}</span>
                               <span className="search-results__artist text-xs text-[var(--text-secondary)] block truncate">{track.artist}</span>
                             </div>
-                            <Music size={16} className="text-[var(--text-tertiary)]" />
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-2 py-1 rounded border border-[var(--border)]">
+                                {formatTime(track.durationSec)}
+                              </span>
+                              <Music size={16} className="text-[var(--text-tertiary)]" />
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -1095,6 +1100,9 @@ export default function NewSongClient() {
                                           <span className="search-results__title" style={{ fontSize: '12px' }}>{track.title}</span>
                                           <span className="search-results__artist" style={{ fontSize: '11px' }}>{track.artist}</span>
                                         </div>
+                                        <span style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border)', marginLeft: 'auto', flexShrink: 0 }}>
+                                          {formatTime(track.durationSec)}
+                                        </span>
                                       </button>
                                     ))}
                                   </div>
