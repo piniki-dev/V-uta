@@ -338,20 +338,23 @@ export default function FullPlayer() {
         </motion.div>
 
         {/* シームレスに移動する共通ビデオポータル */}
-        <motion.div
-          id="mobile-video-portal"
-          style={{
-            position: 'absolute',
-            width: portalWidth,
-            height: portalHeight,
-            top: portalTop,
-            left: portalLeft,
-            borderRadius: portalBorderRadius,
-            overflow: 'hidden',
-            zIndex: 1015,
-          }}
-          className="bg-black relative pointer-events-none"
-        />
+        {state.isFullPlayerOpen && (
+          <motion.div
+            layoutId="mobile-video-portal"
+            id="mobile-video-portal"
+            style={{
+              position: 'absolute',
+              width: portalWidth,
+              height: portalHeight,
+              top: portalTop,
+              left: portalLeft,
+              borderRadius: portalBorderRadius,
+              overflow: 'hidden',
+              zIndex: 1015,
+            }}
+            className="bg-black relative pointer-events-none"
+          />
+        )}
 
         {/* モバイルキュー表示 (Bottom Sheet) */}
         <AnimatePresence>

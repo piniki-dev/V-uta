@@ -16,7 +16,10 @@ export default function PersistentPlayer() {
     const videoWindow = videoWindowRef.current;
     if (!videoWindow) return;
 
-    if (!state.isFullPlayerOpen) {
+    const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
+
+    // デスクトップ環境でフルプレイヤーが閉じている場合のみ、同期を止めてスタイルをクリアする
+    if (!state.isFullPlayerOpen && !isMobile()) {
       // フルプレイヤー閉じ時: inline styleをリセット、CSSクラスがPIP表示を制御
       videoWindow.style.position = '';
       videoWindow.style.width = '';

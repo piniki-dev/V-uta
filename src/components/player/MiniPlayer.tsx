@@ -1,6 +1,7 @@
 'use client';
 
 import { usePlayer } from './PlayerContext';
+import { motion } from 'framer-motion';
 import { useToast } from '../ToastProvider';
 import Image from 'next/image';
 import { formatTime } from '@/lib/utils';
@@ -88,19 +89,33 @@ export default function MiniPlayer() {
       <div className="mini-player__content">
         {/* 左: 曲情報 */}
         <div className="mini-player__info">
-          {state.currentSong.thumbnailUrl && (
-            <Image
-              src={state.currentSong.thumbnailUrl}
-              alt=""
-              width={48}
-              height={48}
-              className="mini-player__thumbnail object-cover"
-            />
-          ) || (
-            <div className="mini-player__thumbnail-placeholder flex items-center justify-center bg-[var(--bg-tertiary)] rounded">
-              <span className="text-[var(--text-tertiary)]">♪</span>
+          {/* モバイル用ビデオポータル（16:9） */}
+          {typeof window !== 'undefined' && !state.isFullPlayerOpen && (
+            <div className="md:hidden shrink-0">
+              <motion.div
+                layoutId="mobile-video-portal"
+                id="mobile-video-portal"
+                className="w-[85px] h-[48px] rounded-xl bg-black overflow-hidden relative"
+              />
             </div>
           )}
+
+          {/* デスクトップ用、またはフルプレイヤーオープン時 */}
+          <div className={`${!state.isFullPlayerOpen ? 'hidden md:block' : 'block'} shrink-0`}>
+            {state.currentSong.thumbnailUrl && (
+              <Image
+                src={state.currentSong.thumbnailUrl}
+                alt=""
+                width={48}
+                height={48}
+                className="mini-player__thumbnail object-cover"
+              />
+            ) || (
+              <div className="mini-player__thumbnail-placeholder flex items-center justify-center bg-[var(--bg-tertiary)] rounded">
+                <span className="text-[var(--text-tertiary)]">♪</span>
+              </div>
+            )}
+          </div>
           <div className="mini-player__text">
             <div className="flex items-center gap-2">
               <span className="mini-player__title truncate max-w-[200px] md:max-w-[400px]">
