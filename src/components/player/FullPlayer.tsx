@@ -155,6 +155,22 @@ export default function FullPlayer() {
     }
   }, [state.isFullPlayerOpen]);
 
+  // フルプレイヤーが表示されている間、背景のスクロールを防止する
+  useEffect(() => {
+    if (state.isFullPlayerOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalBodyOverflow = document.body.style.overflow;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalBodyOverflow;
+      };
+    }
+  }, [state.isFullPlayerOpen]);
+
   if (!state.currentSong) return null;
 
   const duration = state.currentSong.endSec - state.currentSong.startSec;
