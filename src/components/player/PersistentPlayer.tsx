@@ -17,10 +17,29 @@ export default function PersistentPlayer() {
     if (!videoWindow) return;
 
     let animationFrameId: number;
-    let syncEndTime = Date.now() + 1000; // 初期ロード/切り替え時から1秒間同期する
+    let isScrolling = false;
+    let scrollTimeoutId: NodeJS.Timeout;
+
+    // スクロール状態の監視（iOS Safari用）
+    const handleScroll = () => {
+      isScrolling = true;
+      clearTimeout(scrollTimeoutId);
+      scrollTimeoutId = setTimeout(() => {
+        isScrolling = false;
+        // スクロールが停止したら最新位置に同期する
+        syncPosition();
+      }, 150);
+    };
 
     // ポータルターゲット(モバイル・デスクトップ別)の座標にvideo-windowを重ねる
     const syncPosition = () => {
+      // ミニプレイヤー表示中でスクロール中の場合は、位置の更新をスキップする
+      // これによりiOSでのスクロールに伴う動画のブレ（ガタつき）を完全に防ぐ
+      if (!state.isFullPlayerOpen && isScrolling) {
+        animationFrameId = requestAnimationFrame(syncPosition);
+        return;
+      }
+
       let portalTarget: Element | null = null;
       
       // ブレイクポイント(md=768px未満)で同期先を切り替え
@@ -51,18 +70,17 @@ export default function PersistentPlayer() {
         }
       }
 
-      // 指定時間内であれば次のフレームでも同期を続ける（開閉アニメーションなどの追従のため）
-      if (Date.now() < syncEndTime) {
-        animationFrameId = requestAnimationFrame(syncPosition);
-      }
+      // 次のフレームでも同期を続ける
+      animationFrameId = requestAnimationFrame(syncPosition);
     };
 
     // 同期ループ開始
     syncPosition();
 
-    // リサイズや画面向き変更時に一定時間同期を再開して追従させる
+    // イベントリスナーの登録
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     const handleResize = () => {
-      syncEndTime = Date.now() + 500; // 0.5秒間同期を回す
       syncPosition();
     };
 
@@ -71,6 +89,8 @@ export default function PersistentPlayer() {
     
     return () => {
       cancelAnimationFrame(animationFrameId);
+      clearTimeout(scrollTimeoutId);
+      window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
