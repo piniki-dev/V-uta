@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
@@ -11,13 +11,9 @@ export default function SearchForm() {
   const searchParams = useSearchParams();
   const { T } = useLocale();
   const { isMobileSearchActive } = useHeader();
-  const [query, setQuery] = useState(searchParams.get('q') || '');
+  const urlQuery = searchParams.get('q') || '';
+  const [query, setQuery] = useState(urlQuery);
   const [isFocused, setIsFocused] = useState(false);
-
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    setQuery(q);
-  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,16 +23,19 @@ export default function SearchForm() {
   };
 
   return (
-    <form 
+    // key={urlQuery}: URL の q パラメータが変わるとフォームをリマウントし、
+    // useState の初期値 (urlQuery) でリセットされる。useEffect 不要。
+    <form
+      key={urlQuery}
       className={`
         flex-1 
-        ${isMobileSearchActive 
-          ? 'max-sm:flex max-sm:w-full max-sm:mx-0 max-sm:max-w-none' 
+        ${isMobileSearchActive
+          ? 'max-sm:flex max-sm:w-full max-sm:mx-0 max-sm:max-w-none'
           : 'max-sm:hidden max-w-[520px] mx-4'}
-      `} 
+      `}
       onSubmit={handleSubmit}
     >
-      <div 
+      <div
         className={`
           w-full flex items-center bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-4 py-2.5 transition-all
           ${isFocused ? 'bg-[var(--bg-tertiary)] border-[var(--accent)] ring-1 ring-[var(--accent)]' : 'hover:bg-[var(--bg-hover)] hover:border-[var(--border-light)]'}
