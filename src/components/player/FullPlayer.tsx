@@ -84,7 +84,7 @@ export default function FullPlayer() {
   const portalHeight = useTransform(progress, [0, 1], [coords.normal.height, coords.mini.height]);
   const portalTop = useTransform(progress, [0, 1], [coords.normal.top, coords.mini.top]);
   const portalLeft = useTransform(progress, [0, 1], [coords.normal.left, coords.mini.left]);
-  const portalBorderRadius = useTransform(progress, [0, 1], [32, 12]);
+  const portalBorderRadius = useTransform(progress, [0, 1], [20, 12]);
 
   // 通常UI・ミニUIのフェードとインタラクションの制御
   const normalUiOpacity = useTransform(progress, [0, 0.3], [1, 0]);
@@ -236,7 +236,7 @@ export default function FullPlayer() {
           <div className="flex-1 flex justify-center items-center min-h-0 overflow-hidden">
             <div 
               ref={placeholderRef}
-              className="w-full max-h-full aspect-video rounded-[32px] opacity-0 pointer-events-none"
+              className="w-full max-h-full aspect-video rounded-[20px] opacity-0 pointer-events-none"
             />
           </div>
 
@@ -516,7 +516,7 @@ export default function FullPlayer() {
               <motion.div
                 layoutId="desktop-video-portal"
                 id="desktop-video-portal"
-                className="w-full h-full"
+                className="w-full h-full rounded-[20px] overflow-hidden"
               />
             )}
           </div>
