@@ -1,13 +1,13 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { usePlayer } from './PlayerContext';
 import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, ListMusic, Shield } from 'lucide-react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, ListMusic, Shield, Trash2, Volume2 } from 'lucide-react';
+
 import Image from 'next/image';
 
 export default function FullPlayer() {
@@ -22,15 +22,47 @@ export default function FullPlayer() {
     toggleLoop,
     closeFullPlayer,
     togglePrivacyMode,
+    removeSong,
+    reorderPlaylist,
+    clearPlaylist,
   } = usePlayer();
   const { t, T } = useLocale();
   const { showToast } = useToast();
   const { isOpen: isSidebarOpen } = useSidebar();
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const isDraggingRef = useRef(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // 再生中の曲への自動スクロール
+  useEffect(() => {
+    if (state.isFullPlayerOpen) {
+      const timer = setTimeout(() => {
+        const activeElements = document.querySelectorAll('.active-queue-item');
+        activeElements.forEach((el) => {
+          el.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [state.currentIndex, state.isFullPlayerOpen]);
+
+  // プレイヤーが閉じられたときに確認モーダルをリセットする
+  useEffect(() => {
+    if (!state.isFullPlayerOpen) {
+      const timer = setTimeout(() => {
+        setIsConfirmModalOpen(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [state.isFullPlayerOpen]);
 
   if (!state.currentSong) return null;
 
   const duration = state.currentSong.endSec - state.currentSong.startSec;
+  const totalDuration = state.playlist.reduce((acc, song) => acc + (song.endSec - song.startSec), 0);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
@@ -142,11 +174,28 @@ export default function FullPlayer() {
                        <Shield size={24} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
                      </button>
                      <button 
-                      onClick={toggleLoop}
-                      className={`transition-colors active:scale-90 ${state.isLooping ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
-                      title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
+                      onClick={() => {
+                        toggleLoop();
+                        const nextMode = state.loopMode === 'none' ? 'all' : state.loopMode === 'all' ? 'one' : 'none';
+                        showToast(
+                          nextMode === 'all'
+                            ? T('player.loopAll')
+                            : nextMode === 'one'
+                            ? T('player.loopOne')
+                            : T('player.loopNone'),
+                          { type: 'info' }
+                        );
+                      }}
+                      className={`transition-colors active:scale-90 ${state.loopMode !== 'none' ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                      title={
+                        state.loopMode === 'all'
+                          ? T('player.loopAll')
+                          : state.loopMode === 'one'
+                          ? T('player.loopOne')
+                          : T('player.loopNone')
+                      }
                      >
-                       <Repeat size={24} />
+                       {state.loopMode === 'one' ? <Repeat1 size={24} /> : <Repeat size={24} />}
                      </button>
                    </div>
                 </div>
@@ -186,41 +235,70 @@ export default function FullPlayer() {
               >
                 <div className="flex flex-col items-center p-4">
                   <div className="w-12 h-1 bg-[var(--border)] rounded-full mb-6" />
-                  <h3 className="text-lg font-black text-[var(--text-primary)] self-start px-2 mb-2 flex items-center gap-3">
-                     {T('player.queue')}
-                     <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
-                  </h3>
+                  <div className="flex items-center justify-between w-full px-2 mb-2">
+                    <h3 className="text-lg font-black text-[var(--text-primary)] flex items-center gap-3">
+                       {T('player.queue')}
+                       <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
+                    </h3>
+                    {state.playlist.length > 1 && (
+                      <button
+                        onClick={() => setIsConfirmModalOpen(true)}
+                        className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
+                        title={T('common.clear')}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
                   {state.playlist.map((song, index) => (
-                    <button
+                    <div
                       key={`${song.id}-${index}`}
-                      onClick={() => {
-                        play(song, state.playlist);
-                        setIsQueueOpen(false);
-                      }}
                       className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
                         index === state.currentIndex 
-                          ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm' 
+                          ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm active-queue-item' 
                           : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
                       }`}
                     >
-                      <Image 
-                        src={song.artworkUrl || ''} 
-                        alt="" 
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
-                      />
-                      <div className="flex-1 text-left min-w-0">
-                        <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
-                          {t(song.title, song.title_en || song.title)}
+                      <button
+                        onClick={() => {
+                          play(song, state.playlist);
+                          setIsQueueOpen(false);
+                        }}
+                        className="flex-1 flex items-center gap-4 text-left min-w-0"
+                      >
+                        <Image 
+                          src={song.artworkUrl || ''} 
+                          alt="" 
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
+                            {t(song.title, song.title_en || song.title)}
+                            <span className="text-[11px] font-normal opacity-60 ml-2">
+                              {t(song.artist || '-', song.artist_en || song.artist || '-')}
+                            </span>
+                          </div>
+                          {song.channelName && (
+                            <div className="text-xs font-bold text-[var(--accent)] truncate mt-1">
+                              🎤 {song.channelName}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[10px] font-bold text-[var(--text-tertiary)] truncate mt-1">
-                          {t(song.artist || '-', song.artist_en || song.artist || '-')}
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSong(index);
+                        }}
+                        className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </motion.div>
@@ -258,55 +336,169 @@ export default function FullPlayer() {
         </div>
 
         {/* 右(md時は下): 再生リスト (Queue) */}
-        <div className="w-full lg:w-96 h-1/3 min-h-[200px] lg:h-auto lg:min-h-0 shrink-0 flex flex-col bg-[var(--bg-secondary)]/30 backdrop-blur-2xl border border-[var(--border)] rounded-3xl lg:rounded-[40px] overflow-hidden shadow-2xl">
-          <div className="p-4 lg:p-8 border-b border-[var(--border)]">
+        <div className="w-full lg:w-[450px] h-1/3 min-h-[200px] lg:h-auto lg:min-h-0 shrink-0 flex flex-col bg-[var(--bg-secondary)]/30 backdrop-blur-2xl border border-[var(--border)] rounded-3xl lg:rounded-[40px] overflow-hidden shadow-2xl">
+          <div className="p-4 lg:p-8 border-b border-[var(--border)] flex items-center justify-between">
             <h3 className="text-lg lg:text-xl font-black text-[var(--text-primary)] tracking-tight glow-text-subtle flex items-center gap-3">
               <span className="w-1.5 h-5 lg:h-6 bg-[var(--accent)] rounded-full shadow-[0_0_10px_var(--accent-glow)]" />
               {T('player.queue')}
             </h3>
+            <div className="flex items-center gap-4">
+              <div className="text-xs font-bold text-[var(--text-tertiary)] hidden sm:block">
+                {state.playlist.length} {T('playlist.songCount')} ({formatTime(totalDuration)})
+              </div>
+              {state.playlist.length > 1 && (
+                <button
+                  onClick={() => setIsConfirmModalOpen(true)}
+                  className="p-2 text-[var(--text-tertiary)] hover:text-red-500 transition-colors rounded-full hover:bg-white/5"
+                  title={T('common.clear')}
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 scrollbar-hide">
+          <Reorder.Group 
+            axis="y" 
+            values={state.playlist} 
+            onReorder={reorderPlaylist}
+            className="flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-2 scrollbar-hide"
+          >
             {state.playlist.map((song, index) => (
-              <motion.button
-                key={`${song.id}-${index}`}
-                onClick={() => play(song, state.playlist)}
-                className={`w-full group flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
-                  index === state.currentIndex 
-                    ? 'bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent)]/10 border border-[var(--accent)]/30 shadow-[0_0_20px_var(--accent-glow)]/10' 
-                    : 'hover:bg-white/5 border border-transparent hover:border-white/10'
-                }`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={state.isFullPlayerOpen ? { opacity: 1, x: 0 } : {}}
-                transition={{ delay: index * 0.05 + 0.4 }}
+              <Reorder.Item
+                key={song.id}
+                value={song}
+                onDragStart={() => {
+                  isDraggingRef.current = true;
+                }}
+                onDragEnd={() => {
+                  setTimeout(() => {
+                    isDraggingRef.current = false;
+                  }, 150);
+                }}
+                onClick={() => {
+                  if (isDraggingRef.current) return;
+                  play(song, state.playlist);
+                }}
+                className="w-full cursor-grab active:cursor-grabbing list-none"
               >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black tabular-nums transition-all ${
-                  index === state.currentIndex 
-                    ? 'bg-[var(--accent)] text-white shadow-lg' 
-                    : 'bg-white/5 text-[var(--text-tertiary)] group-hover:bg-white/10 group-hover:text-[var(--text-secondary)]'
-                }`}>
-                  {index + 1}
-                </div>
-                
-                <div className="flex-1 text-left min-w-0">
-                  <div className={`font-bold text-sm truncate leading-tight ${
-                    index === state.currentIndex ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
+                <motion.div
+                  className={`w-full group flex items-center gap-3 p-3 rounded-3xl transition-colors duration-300 ${
+                    index === state.currentIndex 
+                      ? 'bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent)]/10 border border-[var(--accent)]/30 shadow-[0_0_20px_var(--accent-glow)]/10 active-queue-item' 
+                      : 'bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10'
+                  }`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={state.isFullPlayerOpen ? { opacity: 1, x: 0 } : {}}
+                  transition={{ delay: Math.min(index * 0.05 + 0.4, 1.5) }}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black tabular-nums transition-all ${
+                    index === state.currentIndex 
+                      ? 'bg-[var(--accent)] text-white shadow-lg' 
+                      : 'bg-white/5 text-[var(--text-tertiary)] group-hover:bg-white/10 group-hover:text-[var(--text-secondary)]'
                   }`}>
-                    {t(song.title, song.title_en || song.title)}
+                    {index === state.currentIndex ? (
+                      state.isPlaying ? (
+                        <Volume2 size={16} className="text-white animate-pulse" />
+                      ) : (
+                        <Pause size={16} className="text-white" />
+                      )
+                    ) : (
+                      index + 1
+                    )}
                   </div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] opacity-60 mt-1 truncate">
-                    {t(song.artist || '-', song.artist_en || song.artist || '-')}
-                  </div>
-                </div>
 
-                <div className="text-[10px] font-black tabular-nums text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]">
-                  {formatTime(song.endSec - song.startSec)}
-                </div>
-              </motion.button>
+                  <Image 
+                    src={song.artworkUrl || song.thumbnailUrl || ''} 
+                    alt="" 
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-lg object-cover bg-white/5 border border-white/10" 
+                  />
+                  
+                  <div className="flex-1 text-left min-w-0">
+                    <div className={`font-bold text-sm truncate leading-tight ${
+                      index === state.currentIndex ? 'text-[var(--text-primary)] font-black' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
+                    }`}>
+                      {t(song.title, song.title_en || song.title)}
+                      <span className="text-xs font-normal opacity-60 ml-2">
+                        {t(song.artist || '-', song.artist_en || song.artist || '-')}
+                      </span>
+                    </div>
+                    {song.channelName && (
+                      <div className="flex items-center gap-1.5 mt-1.5 truncate">
+                        {song.channelThumbnailUrl && (
+                          <Image
+                            src={song.channelThumbnailUrl}
+                            alt=""
+                            width={14}
+                            height={14}
+                            className="w-3.5 h-3.5 rounded-full object-cover inline-block border border-white/10"
+                          />
+                        )}
+                        <span className="text-xs font-bold text-[var(--accent)] tracking-wide">
+                          {song.channelName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[10px] font-black tabular-nums text-[var(--text-tertiary)] flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeSong(index);
+                      }}
+                      className="hidden group-hover:flex p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-colors"
+                      title={T('common.delete')}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <span className="group-hover:hidden">
+                      {formatTime(song.endSec - song.startSec)}
+                    </span>
+                  </div>
+                </motion.div>
+              </Reorder.Item>
             ))}
-          </div>
+          </Reorder.Group>
         </div>
       </div>
+
+      {/* 再生リストクリア確認モーダル */}
+      {typeof window !== 'undefined' && isConfirmModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setIsConfirmModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-body">
+              <div className="modal-icon modal-icon--danger">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="modal-title">{T('common.clear')}</h3>
+              <p className="modal-text">
+                {T('player.clearQueueConfirm')}
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn--secondary"
+                onClick={() => setIsConfirmModalOpen(false)}
+              >
+                {T('common.cancel')}
+              </button>
+              <button
+                className="btn btn--danger"
+                onClick={() => {
+                  setIsConfirmModalOpen(false);
+                  clearPlaylist();
+                }}
+              >
+                {T('common.clear')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

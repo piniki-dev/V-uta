@@ -2225,6 +2225,18 @@ input[type="range"]:hover::-webkit-slider-thumb {
   /* amber-600 */
 }
 
+.btn--danger {
+  background: var(--error);
+  color: white;
+  font-weight: 600;
+}
+
+.btn--danger:hover {
+  background: #dc2626;
+  /* red-600 */
+}
+
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed !important;
@@ -2271,6 +2283,27 @@ input[type="range"]:hover::-webkit-slider-thumb {
   align-items: center;
   justify-content: center;
 }
+
+.modal-icon--danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: var(--error) !important;
+}
+
+.modal-icon--warning {
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: var(--warning) !important;
+}
+
+.modal-icon--info {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #3b82f6 !important;
+}
+
+.modal-icon--success {
+  background: rgba(74, 222, 128, 0.1) !important;
+  color: var(--success) !important;
+}
+
 
 .modal-title {
   font-size: 18px;

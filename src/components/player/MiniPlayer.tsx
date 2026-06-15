@@ -19,7 +19,9 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ArrowDownRight,
-  Shield
+  Shield,
+  Repeat,
+  Repeat1
 } from 'lucide-react';
 
 export default function MiniPlayer() {
@@ -190,12 +192,16 @@ export default function MiniPlayer() {
           <button
             onClick={(e) => { e.stopPropagation(); toggleLoop(); }}
             onPointerDown={(e) => e.stopPropagation()}
-            className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.isLooping ? 'active' : ''}`}
-            title={state.isLooping ? T('player.loopOff') : T('player.loopOn')}
+            className={`hidden md:flex mini-player__btn mini-player__btn--toggle ${state.loopMode !== 'none' ? 'active' : ''}`}
+            title={
+              state.loopMode === 'all'
+                ? T('player.loopAll')
+                : state.loopMode === 'one'
+                ? T('player.loopOne')
+                : T('player.loopNone')
+            }
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
-            </svg>
+            {state.loopMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
           </button>
 
           <button

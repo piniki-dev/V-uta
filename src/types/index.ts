@@ -142,7 +142,7 @@ export interface PlayerState {
   playlist: PlayerSong[];
   currentIndex: number;
   isPlaying: boolean;
-  isLooping: boolean;
+  loopMode: 'none' | 'all' | 'one';
   volume: number;          // 0–100
   isMuted: boolean;
   currentTime: number;     // 区間内の現在再生位置（秒）

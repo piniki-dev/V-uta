@@ -55,7 +55,7 @@ export default function YouTubePlayer() {
   const { T } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const isPlayingRef = useRef(state.isPlaying);
-  const isLoopingRef = useRef(state.isLooping);
+  const loopModeRef = useRef(state.loopMode);
   const currentSongRef = useRef(state.currentSong);
   const nextSongRef = useRef(nextSong);
   const stopRef = useRef(stop);
@@ -81,11 +81,11 @@ export default function YouTubePlayer() {
   // 外部 API コールバックやタイマー用の最新状態保持
   useEffect(() => {
     isPlayingRef.current = state.isPlaying;
-    isLoopingRef.current = state.isLooping;
+    loopModeRef.current = state.loopMode;
     currentSongRef.current = state.currentSong;
     volumeRef.current = state.volume;
     isMutedRef.current = state.isMuted;
-  }, [state.isPlaying, state.isLooping, state.currentSong, state.volume, state.isMuted]);
+  }, [state.isPlaying, state.loopMode, state.currentSong, state.volume, state.isMuted]);
  
   const triggerNextSongRef = useRef(triggerNextSong);
 
@@ -177,7 +177,7 @@ export default function YouTubePlayer() {
               }
 
               if (event.data === window.YT.PlayerState.ENDED) {
-                if (isLoopingRef.current && currentSongRef.current) {
+                if (loopModeRef.current === 'one' && currentSongRef.current) {
                   event.target.seekTo(currentSongRef.current.startSec, true);
                   event.target.playVideo();
                 } else {
@@ -250,7 +250,7 @@ export default function YouTubePlayer() {
         const currentTime = playerRef.current.getCurrentTime();
         if (currentSongRef.current) {
           if (currentTime >= currentSongRef.current.endSec) {
-            if (isLoopingRef.current) {
+            if (loopModeRef.current === 'one') {
               playerRef.current.seekTo(currentSongRef.current.startSec, true);
             } else {
               triggerNextSongRef.current();

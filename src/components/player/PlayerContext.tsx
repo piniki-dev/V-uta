@@ -24,6 +24,9 @@ type PlayerAction =
   | { type: 'SET_HISTORY_ID'; id: number | null }
   | { type: 'ADD_SONG_NEXT'; song: PlayerSong }
   | { type: 'ADD_SONG_LAST'; song: PlayerSong }
+  | { type: 'REMOVE_SONG'; index: number }
+  | { type: 'REORDER_PLAYLIST'; playlist: PlayerSong[] }
+  | { type: 'CLEAR_PLAYLIST' }
   | { type: 'SET_PIP_POSITION'; position: PipPosition }
   | { type: 'SET_VIDEO_RATIO'; ratio: string }
   | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' }
@@ -41,7 +44,7 @@ const initialState: PlayerState = {
   playlist: [],
   currentIndex: -1,
   isPlaying: false,
-  isLooping: false,
+  loopMode: 'none',
   volume: 80,
   isMuted: false,
   currentTime: 0,
@@ -80,18 +83,49 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
     case 'RESUME':
       return { ...state, isPlaying: true };
     case 'STOP':
-      return { ...initialState, volume: state.volume, isMuted: state.isMuted, isLooping: state.isLooping };
+      return { ...initialState, volume: state.volume, isMuted: state.isMuted, loopMode: state.loopMode };
     case 'SET_TIME':
       return { ...state, currentTime: action.time };
-    case 'TOGGLE_LOOP':
-      return { ...state, isLooping: !state.isLooping };
+    case 'TOGGLE_LOOP': {
+      const nextModeMap: Record<'none' | 'all' | 'one', 'none' | 'all' | 'one'> = {
+        none: 'all',
+        all: 'one',
+        one: 'none',
+      };
+      return { ...state, loopMode: nextModeMap[state.loopMode] };
+    }
     case 'SET_VOLUME':
       return { ...state, volume: action.volume, isMuted: action.volume === 0 };
     case 'TOGGLE_MUTE':
       return { ...state, isMuted: !state.isMuted };
     case 'NEXT_SONG': {
       if (state.playlist.length === 0) return state;
-      const nextIndex = (state.currentIndex + 1) % state.playlist.length;
+      const nextIndex = state.currentIndex + 1;
+      if (nextIndex >= state.playlist.length) {
+        if (state.loopMode === 'all') {
+          return {
+            ...state,
+            currentSong: state.playlist[0],
+            currentIndex: 0,
+            isPlaying: true,
+            currentTime: 0,
+            currentHistoryId: null,
+            playSessionKey: state.playSessionKey + 1,
+          };
+        } else {
+          // 全曲ループでない状態で最後の曲が終わったら、再生リストをクリアしてフルプレイヤーを閉じる
+          return {
+            ...state,
+            currentSong: null,
+            playlist: [],
+            currentIndex: -1,
+            isPlaying: false,
+            currentTime: 0,
+            isFullPlayerOpen: false,
+            currentHistoryId: null,
+          };
+        }
+      }
       return {
         ...state,
         currentSong: state.playlist[nextIndex],
@@ -155,6 +189,63 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       }
       return { ...state, playlist: newPlaylist };
     }
+    case 'REMOVE_SONG': {
+      const index = action.index;
+      if (index < 0 || index >= state.playlist.length) return state;
+      const newPlaylist = state.playlist.filter((_, i) => i !== index);
+      
+      let newIndex = state.currentIndex;
+      let newCurrentSong = state.currentSong;
+      let newIsPlaying = state.isPlaying;
+      let newPlaySessionKey = state.playSessionKey;
+
+      if (newPlaylist.length === 0) {
+        newIndex = -1;
+        newCurrentSong = null;
+        newIsPlaying = false;
+      } else if (index === state.currentIndex) {
+        newIndex = index >= newPlaylist.length ? newPlaylist.length - 1 : index;
+        newCurrentSong = newPlaylist[newIndex];
+        newPlaySessionKey = state.playSessionKey + 1;
+      } else if (index < state.currentIndex) {
+        newIndex = state.currentIndex - 1;
+      }
+      return {
+        ...state,
+        playlist: newPlaylist,
+        currentIndex: newIndex,
+        currentSong: newCurrentSong,
+        isPlaying: newIsPlaying,
+        playSessionKey: newPlaySessionKey,
+      };
+    }
+    case 'REORDER_PLAYLIST': {
+      const newPlaylist = action.playlist;
+      const newIndex = state.currentSong 
+        ? newPlaylist.findIndex((s) => s.id === state.currentSong!.id) 
+        : -1;
+      return {
+        ...state,
+        playlist: newPlaylist,
+        currentIndex: newIndex,
+      };
+    }
+    case 'CLEAR_PLAYLIST': {
+      if (state.currentIndex === -1 || !state.currentSong) {
+        return {
+          ...state,
+          playlist: [],
+          currentIndex: -1,
+          currentSong: null,
+          isPlaying: false,
+        };
+      }
+      return {
+        ...state,
+        playlist: [state.currentSong],
+        currentIndex: 0,
+      };
+    }
     case 'SET_PIP_POSITION':
       return { ...state, pipPosition: action.position };
     case 'SET_VIDEO_RATIO':
@@ -190,6 +281,9 @@ interface PlayerContextType {
   seekTo: (seconds: number) => void;
   addSongNext: (song: PlayerSong) => void;
   addSongLast: (song: PlayerSong) => void;
+  removeSong: (index: number) => void;
+  reorderPlaylist: (playlist: PlayerSong[]) => void;
+  clearPlaylist: () => void;
   setPipPosition: (position: PipPosition) => void;
   setVideoRatioMode: (mode: 'auto' | '16/9' | '9/16') => void;
   togglePrivacyMode: () => void;
@@ -573,6 +667,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_SONG_LAST', song });
   }, []);
 
+  const removeSong = useCallback((index: number) => {
+    dispatch({ type: 'REMOVE_SONG', index });
+  }, []);
+
+  const reorderPlaylist = useCallback((playlist: PlayerSong[]) => {
+    dispatch({ type: 'REORDER_PLAYLIST', playlist });
+  }, []);
+
+  const clearPlaylist = useCallback(() => {
+    dispatch({ type: 'CLEAR_PLAYLIST' });
+  }, []);
+
   const setPipPosition = useCallback((position: PipPosition) => {
     dispatch({ type: 'SET_PIP_POSITION', position });
   }, []);
@@ -615,6 +721,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         seekTo,
         addSongNext,
         addSongLast,
+        removeSong,
+        reorderPlaylist,
+        clearPlaylist,
         setPipPosition,
         setVideoRatioMode,
         togglePrivacyMode,

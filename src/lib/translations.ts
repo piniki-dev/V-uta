@@ -98,6 +98,10 @@ export const translations = {
       autoPrivacyModeMessage: '同時視聴制限を検知したため、プライバシーモードで再生を再開しました。',
       privacyModeEnabled: 'プライバシーモードを有効にしました',
       privacyModeDisabled: 'プライバシーモードを無効にしました（通常モード）',
+      loopNone: 'ループ再生: オフ',
+      loopAll: '全体ループ',
+      loopOne: '1曲ループ',
+      clearQueueConfirm: '再生中の曲を除いて、再生リストを空にしますか？',
     },
     archive: {
       title: '曲名',
@@ -504,6 +508,10 @@ export const translations = {
       autoPrivacyModeMessage: 'Playback error detected. Resumed with Privacy Mode to avoid issues.',
       privacyModeEnabled: 'Privacy Mode Enabled',
       privacyModeDisabled: 'Privacy Mode Disabled (Standard)',
+      loopNone: 'Loop: Off',
+      loopAll: 'Loop All',
+      loopOne: 'Loop One',
+      clearQueueConfirm: 'Are you sure you want to clear all songs in the queue except the currently playing one?',
     },
     archive: {
       title: 'Title',
