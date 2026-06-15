@@ -60,6 +60,7 @@ export default function NewSongClient() {
   // UI 状態
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { locale, t: tl, T } = useLocale();
@@ -102,13 +103,14 @@ export default function NewSongClient() {
 
   // 変更があるかどうか
   const hasChanges = useMemo(() => {
+    if (saveStatus === 'success') return false;
     // 1. リスト内に未保存、削除予定、または編集中のものがある場合
     const hasUnsavedInList = allSongs.some(s => !s.isPersisted || s.isDeleted || s.isEditing);
     // 2. 現在新規追加フォームに入力中のものがある場合
     const hasActiveInput = !!selectedSong || !!startTime.trim() || !!endTime.trim() || !!searchQuery.trim();
 
     return hasUnsavedInList || hasActiveInput;
-  }, [allSongs, selectedSong, startTime, endTime, searchQuery]);
+  }, [allSongs, selectedSong, startTime, endTime, searchQuery, saveStatus]);
 
   const [isCoverVideo, setIsCoverVideo] = useState(false);
 
@@ -400,49 +402,57 @@ export default function NewSongClient() {
     const unconfirmedCount = allSongs.filter(s => !s.isConfirmed && !s.isDeleted).length;
 
     const performSave = async () => {
+      setSaveStatus('saving');
       startTransition(async () => {
-        // 確定済みのものだけを対象にする
-        const songsToRegister = allSongs
-          .filter(s => s.isConfirmed || s.id) // 既存曲(idあり)または確定済み
-          .map(item => ({
-            id: item.id,
-            songTitle: item.song.master_song?.title || '',
-            songArtist: item.song.master_song?.artist || '',
-            artworkUrl: item.song.master_song?.artwork_url || '',
-            itunesId: item.song.master_song?.itunes_id || '',
-            durationSec: item.song.master_song?.duration_sec || 0,
-            startSec: parseTime(item.startTime) || 0,
-            endSec: parseTime(item.endTime) || 0,
-            isDeleted: item.isDeleted,
-            searchLocale: item.searchLocale || locale,
+        try {
+          // 確定済みのものだけを対象にする
+          const songsToRegister = allSongs
+            .filter(s => s.isConfirmed || s.id) // 既存曲(idあり)または確定済み
+            .map(item => ({
+              id: item.id,
+              songTitle: item.song.master_song?.title || '',
+              songArtist: item.song.master_song?.artist || '',
+              artworkUrl: item.song.master_song?.artwork_url || '',
+              itunesId: item.song.master_song?.itunes_id || '',
+              durationSec: item.song.master_song?.duration_sec || 0,
+              startSec: parseTime(item.startTime) || 0,
+              endSec: parseTime(item.endTime) || 0,
+              isDeleted: item.isDeleted,
+              searchLocale: item.searchLocale || locale,
+            }));
+
+          const result = await registerFullArchive({
+            videoMetadata: metadata,
+            songs: songsToRegister,
+          });
+
+          if (!result.success) {
+            setError(result.error);
+            setSaveStatus('idle');
+            return;
+          }
+
+          setVideo(result.data.video);
+          const updatedSongs: EditableSong[] = result.data.songs.map(song => ({
+            id: song.id,
+            song,
+            startTime: formatTime(song.start_sec),
+            endTime: formatTime(song.end_sec),
+            isEditing: false,
+            isChangingSong: false,
+            searchQuery: '',
+            searchResults: [],
+            isSearching: false,
+            isPersisted: true,
+            isConfirmed: true,
           }));
-
-        const result = await registerFullArchive({
-          videoMetadata: metadata,
-          songs: songsToRegister,
-        });
-
-        if (!result.success) {
-          setError(result.error);
-          return;
+          setAllSongs(updatedSongs);
+          setSuccess(T('newSong.saveSuccess') + (unconfirmedCount > 0 ? T('newSong.skippedUnconfirmed', { count: unconfirmedCount }) : ''));
+          setSaveStatus('success');
+        } catch (e) {
+          setError(e instanceof Error ? e.message : T('common.errorOccurred'));
+          setSaveStatus('idle');
         }
-
-        setVideo(result.data.video);
-        const updatedSongs: EditableSong[] = result.data.songs.map(song => ({
-          id: song.id,
-          song,
-          startTime: formatTime(song.start_sec),
-          endTime: formatTime(song.end_sec),
-          isEditing: false,
-          isChangingSong: false,
-          searchQuery: '',
-          searchResults: [],
-          isSearching: false,
-          isPersisted: true,
-          isConfirmed: true,
-        }));
-        setAllSongs(updatedSongs);
-        setSuccess(T('newSong.saveSuccess') + (unconfirmedCount > 0 ? T('newSong.skippedUnconfirmed', { count: unconfirmedCount }) : ''));
       });
     };
 
@@ -1325,6 +1335,64 @@ export default function NewSongClient() {
                 {modalConfig.confirmText}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 保存状況・完了モーダル */}
+      {saveStatus !== 'idle' && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            if (saveStatus === 'success') {
+              setSaveStatus('idle');
+            }
+          }}
+        >
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-body" style={{ textAlign: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="modal-icon" style={{ border: 'none', background: 'transparent' }}>
+                    <Loader2 size={48} className="text-[var(--accent)] animate-spin" />
+                  </div>
+                  <h3 className="modal-title" style={{ marginTop: '16px' }}>{T('newSong.saving')}</h3>
+                  <p className="modal-text">
+                    {T('newSong.saving')}...
+                  </p>
+                </>
+              )}
+              {saveStatus === 'success' && (
+                <>
+                  <div className="modal-icon modal-icon--info">
+                    <Save size={32} />
+                  </div>
+                  <h3 className="modal-title">{T('newSong.saveComplete')}</h3>
+                  <p className="modal-text">
+                    {T('newSong.saveCompleteMessage')}
+                  </p>
+                </>
+              )}
+            </div>
+            {saveStatus === 'success' && (
+              <div className="modal-footer" style={{ flexDirection: 'column', gap: '8px' }}>
+                {metadata && (
+                  <Link
+                    href={`/videos/${metadata.videoId}`}
+                    className="btn btn--primary btn--full text-center"
+                    style={{ justifyContent: 'center' }}
+                  >
+                    {T('newSong.checkOnArchive')}
+                  </Link>
+                )}
+                <button
+                  className="btn btn--secondary btn--full"
+                  onClick={() => setSaveStatus('idle')}
+                >
+                  {T('common.close')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
