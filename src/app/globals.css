@@ -1090,9 +1090,15 @@ input[type="range"]:hover::-webkit-slider-thumb {
 
 .full-player__body {
   flex: 1;
-  display: flex;
+  display: none; /* Tailwindのhidden mdクラスで制御。CSSでは非表示をデフォルトに */
   overflow: hidden;
   padding-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .full-player__body {
+    display: flex;
+  }
 }
 
 .full-player__main {

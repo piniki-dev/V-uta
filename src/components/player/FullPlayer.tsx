@@ -5,7 +5,7 @@ import { formatTime } from '@/lib/utils';
 import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate } from 'framer-motion';
 import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, ListMusic, Shield, Trash2, Volume2 } from 'lucide-react';
 
 import Image from 'next/image';
@@ -32,6 +32,20 @@ export default function FullPlayer() {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const isDraggingRef = useRef(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const dragControls = useDragControls();
+  const SHEET_HEIGHT = 480;
+  const COLLAPSED_Y = 0; // top基準では0が「ヘッダーだけ見える」状態
+  const EXPANDED_Y = -(SHEET_HEIGHT - 72); // -408px: シート全体を展開
+  const sheetY = useMotionValue(COLLAPSED_Y);
+
+  // isQueueOpen 変化時にアニメーション
+  useEffect(() => {
+    animate(sheetY, isQueueOpen ? EXPANDED_Y : COLLAPSED_Y, {
+      type: 'spring',
+      damping: 25,
+      stiffness: 200,
+    });
+  }, [isQueueOpen, sheetY, COLLAPSED_Y, EXPANDED_Y]);
 
   // 再生中の曲への自動スクロール
   useEffect(() => {
@@ -76,7 +90,7 @@ export default function FullPlayer() {
       <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]/40 pointer-events-none" />
 
       {/* モバイル版 UI - ライトモード・ダークモード両対応のセマンティックカラーを使用 */}
-      <div className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <div className="md:hidden flex flex-col h-full relative z-10 p-6 pt-4 safe-top safe-bottom bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-clip">
         {/* ヘッダー */}
         <div className="shrink-0 flex justify-start mb-4 z-20">
           <button 
@@ -200,17 +214,6 @@ export default function FullPlayer() {
                    </div>
                 </div>
               </div>
-
-              {/* キュー引き出しハンドル */}
-              <button 
-                onClick={() => setIsQueueOpen(true)}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 group"
-              >
-                <div className="w-12 h-1 bg-[var(--border)] rounded-full group-hover:bg-[var(--text-tertiary)] transition-colors" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors flex items-center gap-2">
-                  <ListMusic size={12} /> {T('player.queue')}
-                </span>
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -218,93 +221,134 @@ export default function FullPlayer() {
         {/* モバイルキュー表示 (Bottom Sheet) */}
         <AnimatePresence>
           {isQueueOpen && (
-            <>
-              <motion.div 
-                className="absolute inset-0 bg-transparent z-[1010]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsQueueOpen(false)}
-              />
-              <motion.div 
-                className="absolute bottom-0 left-0 right-0 h-[62vh] bg-[var(--bg-secondary)] rounded-t-[40px] z-[1020] flex flex-col shadow-2xl border-t border-white/5"
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              >
-                <div className="flex flex-col items-center p-4">
-                  <div className="w-12 h-1 bg-[var(--border)] rounded-full mb-6" />
-                  <div className="flex items-center justify-between w-full px-2 mb-2">
-                    <h3 className="text-lg font-black text-[var(--text-primary)] flex items-center gap-3">
-                       {T('player.queue')}
-                       <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
-                    </h3>
-                    {state.playlist.length > 1 && (
-                      <button
-                        onClick={() => setIsConfirmModalOpen(true)}
-                        className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
-                        title={T('common.clear')}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
-                  {state.playlist.map((song, index) => (
-                    <div
-                      key={`${song.id}-${index}`}
-                      className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
-                        index === state.currentIndex 
-                          ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm active-queue-item' 
-                          : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
-                      }`}
-                    >
-                      <button
-                        onClick={() => {
-                          play(song, state.playlist);
-                          setIsQueueOpen(false);
-                        }}
-                        className="flex-1 flex items-center gap-4 text-left min-w-0"
-                      >
-                        <Image 
-                          src={song.artworkUrl || ''} 
-                          alt="" 
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
-                            {t(song.title, song.title_en || song.title)}
-                            <span className="text-[11px] font-normal opacity-60 ml-2">
-                              {t(song.artist || '-', song.artist_en || song.artist || '-')}
-                            </span>
-                          </div>
-                          {song.channelName && (
-                            <div className="text-xs font-bold text-[var(--accent)] truncate mt-1">
-                              🎤 {song.channelName}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeSong(index);
-                        }}
-                        className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </>
+            <motion.div 
+              className="absolute inset-0 bg-transparent z-[1010]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsQueueOpen(false)}
+            />
           )}
         </AnimatePresence>
+
+        <motion.div 
+          className="absolute top-[calc(100%-72px)] left-0 right-0 h-[480px] bg-[var(--bg-secondary)] rounded-t-[40px] z-[1020] flex flex-col shadow-2xl border-t border-white/5"
+          style={{ y: sheetY }}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: EXPANDED_Y, bottom: 0 }}
+          dragElastic={0}
+          onDragEnd={(e, info) => {
+            if (!isQueueOpen) {
+              // 閉じた状態：上に引いて閾値を超えたら開く
+              if (info.offset.y < -80 || info.velocity.y < -300) {
+                setIsQueueOpen(true);
+              } else {
+                // 閾値未満なら元の位置に戻す
+                animate(sheetY, COLLAPSED_Y, { type: 'spring', damping: 25, stiffness: 200 });
+              }
+            } else {
+              // 開いた状態：下に引いて閾値を超えたら閉じる
+              if (info.offset.y > 100 || info.velocity.y > 300) {
+                setIsQueueOpen(false);
+              } else {
+                // 閾値未満なら元の位置に戻す
+                animate(sheetY, EXPANDED_Y, { type: 'spring', damping: 25, stiffness: 200 });
+              }
+            }
+          }}
+        >
+          <motion.div 
+            className="flex flex-col items-center p-4 cursor-grab active:cursor-grabbing select-none shrink-0 touch-none"
+            onPointerDown={(e) => {
+              dragControls.start(e);
+            }}
+            onTap={() => {
+              if (!isQueueOpen) {
+                setIsQueueOpen(true);
+              }
+            }}
+          >
+            <div className="w-12 h-1 bg-[var(--border)] rounded-full mb-6" />
+            <div className="flex items-center justify-between w-full px-2 mb-2">
+              <h3 className="text-lg font-black text-[var(--text-primary)] flex items-center gap-3">
+                 {T('player.queue')}
+                 <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
+              </h3>
+              <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                {isQueueOpen && (
+                  <button
+                    onClick={() => setIsQueueOpen(false)}
+                    className="p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all rounded-full hover:bg-white/5"
+                    title={T('common.close') || 'Close'}
+                  >
+                    <ChevronDown size={20} />
+                  </button>
+                )}
+                {state.playlist.length > 1 && (
+                  <button
+                    onClick={() => setIsConfirmModalOpen(true)}
+                    className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
+                    title={T('common.clear')}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+          <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
+            {state.playlist.map((song, index) => (
+              <div
+                key={`${song.id}-${index}`}
+                className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
+                  index === state.currentIndex 
+                    ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm active-queue-item' 
+                    : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
+                }`}
+              >
+                <button
+                  onClick={() => {
+                    play(song, state.playlist);
+                    setIsQueueOpen(false);
+                  }}
+                  className="flex-1 flex items-center gap-4 text-left min-w-0"
+                >
+                  <Image 
+                    src={song.artworkUrl || ''} 
+                    alt="" 
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
+                      {t(song.title, song.title_en || song.title)}
+                      <span className="text-[11px] font-normal opacity-60 ml-2">
+                        {t(song.artist || '-', song.artist_en || song.artist || '-')}
+                      </span>
+                    </div>
+                    {song.channelName && (
+                      <div className="text-xs font-bold text-[var(--accent)] truncate mt-1">
+                        🎤 {song.channelName}
+                      </div>
+                    )}
+                  </div>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSong(index);
+                  }}
+                  className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-all"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
 
       {/* デスクトップ版 UI (既存のものを維持しつつ微調整) */}
