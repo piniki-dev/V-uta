@@ -38,7 +38,7 @@ export default function FullPlayer() {
   const mobileContainerRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
   const miniPlaceholderRef = useRef<HTMLDivElement>(null);
-  const queueContainerRef = useRef<HTMLDivElement>(null);
+  const queueContainerRef = useRef<HTMLUListElement>(null);
   const MINI_PLAYER_HEIGHT = 80;
   const COLLAPSED_Y = 0; // top基準では0が「ヘッダーだけ見える」状態
   const [sheetHeight, setSheetHeight] = useState(480);
@@ -709,7 +709,7 @@ interface MobileQueueItemProps {
   removeSong: (index: number) => void;
   setIsQueueOpen: (open: boolean) => void;
   t: (ja: string, en: string) => string;
-  queueContainerRef: React.RefObject<HTMLDivElement | null>;
+  queueContainerRef: React.RefObject<HTMLUListElement | null>;
 }
 
 function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen, t, queueContainerRef }: MobileQueueItemProps) {
