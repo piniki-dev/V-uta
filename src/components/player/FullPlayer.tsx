@@ -790,6 +790,7 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    setIsLongPressed(false);
   };
 
   const handlePlayClick = (e: React.MouseEvent) => {
