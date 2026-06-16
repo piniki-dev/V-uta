@@ -266,6 +266,22 @@ export default function FullPlayer() {
               <p className="text-lg font-bold text-[var(--text-secondary)] truncate">
                 {t(state.currentSong.artist || '-', state.currentSong.artist_en || state.currentSong.artist || '-')}
               </p>
+              {state.currentSong.channelName && (
+                <div className="flex items-center gap-1.5 mt-2 truncate">
+                  {state.currentSong.channelThumbnailUrl && (
+                    <Image
+                      src={state.currentSong.channelThumbnailUrl}
+                      alt=""
+                      width={16}
+                      height={16}
+                      className="w-4 h-4 rounded-full object-cover inline-block border border-white/10"
+                    />
+                  )}
+                  <span className="text-xs font-bold text-[var(--accent)] tracking-wide">
+                    🎤 {state.currentSong.channelName}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* コントロール・シークバー */}
