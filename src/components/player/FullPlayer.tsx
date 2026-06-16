@@ -259,7 +259,7 @@ export default function FullPlayer() {
           {/* コントロール・曲情報領域 */}
           <div className="flex flex-col shrink-0 overflow-hidden">
             {/* 曲名情報 */}
-            <div className="shrink-0 space-y-1 mt-4">
+            <div className="shrink-0 space-y-1 mt-6">
               <h2 className="text-2xl font-black text-[var(--text-primary)] truncate leading-tight">
                 {t(state.currentSong.title, state.currentSong.title_en || state.currentSong.title)}
               </h2>
@@ -269,7 +269,7 @@ export default function FullPlayer() {
             </div>
 
             {/* コントロール・シークバー */}
-            <div className="shrink-0 mt-4 mb-12 space-y-8">
+            <div className="shrink-0 mt-6 mb-20 space-y-8">
               <div className="space-y-3">
                  <div className="relative w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
                     <motion.div 
