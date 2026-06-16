@@ -420,7 +420,6 @@ export default function FullPlayer() {
               if (info.offset.y < -80 || info.velocity.y < -300) {
                 setIsQueueOpen(true);
               } else {
-                // 閾値未満なら元の位置に戻す
                 animate(sheetY, COLLAPSED_Y, { type: 'spring', damping: 25, stiffness: 200 });
               }
             } else {
@@ -446,31 +445,31 @@ export default function FullPlayer() {
             }}
           >
             <div className="w-12 h-1 bg-[var(--border)] rounded-full mb-6" />
-            <div className="flex items-center justify-between w-full px-2 mb-2">
+            <div className={`flex items-center w-full px-2 mb-2 ${isQueueOpen ? 'justify-between' : 'justify-center'}`}>
               <h3 className="text-lg font-black text-[var(--text-primary)] flex items-center gap-3">
                  {T('player.queue')}
                  <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 py-0.5 bg-[var(--border)] rounded-full">{state.playlist.length}</span>
               </h3>
-              <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                {isQueueOpen && (
+              {isQueueOpen && (
+                <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => setIsQueueOpen(false)}
-                    className="p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all rounded-full hover:bg-white/5"
+                    className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
                     title={T('common.close') || 'Close'}
                   >
                     <ChevronDown size={20} />
                   </button>
-                )}
-                {state.playlist.length > 1 && (
-                  <button
-                    onClick={() => setIsConfirmModalOpen(true)}
-                    className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
-                    title={T('common.clear')}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
-              </div>
+                  {state.playlist.length > 1 && (
+                    <button
+                      onClick={() => setIsConfirmModalOpen(true)}
+                      className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 active:text-red-500 transition-all rounded-full hover:bg-white/5"
+                      title={T('common.clear')}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
           <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
