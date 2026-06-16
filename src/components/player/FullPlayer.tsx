@@ -850,6 +850,10 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     const topDiff = pointerY - rect.top;
     const bottomDiff = rect.bottom - pointerY;
 
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const canScrollUp = container.scrollTop > 1;
+    const canScrollDown = container.scrollTop < maxScroll - 1;
+
     if (autoScrollTimerRef.current) {
       cancelAnimationFrame(autoScrollTimerRef.current);
       autoScrollTimerRef.current = null;
@@ -859,24 +863,30 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
       let scrollSpeed = 0;
       
       // 上端から内側に30px、外側に30pxの範囲内のみで反応させる
-      if (topDiff >= -30 && topDiff < threshold && container.scrollTop > 0) {
+      if (topDiff >= -30 && topDiff < threshold && canScrollUp) {
         const ratio = (threshold - Math.max(-30, topDiff)) / (threshold + 30);
         scrollSpeed = -Math.max(0.5, ratio * 8);
       } 
       // 下端から内側に30px、外側に30pxの範囲内のみで反応させる
-      else if (bottomDiff >= -30 && bottomDiff < threshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+      else if (bottomDiff >= -30 && bottomDiff < threshold && canScrollDown) {
         const ratio = (threshold - Math.max(-30, bottomDiff)) / (threshold + 30);
         scrollSpeed = Math.max(0.5, ratio * 8);
       }
 
       if (scrollSpeed !== 0) {
+        const prevScrollTop = container.scrollTop;
         container.scrollTop += scrollSpeed;
-        autoScrollTimerRef.current = requestAnimationFrame(scroll);
+        
+        // 実際に値が動いた場合のみ次のスクロールループを予約する (端でのガタガタを防止)
+        if (Math.abs(container.scrollTop - prevScrollTop) > 0.1) {
+          autoScrollTimerRef.current = requestAnimationFrame(scroll);
+        }
       }
     };
 
-    // 範囲内に入っている場合のみスクロール判定を開始する
-    if ((topDiff >= -30 && topDiff < threshold) || (bottomDiff >= -30 && bottomDiff < threshold)) {
+    // 範囲内かつスクロール可能な場合のみ判定を開始する
+    if ((topDiff >= -30 && topDiff < threshold && canScrollUp) || 
+        (bottomDiff >= -30 && bottomDiff < threshold && canScrollDown)) {
       scroll();
     }
   };
