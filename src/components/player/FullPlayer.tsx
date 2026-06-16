@@ -8,6 +8,7 @@ import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
 import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
 import type { PlayerSong, PlayerState } from '@/types';
+import type { PanInfo } from 'framer-motion';
 
 import Image from 'next/image';
 
@@ -37,6 +38,7 @@ export default function FullPlayer() {
   const mobileContainerRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
   const miniPlaceholderRef = useRef<HTMLDivElement>(null);
+  const queueContainerRef = useRef<HTMLDivElement>(null);
   const MINI_PLAYER_HEIGHT = 80;
   const COLLAPSED_Y = 0; // top基準では0が「ヘッダーだけ見える」状態
   const [sheetHeight, setSheetHeight] = useState(480);
@@ -474,6 +476,7 @@ export default function FullPlayer() {
             </div>
           </motion.div>
           <Reorder.Group 
+            ref={queueContainerRef}
             axis="y" 
             values={state.playlist} 
             onReorder={reorderPlaylist}
@@ -489,6 +492,7 @@ export default function FullPlayer() {
                 removeSong={removeSong}
                 setIsQueueOpen={setIsQueueOpen}
                 t={t}
+                queueContainerRef={queueContainerRef}
               />
             ))}
           </Reorder.Group>
@@ -705,24 +709,20 @@ interface MobileQueueItemProps {
   removeSong: (index: number) => void;
   setIsQueueOpen: (open: boolean) => void;
   t: (ja: string, en: string) => string;
+  queueContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen, t }: MobileQueueItemProps) {
+function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen, t, queueContainerRef }: MobileQueueItemProps) {
   const dragControls = useDragControls();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const [isLongPressed, setIsLongPressed] = useState(false);
   const pointerDownTimeRef = useRef(0);
   const itemRef = useRef<HTMLDivElement>(null);
+  const [hasTriggeredHaptic, setHasTriggeredHaptic] = useState(false);
+  const autoScrollTimerRef = useRef<number | null>(null);
 
-  const triggerHaptics = () => {
-    // Android (Vibration API)
-    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-      try {
-        window.navigator.vibrate(50);
-      } catch (_) {}
-    }
-    // iOS 18+ (Taptic Engine hack)
+  const triggerIOSHaptics = () => {
     if (typeof document !== 'undefined') {
       try {
         const input = document.createElement('input');
@@ -753,10 +753,17 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     pointerDownTimeRef.current = Date.now();
     startPosRef.current = { x: e.clientX, y: e.clientY };
     setIsLongPressed(false);
+    setHasTriggeredHaptic(false);
 
     timerRef.current = setTimeout(() => {
       setIsLongPressed(true);
-      triggerHaptics();
+      
+      // Android等 (Vibration API) は非同期で即座に実行可能
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+        try {
+          window.navigator.vibrate(50);
+        } catch (_) {}
+      }
       
       const target = nativeEvent.target as HTMLElement;
       if (target && typeof target.setPointerCapture === 'function') {
@@ -805,6 +812,13 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
         if (e.cancelable) {
           e.preventDefault();
         }
+        
+        // iOS Safari では非同期 setTimeout の中からは Haptic が動かないため、
+        // 長押し成立後の最初のスワイプ（User Gesture）のタイミングでトリガーする
+        if (!hasTriggeredHaptic) {
+          setHasTriggeredHaptic(true);
+          triggerIOSHaptics();
+        }
       }
     };
 
@@ -812,7 +826,53 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     return () => {
       el.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isLongPressed]);
+  }, [isLongPressed, hasTriggeredHaptic]);
+
+  // 自前オートスクロール処理 (Framer Motionのオートスクロールがスクロールブロックと競合して不安定になるのを防ぐ)
+  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const container = queueContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const pointerY = info.point.y; // スクリーン上のY座標
+
+    const threshold = 60; // 端から60px以内に入ったらスクロール判定
+    const topDiff = pointerY - rect.top;
+    const bottomDiff = rect.bottom - pointerY;
+
+    if (autoScrollTimerRef.current) {
+      cancelAnimationFrame(autoScrollTimerRef.current);
+      autoScrollTimerRef.current = null;
+    }
+
+    const scroll = () => {
+      let scrollSpeed = 0;
+      if (topDiff < threshold && container.scrollTop > 0) {
+        // 上端に近いので上にスクロール (近いほど速い)
+        scrollSpeed = -Math.max(2, (threshold - topDiff) * 0.35);
+      } else if (bottomDiff < threshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+        // 下端に近いので下にスクロール (近いほど速い)
+        scrollSpeed = Math.max(2, (threshold - bottomDiff) * 0.35);
+      }
+
+      if (scrollSpeed !== 0) {
+        container.scrollTop += scrollSpeed;
+        autoScrollTimerRef.current = requestAnimationFrame(scroll);
+      }
+    };
+
+    if (topDiff < threshold || bottomDiff < threshold) {
+      scroll();
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsLongPressed(false);
+    if (autoScrollTimerRef.current) {
+      cancelAnimationFrame(autoScrollTimerRef.current);
+      autoScrollTimerRef.current = null;
+    }
+  };
 
   return (
     <Reorder.Item
@@ -820,9 +880,8 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
       dragListener={false}
       dragControls={dragControls}
       className="list-none select-none"
-      onDragEnd={() => {
-        setIsLongPressed(false);
-      }}
+      onDrag={handleDrag}
+      onDragEnd={handleDragEnd}
     >
       <div
         ref={itemRef}
