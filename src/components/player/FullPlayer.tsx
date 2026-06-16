@@ -713,6 +713,39 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
   const startPosRef = useRef({ x: 0, y: 0 });
   const [isLongPressed, setIsLongPressed] = useState(false);
   const pointerDownTimeRef = useRef(0);
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  const triggerHaptics = () => {
+    // Android (Vibration API)
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      try {
+        window.navigator.vibrate(50);
+      } catch (_) {}
+    }
+    // iOS 18+ (Taptic Engine hack)
+    if (typeof document !== 'undefined') {
+      try {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.setAttribute('switch', '');
+        input.style.position = 'absolute';
+        input.style.opacity = '0';
+        input.style.pointerEvents = 'none';
+        input.style.width = '0';
+        input.style.height = '0';
+        document.body.appendChild(input);
+        
+        // 状態をトグルして触覚を発生させる
+        input.checked = true;
+        
+        setTimeout(() => {
+          try {
+            document.body.removeChild(input);
+          } catch (_) {}
+        }, 100);
+      } catch (_) {}
+    }
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.persist();
@@ -723,11 +756,8 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
 
     timerRef.current = setTimeout(() => {
       setIsLongPressed(true);
-      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-        try {
-          window.navigator.vibrate(50);
-        } catch (_) {}
-      }
+      triggerHaptics();
+      
       const target = nativeEvent.target as HTMLElement;
       if (target && typeof target.setPointerCapture === 'function') {
         try {
@@ -765,6 +795,25 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     setIsQueueOpen(false);
   };
 
+  // iOS Safari等でのスクロール・ドラッグ競合対策
+  useEffect(() => {
+    const el = itemRef.current;
+    if (!el) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isLongPressed) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isLongPressed]);
+
   return (
     <Reorder.Item
       value={song}
@@ -776,6 +825,7 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
       }}
     >
       <div
+        ref={itemRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUpOrLeave}
