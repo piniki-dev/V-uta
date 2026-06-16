@@ -472,56 +472,25 @@ export default function FullPlayer() {
               )}
             </div>
           </motion.div>
-          <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
+          <Reorder.Group 
+            axis="y" 
+            values={state.playlist} 
+            onReorder={reorderPlaylist}
+            className="flex-1 overflow-y-auto px-4 pb-8 space-y-2"
+          >
             {state.playlist.map((song, index) => (
-              <div
-                key={`${song.id}-${index}`}
-                className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
-                  index === state.currentIndex 
-                    ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm active-queue-item' 
-                    : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    play(song, state.playlist);
-                    setIsQueueOpen(false);
-                  }}
-                  className="flex-1 flex items-center gap-4 text-left min-w-0"
-                >
-                  <Image 
-                    src={song.artworkUrl || ''} 
-                    alt="" 
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-lg object-cover bg-[var(--border)]" 
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
-                      {t(song.title, song.title_en || song.title)}
-                      <span className="text-[11px] font-normal opacity-60 ml-2">
-                        {t(song.artist || '-', song.artist_en || song.artist || '-')}
-                      </span>
-                    </div>
-                    {song.channelName && (
-                      <div className="text-xs font-bold text-[var(--accent)] truncate mt-1">
-                        🎤 {song.channelName}
-                      </div>
-                    )}
-                  </div>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeSong(index);
-                  }}
-                  className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-all"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              <MobileQueueItem
+                key={song.id}
+                song={song}
+                index={index}
+                state={state}
+                play={play}
+                removeSong={removeSong}
+                setIsQueueOpen={setIsQueueOpen}
+                t={t}
+              />
             ))}
-          </div>
+          </Reorder.Group>
         </motion.div>
       </div>
 
@@ -724,5 +693,138 @@ export default function FullPlayer() {
         document.body
       )}
     </div>
+  );
+}
+
+interface MobileQueueItemProps {
+  song: any;
+  index: number;
+  state: any;
+  play: (song: any, playlist: any[]) => void;
+  removeSong: (index: number) => void;
+  setIsQueueOpen: (open: boolean) => void;
+  t: (ja: string, en: string) => string;
+}
+
+function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen, t }: MobileQueueItemProps) {
+  const dragControls = useDragControls();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const [isLongPressed, setIsLongPressed] = useState(false);
+  const pointerDownTimeRef = useRef(0);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.persist();
+    const nativeEvent = e.nativeEvent;
+    pointerDownTimeRef.current = Date.now();
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    setIsLongPressed(false);
+
+    timerRef.current = setTimeout(() => {
+      setIsLongPressed(true);
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+        try {
+          window.navigator.vibrate(50);
+        } catch (_) {}
+      }
+      const target = nativeEvent.target as HTMLElement;
+      if (target && typeof target.setPointerCapture === 'function') {
+        try {
+          target.setPointerCapture(nativeEvent.pointerId);
+        } catch (_) {}
+      }
+      dragControls.start(nativeEvent);
+    }, 300);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!timerRef.current) return;
+    const diffX = Math.abs(e.clientX - startPosRef.current.x);
+    const diffY = Math.abs(e.clientY - startPosRef.current.y);
+    if (diffX > 8 || diffY > 8) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handlePointerUpOrLeave = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    const duration = Date.now() - pointerDownTimeRef.current;
+    if (duration > 300 || isLongPressed) {
+      e.preventDefault();
+      return;
+    }
+    play(song, state.playlist);
+    setIsQueueOpen(false);
+  };
+
+  return (
+    <Reorder.Item
+      value={song}
+      dragListener={false}
+      dragControls={dragControls}
+      className="list-none select-none"
+      onDragEnd={() => {
+        setIsLongPressed(false);
+      }}
+    >
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUpOrLeave}
+        onPointerCancel={handlePointerUpOrLeave}
+        className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 ${
+          isLongPressed 
+            ? 'scale-[1.02] bg-[var(--bg-tertiary)] border border-[var(--accent)] shadow-lg'
+            : index === state.currentIndex 
+              ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-sm active-queue-item' 
+              : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
+        }`}
+        style={{
+          touchAction: isLongPressed ? 'none' : 'pan-y',
+        }}
+      >
+        <button
+          onClick={handlePlayClick}
+          className="flex-1 flex items-center gap-4 text-left min-w-0 pointer-events-auto"
+        >
+          <Image 
+            src={song.artworkUrl || ''} 
+            alt="" 
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-lg object-cover bg-[var(--border)] pointer-events-none" 
+          />
+          <div className="flex-1 min-w-0 pointer-events-none">
+            <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
+              {t(song.title, song.title_en || song.title)}
+              <span className="text-[11px] font-normal opacity-60 ml-2">
+                {t(song.artist || '-', song.artist_en || song.artist || '-')}
+              </span>
+            </div>
+            {song.channelName && (
+              <div className="text-xs font-bold text-[var(--accent)] truncate mt-1">
+                🎤 {song.channelName}
+              </div>
+            )}
+          </div>
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removeSong(index);
+          }}
+          className="p-2 text-[var(--text-tertiary)] hover:text-red-500 active:scale-90 transition-all pointer-events-auto"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </Reorder.Item>
   );
 }
