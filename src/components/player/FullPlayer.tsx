@@ -292,25 +292,9 @@ export default function FullPlayer() {
                  </div>
               </div>
 
-              <div className="flex items-center justify-between px-2">
-                 <button className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors">
-                   <Music size={20} className="opacity-0 pointer-events-none" /> {/* Spacer */}
-                 </button>
-                 <div className="flex items-center gap-8">
-                   <button onClick={prevSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
-                     <SkipBack size={32} fill="currentColor" />
-                   </button>
-                   <button 
-                    onClick={state.isPlaying ? pause : resume}
-                    className="w-20 h-20 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                   >
-                     {state.isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
-                   </button>
-                   <button onClick={nextSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90">
-                     <SkipForward size={32} fill="currentColor" />
-                   </button>
-                 </div>
-                 <div className="flex items-center gap-4">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center px-2">
+                 {/* 左カラム：プライバシーモード */}
+                 <div className="flex justify-start">
                    <button 
                     onClick={() => {
                       togglePrivacyMode();
@@ -318,11 +302,31 @@ export default function FullPlayer() {
                         type: 'privacy'
                       });
                     }}
-                    className={`transition-colors active:scale-90 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                    className={`transition-colors active:scale-90 shrink-0 ${state.isPrivacyMode ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
                     title={T('player.privacyMode') + ': ' + T('player.privacyModeDescription')}
                    >
                      <Shield size={24} fill={state.isPrivacyMode ? 'currentColor' : 'none'} />
                    </button>
+                 </div>
+
+                 {/* 中央カラム：再生コントロール */}
+                 <div className="flex items-center justify-center gap-6 sm:gap-8 shrink-0">
+                   <button onClick={prevSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90 shrink-0">
+                     <SkipBack size={32} fill="currentColor" />
+                   </button>
+                   <button 
+                    onClick={state.isPlaying ? pause : resume}
+                    className="w-20 h-20 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
+                   >
+                     {state.isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-1" />}
+                   </button>
+                   <button onClick={nextSong} className="text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors active:scale-90 shrink-0">
+                     <SkipForward size={32} fill="currentColor" />
+                   </button>
+                 </div>
+
+                 {/* 右カラム：ループボタン */}
+                 <div className="flex justify-end">
                    <button 
                     onClick={() => {
                       toggleLoop();
@@ -336,7 +340,7 @@ export default function FullPlayer() {
                         { type: 'info' }
                       );
                     }}
-                    className={`transition-colors active:scale-90 ${state.loopMode !== 'none' ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+                    className={`transition-colors active:scale-90 shrink-0 ${state.loopMode !== 'none' ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
                     title={
                       state.loopMode === 'all'
                         ? T('player.loopAll')
