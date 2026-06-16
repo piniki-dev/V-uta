@@ -725,22 +725,36 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
   const triggerIOSHaptics = () => {
     if (typeof document !== 'undefined') {
       try {
+        const inputId = 'haptic-trigger-input-' + Date.now() + Math.random().toString(36).substr(2, 9);
+        
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.setAttribute('switch', '');
+        input.id = inputId;
         input.style.position = 'absolute';
         input.style.opacity = '0';
         input.style.pointerEvents = 'none';
         input.style.width = '0';
         input.style.height = '0';
-        document.body.appendChild(input);
         
-        // 状態をトグルして触覚を発生させる
-        input.checked = true;
+        const label = document.createElement('label');
+        label.htmlFor = inputId;
+        label.style.position = 'absolute';
+        label.style.opacity = '0';
+        label.style.pointerEvents = 'none';
+        label.style.width = '0';
+        label.style.height = '0';
+
+        document.body.appendChild(input);
+        document.body.appendChild(label);
+        
+        // label.click() を呼び出すことでスイッチをトグルし、Taptic Engineを確実に作動させる
+        label.click();
         
         setTimeout(() => {
           try {
             document.body.removeChild(input);
+            document.body.removeChild(label);
           } catch (_) {}
         }, 100);
       } catch (_) {}
