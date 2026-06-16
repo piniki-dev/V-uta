@@ -835,9 +835,18 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
-    const pointerY = info.point.y; // スクリーン上のY座標
+    let pointerY = 0;
+    if (typeof window !== 'undefined' && event instanceof MouseEvent) {
+      pointerY = event.clientY;
+    } else if ('touches' in event && event.touches && event.touches.length > 0) {
+      pointerY = event.touches[0].clientY;
+    } else if ('changedTouches' in event && event.changedTouches && event.changedTouches.length > 0) {
+      pointerY = event.changedTouches[0].clientY;
+    } else {
+      pointerY = info.point.y - (typeof window !== 'undefined' ? window.scrollY : 0);
+    }
 
-    const threshold = 60; // 端から60px以内に入ったらスクロール判定
+    const threshold = 30; // しきい値を30pxに縮小
     const topDiff = pointerY - rect.top;
     const bottomDiff = rect.bottom - pointerY;
 
@@ -848,12 +857,16 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
 
     const scroll = () => {
       let scrollSpeed = 0;
-      if (topDiff < threshold && container.scrollTop > 0) {
-        // 上端に近いので上にスクロール (近いほど速い)
-        scrollSpeed = -Math.max(2, (threshold - topDiff) * 0.35);
-      } else if (bottomDiff < threshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
-        // 下端に近いので下にスクロール (近いほど速い)
-        scrollSpeed = Math.max(2, (threshold - bottomDiff) * 0.35);
+      
+      // 上端から内側に30px、外側に30pxの範囲内のみで反応させる
+      if (topDiff >= -30 && topDiff < threshold && container.scrollTop > 0) {
+        const ratio = (threshold - Math.max(-30, topDiff)) / (threshold + 30);
+        scrollSpeed = -Math.max(0.5, ratio * 8);
+      } 
+      // 下端から内側に30px、外側に30pxの範囲内のみで反応させる
+      else if (bottomDiff >= -30 && bottomDiff < threshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+        const ratio = (threshold - Math.max(-30, bottomDiff)) / (threshold + 30);
+        scrollSpeed = Math.max(0.5, ratio * 8);
       }
 
       if (scrollSpeed !== 0) {
@@ -862,7 +875,8 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
       }
     };
 
-    if (topDiff < threshold || bottomDiff < threshold) {
+    // 範囲内に入っている場合のみスクロール判定を開始する
+    if ((topDiff >= -30 && topDiff < threshold) || (bottomDiff >= -30 && bottomDiff < threshold)) {
       scroll();
     }
   };
