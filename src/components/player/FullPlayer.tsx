@@ -6,7 +6,8 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
-import { Music, ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
+import type { PlayerSong, PlayerState } from '@/types';
 
 import Image from 'next/image';
 
@@ -697,10 +698,10 @@ export default function FullPlayer() {
 }
 
 interface MobileQueueItemProps {
-  song: any;
+  song: PlayerSong;
   index: number;
-  state: any;
-  play: (song: any, playlist: any[]) => void;
+  state: PlayerState;
+  play: (song: PlayerSong, playlist: PlayerSong[]) => void;
   removeSong: (index: number) => void;
   setIsQueueOpen: (open: boolean) => void;
   t: (ja: string, en: string) => string;
