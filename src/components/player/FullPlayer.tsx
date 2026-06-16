@@ -719,47 +719,7 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
   const [isLongPressed, setIsLongPressed] = useState(false);
   const pointerDownTimeRef = useRef(0);
   const itemRef = useRef<HTMLDivElement>(null);
-  const [hasTriggeredHaptic, setHasTriggeredHaptic] = useState(false);
   const autoScrollTimerRef = useRef<number | null>(null);
-
-  const triggerIOSHaptics = () => {
-    if (typeof document !== 'undefined') {
-      try {
-        const inputId = 'haptic-trigger-input-' + Date.now() + Math.random().toString(36).substr(2, 9);
-        
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.setAttribute('switch', '');
-        input.id = inputId;
-        input.style.position = 'absolute';
-        input.style.opacity = '0';
-        input.style.pointerEvents = 'none';
-        input.style.width = '0';
-        input.style.height = '0';
-        
-        const label = document.createElement('label');
-        label.htmlFor = inputId;
-        label.style.position = 'absolute';
-        label.style.opacity = '0';
-        label.style.pointerEvents = 'none';
-        label.style.width = '0';
-        label.style.height = '0';
-
-        document.body.appendChild(input);
-        document.body.appendChild(label);
-        
-        // label.click() を呼び出すことでスイッチをトグルし、Taptic Engineを確実に作動させる
-        label.click();
-        
-        setTimeout(() => {
-          try {
-            document.body.removeChild(input);
-            document.body.removeChild(label);
-          } catch (_) {}
-        }, 100);
-      } catch (_) {}
-    }
-  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.persist();
@@ -767,17 +727,9 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     pointerDownTimeRef.current = Date.now();
     startPosRef.current = { x: e.clientX, y: e.clientY };
     setIsLongPressed(false);
-    setHasTriggeredHaptic(false);
 
     timerRef.current = setTimeout(() => {
       setIsLongPressed(true);
-      
-      // Android等 (Vibration API) は非同期で即座に実行可能
-      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-        try {
-          window.navigator.vibrate(50);
-        } catch (_) {}
-      }
       
       const target = nativeEvent.target as HTMLElement;
       if (target && typeof target.setPointerCapture === 'function') {
@@ -827,13 +779,6 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
         if (e.cancelable) {
           e.preventDefault();
         }
-        
-        // iOS Safari では非同期 setTimeout の中からは Haptic が動かないため、
-        // 長押し成立後の最初のスワイプ（User Gesture）のタイミングでトリガーする
-        if (!hasTriggeredHaptic) {
-          setHasTriggeredHaptic(true);
-          triggerIOSHaptics();
-        }
       }
     };
 
@@ -841,7 +786,7 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
     return () => {
       el.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isLongPressed, hasTriggeredHaptic]);
+  }, [isLongPressed]);
 
   // 自前オートスクロール処理 (Framer Motionのオートスクロールがスクロールブロックと競合して不安定になるのを防ぐ)
   const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
