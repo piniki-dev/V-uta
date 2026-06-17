@@ -89,7 +89,7 @@ export default async function ChannelPage({ params }: PageProps) {
       ? `${channel.name}の歌枠アーカイブ・セットリスト一覧。YouTubeアーカイブから歌唱区間のみを抽出して連続再生が可能です。`
       : `List of karaoke archives and setlists by ${channel.name}. Play song segments from YouTube archives.`,
     "image": channel.image,
-    "url": `${baseUrl}/channels/${id}`,
+    "url": `${baseUrl}/channels/${decodedId}`,
     "sameAs": [
       `https://www.youtube.com/channel/${channel.yt_channel_id}`,
       vtuber?.link
@@ -123,7 +123,7 @@ export default async function ChannelPage({ params }: PageProps) {
         "@type": "ListItem",
         "position": 3,
         "name": channel.name,
-        "item": `${baseUrl}/channels/${id}`
+        "item": `${baseUrl}/channels/${decodedId}`
       }
     ]
   };
