@@ -21,6 +21,9 @@ interface ChannelVideoGridProps {
 export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridProps) {
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
   const { T, locale, isMounted } = useLocale();
+
+  // 曲が1件以上登録されているアーカイブのみ表示する
+  const filteredVideos = videos.filter((v) => v.songs.length > 0);
   const [cols, setCols] = useState(4);
 
   // ウィンドウサイズに応じて列数を更新 (矢印位置の計算に使用)
@@ -71,7 +74,7 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
           <h2 className="text-3xl font-black tracking-tight text-[var(--text-primary)] flex items-center gap-4 glow-text-subtle">
             {T('archive.registeredArchives')}
             <span className="text-sm font-black bg-[var(--bg-tertiary)] text-[var(--accent)] px-4 py-1 rounded-full border border-[var(--border)] shadow-inner">
-              {videos.length} <span className="text-[var(--text-tertiary)] ml-1">Archives</span>
+              {filteredVideos.length} <span className="text-[var(--text-tertiary)] ml-1">Archives</span>
             </span>
           </h2>
         </motion.div>
@@ -83,8 +86,8 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
           whileInView="visible"
           viewport={{ once: true }}
         >
-          {videos.length > 0 ? (
-            videos.map((video, index) => {
+          {filteredVideos.length > 0 ? (
+            filteredVideos.map((video, index) => {
               const isExpanded = expandedVideoId === video.id;
               const colIdx = index % cols;
               const arrowLeft = `calc(${(100 / cols) * colIdx + (50 / cols)}% - 12px)`;
