@@ -193,30 +193,30 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
 
                     {/* 情報 (左側) */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-[var(--text-primary)] text-sm md:text-base truncate group-hover:text-[var(--accent)] transition-colors">
-                        {song.title}
-                      </h3>
-                      <p className="text-[11px] md:text-xs text-[var(--text-tertiary)] font-medium truncate">
-                        {song.artist}
-                      </p>
-                    </div>
-
-                    {/* チャンネル情報 (右寄せ) */}
-                    <div className="hidden sm:flex items-center gap-2 flex-shrink-0 px-2 md:px-4">
-                      <div className="flex items-center gap-2 bg-[var(--bg-tertiary)]/60 px-3 py-1.5 rounded-full border border-[var(--border)]/40 max-w-[140px] md:max-w-[220px] transition-all hover:bg-[var(--bg-tertiary)] hover:border-[var(--accent)]/30">
-                        {song.channelThumbnailUrl && (
-                          <Image 
-                            src={song.channelThumbnailUrl} 
-                            alt="" 
-                            width={24}
-                            height={24}
-                            className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover flex-shrink-0 border border-white/20 shadow-sm"
-                          />
-                        )}
-                        <p className="text-xs md:text-sm text-[var(--text-primary)] font-bold truncate tracking-tight">
-                          {song.channelName}
-                        </p>
+                      <div className="flex items-baseline gap-2 truncate">
+                        <h3 className="font-bold text-[var(--text-primary)] text-sm md:text-base truncate group-hover:text-[var(--accent)] transition-colors">
+                          {song.title}
+                        </h3>
+                        <span className="text-[11px] md:text-xs text-[var(--text-secondary)] font-medium truncate opacity-75">
+                          {song.artist}
+                        </span>
                       </div>
+                      {song.channelName && (
+                        <div className="flex items-center gap-1.5 mt-1.5 truncate">
+                          {song.channelThumbnailUrl && (
+                            <Image 
+                              src={song.channelThumbnailUrl} 
+                              alt="" 
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 rounded-full object-cover inline-block border border-white/10"
+                            />
+                          )}
+                          <span className="text-[11px] md:text-xs font-bold text-[var(--accent)] tracking-wide">
+                            {song.channelName}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 再生回数 */}
