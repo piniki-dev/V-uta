@@ -522,6 +522,14 @@ input[type="range"]:hover::-webkit-slider-thumb {
   opacity: 0.5;
 }
 
+.form-input--error {
+  border-color: var(--error) !important;
+}
+
+.form-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
 .form-input-group {
   display: flex;
   gap: 10px;

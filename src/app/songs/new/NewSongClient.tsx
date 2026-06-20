@@ -62,6 +62,11 @@ export default function NewSongClient() {
   const [success, setSuccess] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    song?: string;
+    startTime?: string;
+    endTime?: string;
+  }>({});
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { locale, t: tl, T } = useLocale();
@@ -308,6 +313,7 @@ export default function NewSongClient() {
 
   const handleSelectSong = (track: ITunesSearchResult) => {
     setSelectedSong(track);
+    setFieldErrors(prev => ({ ...prev, song: undefined }));
     setSearchResults([]);
     setSearchQuery('');
     setIsManualInput(false);
@@ -331,6 +337,7 @@ export default function NewSongClient() {
       durationSec: 0,
     };
     setSelectedSong(manualSong);
+    setFieldErrors(prev => ({ ...prev, song: undefined }));
     setIsManualInput(false);
     setSearchResults([]);
     setManualTitle('');
@@ -339,11 +346,79 @@ export default function NewSongClient() {
 
   const handleClearSelection = () => {
     setSelectedSong(null);
+    setFieldErrors(prev => ({ ...prev, song: undefined }));
   };
+
+  const validateStartTime = useCallback((startVal: string, endVal: string) => {
+    let startErr = '';
+    
+    const startSec = startVal.trim() ? parseTime(startVal) : null;
+    const endSec = endVal.trim() ? parseTime(endVal) : null;
+
+    if (!startVal.trim()) {
+      startErr = T('newSong.startTimeRequired');
+    } else if (startSec === null) {
+      startErr = T('newSong.timeFormatError');
+    } else if (endVal.trim() && endSec !== null && startSec >= endSec) {
+      startErr = T('newSong.timeRangeError');
+    }
+
+    setFieldErrors(prev => ({
+      ...prev,
+      startTime: startErr || undefined,
+      endTime: (prev.endTime === T('newSong.timeRangeError') && startSec !== null && endSec !== null && startSec < endSec)
+        ? undefined
+        : prev.endTime
+    }));
+
+    return !startErr;
+  }, [T]);
+
+  const validateEndTime = useCallback((startVal: string, endVal: string) => {
+    let endErr = '';
+    
+    const startSec = startVal.trim() ? parseTime(startVal) : null;
+    const endSec = endVal.trim() ? parseTime(endVal) : null;
+
+    if (!endVal.trim()) {
+      endErr = T('newSong.endTimeRequired');
+    } else if (endSec === null) {
+      endErr = T('newSong.timeFormatError');
+    } else if (startVal.trim() && startSec !== null && startSec >= endSec) {
+      endErr = T('newSong.timeRangeError');
+    }
+
+    setFieldErrors(prev => ({
+      ...prev,
+      endTime: endErr || undefined,
+      startTime: (prev.startTime === T('newSong.timeRangeError') && startSec !== null && endSec !== null && startSec < endSec)
+        ? undefined
+        : prev.startTime
+    }));
+
+    return !endErr;
+  }, [T]);
+
+  const validateSong = useCallback((song: ITunesSearchResult | null, isSubmitting = false) => {
+    let err = '';
+    if (isSubmitting && !song) {
+      err = T('newSong.songRequired');
+    }
+    setFieldErrors(prev => ({ ...prev, song: err || undefined }));
+    return !err;
+  }, [T]);
 
   const handleRegisterSong = () => {
     setError('');
-    if (!selectedSong || !startTime || !endTime) return;
+    
+    // 一括バリデーション
+    const isSongValid = validateSong(selectedSong, true);
+    const isStartValid = validateStartTime(startTime, endTime);
+    const isEndValid = validateEndTime(startTime, endTime);
+    
+    if (!isSongValid || !isStartValid || !isEndValid || !selectedSong) {
+      return;
+    }
 
     if (isCoverVideo && allSongs.filter(s => !s.isDeleted).length > 0) {
       setError(T('newSong.isCoverError'));
@@ -671,6 +746,8 @@ export default function NewSongClient() {
     }
   };
 
+  const hasErrors = Object.values(fieldErrors).some(err => !!err);
+
   return (
     <>
     <div className="min-h-screen">
@@ -852,7 +929,7 @@ export default function NewSongClient() {
                             }
                           }}
                           placeholder={T('newSong.searchPlaceholder')}
-                          className="form-input"
+                          className={`form-input ${fieldErrors.song ? 'form-input--error' : ''}`}
                           disabled={isSearching}
                         />
                         <button
@@ -863,6 +940,11 @@ export default function NewSongClient() {
                           {isSearching ? T('newSong.searching') : <Search size={18} />}
                         </button>
                       </div>
+                      {fieldErrors.song && (
+                        <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <AlertCircle size={12} /> {fieldErrors.song}
+                        </p>
+                      )}
                     </div>
 
                     {/* 検索結果一覧 */}
@@ -941,6 +1023,11 @@ export default function NewSongClient() {
                         >
                           {T('newSong.confirmManual')}
                         </button>
+                        {fieldErrors.song && (
+                          <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle size={12} /> {fieldErrors.song}
+                          </p>
+                        )}
                       </div>
                     )}
                   </>
@@ -959,6 +1046,9 @@ export default function NewSongClient() {
                       onChange={(e) => {
                         const val = e.target.value;
                         setStartTime(val);
+                        if (fieldErrors.startTime || fieldErrors.endTime) {
+                          setFieldErrors(prev => ({ ...prev, startTime: undefined, endTime: undefined }));
+                        }
                         if (selectedSong && selectedSong.durationSec > 0) {
                           const s = parseTime(val);
                           if (s !== null) {
@@ -966,10 +1056,16 @@ export default function NewSongClient() {
                           }
                         }
                       }}
+                      onBlur={() => validateStartTime(startTime, endTime)}
                       placeholder="m:ss or h:mm:ss"
-                      className="form-input"
+                      className={`form-input ${fieldErrors.startTime ? 'form-input--error' : ''}`}
                       disabled={isPending}
                     />
+                    {fieldErrors.startTime && (
+                      <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <AlertCircle size={12} /> {fieldErrors.startTime}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-group mb-0">
@@ -980,17 +1076,28 @@ export default function NewSongClient() {
                       id="end-time"
                       type="text"
                       value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
+                      onChange={(e) => {
+                        setEndTime(e.target.value);
+                        if (fieldErrors.startTime || fieldErrors.endTime) {
+                          setFieldErrors(prev => ({ ...prev, startTime: undefined, endTime: undefined }));
+                        }
+                      }}
+                      onBlur={() => validateEndTime(startTime, endTime)}
                       placeholder="m:ss or h:mm:ss"
-                      className="form-input"
+                      className={`form-input ${fieldErrors.endTime ? 'form-input--error' : ''}`}
                       disabled={isPending}
                     />
+                    {fieldErrors.endTime && (
+                      <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <AlertCircle size={12} /> {fieldErrors.endTime}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <button
                   onClick={handleRegisterSong}
-                  disabled={isPending || !selectedSong || !startTime || !endTime}
+                  disabled={isPending || hasErrors}
                   className="btn btn--primary btn--full mt-8 shadow-lg shadow-[var(--accent)]/20"
                 >
                   {isPending ? T('newSong.adding') : T('newSong.addToList')}
