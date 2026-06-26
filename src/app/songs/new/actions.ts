@@ -3,10 +3,11 @@
 import { createClient } from '@/utils/supabase/server';
 import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata } from '@/lib/youtube';
 import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@/lib/itunes';
-import type { Video, Song, YouTubeVideoMetadata, Channel, Production } from '@/types';
+import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } from '@/types';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -458,6 +459,7 @@ export async function registerSong(input: {
     return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
+  await revalidateChannelByVideo(input.videoDbId);
   return { success: true, data: data as Song };
 }
 
@@ -564,6 +566,9 @@ export async function registerFullArchive(input: {
 
     // RPC から返却された型付き JSON データをマッピングして返却
     const result = data as { video: Video; songs: Song[] };
+    if (result.video) {
+      await revalidateChannel(result.video.channel_record_id);
+    }
     return { success: true, data: result };
   } catch (e) {
     const message = e instanceof Error ? e.message : t.common.saveError;
@@ -622,6 +627,122 @@ export async function getChannelWithVideos(identifier: string | number): Promise
   }
 
   return fetchVideosForChannel(channel, supabase);
+}
+
+/**
+ * チャンネルの基本情報（メタデータ生成用）のみを取得する (ID またはハンドルに対応)
+ */
+export async function getChannelMetadata(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
+  console.log('getChannelMetadata called with identifier:', identifier);
+  const supabase = await createClient();
+  const t = await getLocaleT();
+
+  let query = supabase
+    .from('channels')
+    .select(`
+      *,
+      vtuber:vtubers (
+        *,
+        production:productions (*)
+      )
+    `);
+
+  if (typeof identifier === 'string' && identifier.startsWith('@')) {
+    // ハンドルで検索 (大文字小文字を区別しない)
+    query = query.ilike('handle', identifier);
+  } else {
+    // ID で検索
+    query = query.eq('id', Number(identifier));
+  }
+
+  const { data: channel, error: chanErr } = await query.single();
+
+  if (chanErr || !channel) {
+    // ハンドルで不一致の場合、@ を取って再試行
+    if (typeof identifier === 'string' && identifier.startsWith('@')) {
+      const { data: retryChannel } = await supabase
+        .from('channels')
+        .select(`
+          *,
+          vtuber:vtubers (
+            *,
+            production:productions (*)
+          )
+        `)
+        .eq('handle', identifier.substring(1))
+        .single();
+      
+      if (retryChannel) {
+        return { success: true, data: retryChannel as any };
+      }
+    }
+    return { success: false, error: t.archive.notFound };
+  }
+
+  return { success: true, data: channel as any };
+}
+
+/**
+ * チャンネルのキャッシュを再検証（パージ）する
+ */
+export async function revalidateChannel(channelRecordId: number | null): Promise<void> {
+  if (channelRecordId === null) return;
+  console.log('revalidateChannel called for channelRecordId:', channelRecordId);
+  try {
+    const supabase = await createClient();
+    const { data: channel } = await supabase
+      .from('channels')
+      .select('handle')
+      .eq('id', channelRecordId)
+      .single();
+
+    // 1. ID でのパスを再検証
+    console.log(`[ISR] Revalidating ID path: /channels/${channelRecordId}`);
+    revalidatePath(`/channels/${channelRecordId}`);
+
+    // 2. ハンドルでのパスを再検証 (存在する場合)
+    if (channel?.handle) {
+      // エンコードされたハンドル名用 (例: /channels/%40nekomashiroa)
+      const encodedHandlePath = `/channels/${encodeURIComponent(channel.handle)}`;
+      console.log(`[ISR] Revalidating handle path (encoded): ${encodedHandlePath}`);
+      revalidatePath(encodedHandlePath);
+
+      // 生のハンドル名用 (例: /channels/@nekomashiroa)
+      const rawHandlePath = `/channels/${channel.handle}`;
+      console.log(`[ISR] Revalidating handle path (raw): ${rawHandlePath}`);
+      revalidatePath(rawHandlePath);
+      
+      const cleanHandle = channel.handle.replace('@', '');
+      if (cleanHandle !== channel.handle) {
+        const cleanHandlePath = `/channels/${encodeURIComponent(cleanHandle)}`;
+        console.log(`[ISR] Revalidating clean handle path: ${cleanHandlePath}`);
+        revalidatePath(cleanHandlePath);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to revalidate channel pages:', e);
+  }
+}
+
+/**
+ * 動画IDから関連するチャンネルのキャッシュを再検証（パージ）する
+ */
+export async function revalidateChannelByVideo(videoDbId: number): Promise<void> {
+  console.log('revalidateChannelByVideo called for videoDbId:', videoDbId);
+  try {
+    const supabase = await createClient();
+    const { data: video } = await supabase
+      .from('videos')
+      .select('channel_record_id')
+      .eq('id', videoDbId)
+      .single();
+
+    if (video?.channel_record_id) {
+      await revalidateChannel(video.channel_record_id);
+    }
+  } catch (e) {
+    console.error('Failed to revalidate channel by video:', e);
+  }
 }
 
 /**
@@ -698,6 +819,7 @@ export async function updateSong(input: {
     return { success: false, error: `${t.common.updateError}: ${error.message}` };
   }
 
+  await revalidateChannelByVideo(data.video_id);
   return { success: true, data: data as Song };
 }
 
@@ -787,6 +909,7 @@ export async function updateSongMaster(input: {
     return { success: false, error: `${t.common.updateError}: ${error.message}` };
   }
 
+  await revalidateChannelByVideo(data.video_id);
   return { success: true, data: data as Song };
 }
 
@@ -804,13 +927,19 @@ export async function deleteSong(
     return { success: false, error: t.common.loginRequired };
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('songs')
     .update({ is_active: false })
-    .eq('id', songId);
+    .eq('id', songId)
+    .select('video_id')
+    .single();
 
   if (error) {
     return { success: false, error: `${t.common.deleteError}: ${error.message}` };
+  }
+
+  if (data) {
+    await revalidateChannelByVideo(data.video_id);
   }
 
   return { success: true, data: null };

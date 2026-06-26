@@ -1,26 +1,18 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Channel } from '@/types';
-import { translations } from '@/lib/translations';
-import { cookies } from 'next/headers';
-
-async function getLocaleT() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  return translations[locale];
-}
 
 type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
 /**
- * すべての登録済みチャンネルを取得する
+ * すべて of 登録済みチャンネルを取得する
  */
 export async function getChannels(): Promise<ActionResult<Channel[]>> {
   const supabase = await createClient();
-  const t = await getLocaleT();
 
   const { data, error } = await supabase
     .from('channels')
@@ -29,7 +21,29 @@ export async function getChannels(): Promise<ActionResult<Channel[]>> {
 
   if (error) {
     console.error('getChannels error:', error);
-    return { success: false, error: t.common.errorOccurred };
+    return { success: false, error: 'Failed to fetch channels' };
+  }
+
+  return { success: true, data: data as Channel[] };
+}
+
+/**
+ * すべての登録済みチャンネルを取得する（ビルド・SSG用、クッキーなし）
+ */
+export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  );
+
+  const { data, error } = await supabase
+    .from('channels')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('getChannelsForStatic error:', error);
+    return { success: false, error: 'Failed to fetch channels for static rendering' };
   }
 
   return { success: true, data: data as Channel[] };

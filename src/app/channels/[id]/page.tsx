@@ -1,4 +1,5 @@
-import { getChannelWithVideos } from '@/app/songs/new/actions';
+import { getChannelWithVideos, getChannelMetadata } from '@/app/songs/new/actions';
+import { getChannelsForStatic } from '@/app/channels/actions';
 import ChannelView from './ChannelView';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -6,10 +7,33 @@ import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 import type { Metadata } from 'next';
 
+export async function generateStaticParams() {
+  const result = await getChannelsForStatic();
+  if (!result.success || !result.data) {
+    return [];
+  }
+
+  const params: { id: string }[] = [];
+  result.data.forEach((channel) => {
+    // ID パターン
+    params.push({ id: String(channel.id) });
+    // ハンドル パターン
+    if (channel.handle) {
+      params.push({ id: encodeURIComponent(channel.handle) });
+      const cleanHandle = channel.handle.replace('@', '');
+      if (cleanHandle !== channel.handle) {
+        params.push({ id: encodeURIComponent(cleanHandle) });
+      }
+    }
+  });
+
+  return params;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const decodedId = decodeURIComponent(id);
-  const result = await getChannelWithVideos(decodedId);
+  const result = await getChannelMetadata(decodedId);
   
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
