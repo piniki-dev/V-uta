@@ -673,13 +673,13 @@ export async function getChannelMetadata(identifier: string | number): Promise<A
         .single();
       
       if (retryChannel) {
-        return { success: true, data: retryChannel as any };
+        return { success: true, data: retryChannel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
       }
     }
     return { success: false, error: t.archive.notFound };
   }
 
-  return { success: true, data: channel as any };
+  return { success: true, data: channel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
 }
 
 /**
