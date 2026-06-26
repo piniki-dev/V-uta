@@ -4,6 +4,43 @@ import ArchiveView from './ArchiveView';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 import JsonLd from '@/components/JsonLd';
+import { cache } from 'react';
+import { getVideosForStatic } from '@/app/songs/new/actions';
+
+// 同一リクエスト内でのデータ取得をキャッシュ（重複排除）
+const getCachedVideoDetails = cache(async (videoId: string) => {
+  console.log('getCachedVideoDetails called for videoId:', videoId);
+  const supabase = await createClient();
+  
+  const { data: video } = await supabase
+    .from('videos')
+    .select('*, channel:channels(*)')
+    .eq('video_id', videoId)
+    .single();
+
+  if (!video) {
+    return { video: null, songs: [] };
+  }
+
+  const { data: songs } = await supabase
+    .from('songs')
+    .select('*, master_song:master_songs(*)')
+    .eq('video_id', video.id)
+    .eq('is_active', true)
+    .order('start_sec', { ascending: true });
+
+  return { video, songs: songs || [] };
+});
+
+export async function generateStaticParams() {
+  const result = await getVideosForStatic();
+  if (!result.success || !result.data) {
+    return [];
+  }
+  return result.data.map((video) => ({
+    videoId: video.video_id,
+  }));
+}
 
 export async function generateMetadata({ 
   params,
@@ -16,27 +53,14 @@ export async function generateMetadata({
   const sParams = await searchParams;
   const track = typeof sParams.track === 'string' ? sParams.track : null;
 
-  const supabase = await createClient();
+  const { video, songs } = await getCachedVideoDetails(videoId);
+
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 
-  const { data: video } = await supabase
-    .from('videos')
-    .select('*, channel:channels(*)')
-    .eq('video_id', videoId)
-    .single();
-
   if (!video) return { title: t.archive.notFound };
-
-  // 収録曲リストを取得してdescriptionを生成
-  const { data: songs } = await supabase
-    .from('songs')
-    .select('*, master_song:master_songs(*)')
-    .eq('video_id', video.id)
-    .eq('is_active', true)
-    .order('start_sec', { ascending: true });
 
   const songList = (songs || [])
     .map(s => s.master_song?.title)
@@ -79,18 +103,14 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   const sParams = await searchParams;
   const songId = typeof sParams.songId === 'string' ? sParams.songId : null;
   
-  const supabase = await createClient();
+  const { video, songs } = await getCachedVideoDetails(videoId);
+
   const cookieStore = await cookies();
   const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 
-  // 動画取得 (video_id = YouTube ID)
-  const { data: video, error: videoError } = await supabase
-    .from('videos')
-    .select('*, channel:channels(*)').eq('video_id', videoId).single();
-
-  if (videoError || !video) {
+  if (!video) {
     return (
       <div className="page-container">
         <div className="empty-state">
@@ -101,14 +121,6 @@ export default async function ArchivePage({ params, searchParams }: Props) {
       </div>
     );
   }
-
-  // 曲リスト取得 (master_songsをJOIN)
-  const { data: songs } = await supabase
-    .from('songs')
-    .select('*, master_song:master_songs(*)')
-    .eq('video_id', video.id)
-    .eq('is_active', true)
-    .order('start_sec', { ascending: true });
 
   const typedVideo = video as Video;
   const typedSongs = (songs || []) as Song[];

@@ -6,7 +6,7 @@ import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@
 import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } from '@/types';
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
 async function getLocaleT() {
@@ -733,16 +733,52 @@ export async function revalidateChannelByVideo(videoDbId: number): Promise<void>
     const supabase = await createClient();
     const { data: video } = await supabase
       .from('videos')
-      .select('channel_record_id')
+      .select('channel_record_id, video_id')
       .eq('id', videoDbId)
       .single();
 
-    if (video?.channel_record_id) {
-      await revalidateChannel(video.channel_record_id);
+    if (video) {
+      if (video.channel_record_id) {
+        await revalidateChannel(video.channel_record_id);
+      }
+
+      // 動画詳細ページも再検証 (例: /videos/TxfudS-9J0E)
+      if (video.video_id) {
+        const videoPath = `/videos/${video.video_id}`;
+        console.log(`[ISR] Revalidating video path: ${videoPath}`);
+        revalidatePath(videoPath);
+
+        const videoOgPath = `/videos/${video.video_id}/og`;
+        console.log(`[ISR] Revalidating video OG path: ${videoOgPath}`);
+        revalidatePath(videoOgPath);
+      }
     }
   } catch (e) {
     console.error('Failed to revalidate channel by video:', e);
   }
+}
+
+/**
+ * 静的生成用に全動画のIDを取得する (クッキーなし)
+ */
+export async function getVideosForStatic(): Promise<ActionResult<{ video_id: string }[]>> {
+  console.log('getVideosForStatic called');
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  );
+
+  const { data, error } = await supabase
+    .from('videos')
+    .select('video_id')
+    .eq('is_publish', true);
+
+  if (error) {
+    console.error('getVideosForStatic error:', error);
+    return { success: false, error: 'Failed to fetch video ids for static rendering' };
+  }
+
+  return { success: true, data: data || [] };
 }
 
 /**
