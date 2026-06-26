@@ -702,11 +702,17 @@ export default function ImportSongsClient() {
         let updatedEndTime = s.endTime;
         let updatedEndSec = s.song.end_sec || 0;
 
-        // 元々のインポートデータに終了時間がなかった場合のみ、終了時間を計算
+        // 元々のインポートデータに終了時間がなかった場合のみ、終了時間を計算またはクリア
         if (!s.importedEndTime || s.importedEndTime === '' || s.importedEndTime === '0:00' || s.importedEndTime === '0') {
           const startSec = parseTime(s.startTime) || 0;
-          updatedEndSec = track.durationSec > 0 ? startSec + track.durationSec : updatedEndSec;
-          updatedEndTime = formatTimeFull(updatedEndSec);
+          if (track.trackId === -1) {
+            // 手動入力の場合、終了時間をクリアする
+            updatedEndSec = 0;
+            updatedEndTime = '';
+          } else {
+            updatedEndSec = track.durationSec > 0 ? startSec + track.durationSec : updatedEndSec;
+            updatedEndTime = formatTimeFull(updatedEndSec);
+          }
           // 開始時間も整形
           s.startTime = formatTimeFull(startSec);
         }
