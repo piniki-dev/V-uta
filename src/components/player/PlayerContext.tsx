@@ -31,11 +31,15 @@ type PlayerAction =
   | { type: 'SET_VIDEO_RATIO'; ratio: string }
   | { type: 'SET_VIDEO_RATIO_MODE'; mode: 'auto' | '16/9' | '9/16' }
   | { type: 'TOGGLE_PRIVACY_MODE' }
-  | { type: 'SET_PRIVACY_MODE'; isPrivacyMode: boolean };
+  | { type: 'SET_PRIVACY_MODE'; isPrivacyMode: boolean }
+  | { type: 'SET_AUTOPLAY_ENABLED'; isEnabled: boolean }
+  | { type: 'START_RADIO'; song: PlayerSong; playlist: PlayerSong[] }
+  | { type: 'APPEND_PLAYLIST'; playlist: PlayerSong[] };
 
 // ===== Constants =====
 const VOLUME_STORAGE_KEY = 'vuta-player-volume';
 const PRIVACY_STORAGE_KEY = 'vuta-player-privacy';
+const AUTOPLAY_STORAGE_KEY = 'vuta-player-autoplay';
 
 // ===== Reducer =====
 
@@ -57,6 +61,8 @@ const initialState: PlayerState = {
   videoRatio: '16/9',
   videoRatioMode: 'auto',
   isPrivacyMode: false,
+  isRadioMode: false,
+  isAutoplayEnabled: true,
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -76,6 +82,7 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         sourceId: action.sourceId || null,
         currentHistoryId: null,
         playSessionKey: state.playSessionKey + 1,
+        isRadioMode: action.sourceType === 'radio',
       };
     }
     case 'PAUSE':
@@ -256,6 +263,28 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, isPrivacyMode: !state.isPrivacyMode };
     case 'SET_PRIVACY_MODE':
       return { ...state, isPrivacyMode: action.isPrivacyMode };
+    case 'SET_AUTOPLAY_ENABLED':
+      return { ...state, isAutoplayEnabled: action.isEnabled };
+    case 'START_RADIO':
+      return {
+        ...state,
+        currentSong: action.song,
+        playlist: action.playlist,
+        currentIndex: 0,
+        isPlaying: true,
+        currentTime: 0,
+        isFullPlayerOpen: true,
+        isRadioMode: true,
+        sourceType: 'radio',
+        sourceId: String(action.song.id),
+        currentHistoryId: null,
+        playSessionKey: state.playSessionKey + 1,
+      };
+    case 'APPEND_PLAYLIST':
+      return {
+        ...state,
+        playlist: [...state.playlist, ...action.playlist]
+      };
     default:
       return state;
   }
@@ -288,6 +317,8 @@ interface PlayerContextType {
   setVideoRatioMode: (mode: 'auto' | '16/9' | '9/16') => void;
   togglePrivacyMode: () => void;
   setPrivacyMode: (isPrivacyMode: boolean, persist?: boolean) => void;
+  startRadio: (song: PlayerSong) => Promise<void>;
+  toggleAutoplay: () => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -305,11 +336,51 @@ export function usePlayer(): PlayerContextType {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
+  const [isFetchingRadio, setIsFetchingRadio] = React.useState(false);
   const playerRef = useRef<YT.Player | null>(null);
   const isFirstMount = useRef(true);
   const isFullPlayerOpenRef = useRef(state.isFullPlayerOpen);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // オートプレイの初期ロード
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const savedAutoplay = localStorage.getItem(AUTOPLAY_STORAGE_KEY);
+      if (savedAutoplay !== null) {
+        dispatch({ type: 'SET_AUTOPLAY_ENABLED', isEnabled: savedAutoplay === 'true' });
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 再生リストの最後の曲に達した際、関連曲を取得して自動で追加する
+  useEffect(() => {
+    if ((state.isAutoplayEnabled || state.isRadioMode) &&
+        state.currentSong &&
+        state.currentIndex === state.playlist.length - 1 &&
+        !isFetchingRadio) {
+      
+      const fetchNextSongs = async () => {
+        setIsFetchingRadio(true);
+        try {
+          const excludeIds = state.playlist.map(s => s.id);
+          const { getRelatedSongs } = await import('@/app/songs/actions');
+          const nextSongs = await getRelatedSongs(state.currentSong!.id, excludeIds, 10);
+          
+          if (nextSongs.length > 0) {
+            dispatch({ type: 'APPEND_PLAYLIST', playlist: nextSongs });
+          }
+        } catch (e) {
+          console.error('[Autoplay] Failed to fetch related songs:', e);
+        } finally {
+          setIsFetchingRadio(false);
+        }
+      };
+
+      fetchNextSongs();
+    }
+  }, [state.currentIndex, state.playlist, state.playlist.length, state.isAutoplayEnabled, state.isRadioMode, state.currentSong, isFetchingRadio]);
 
   // 音量の初期ロード (クライアントサイドのみ)
   useEffect(() => {
@@ -701,6 +772,46 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const startRadio = useCallback(async (song: PlayerSong) => {
+    // まずその曲単体を再生してUIを即時遷移させる
+    dispatch({
+      type: 'START_RADIO',
+      song,
+      playlist: [song]
+    });
+
+    // iOS Autoplay対策で、直後に再生
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById({
+          videoId: song.videoId,
+          startSeconds: song.startSec,
+          endSeconds: song.endSec,
+        });
+        playerRef.current.playVideo();
+      } catch (e) {
+        console.warn('[V-uta] startRadio direct play failed:', e);
+      }
+    }
+
+    // バックグラウンドで関連曲を取得してプレイリストに追加
+    try {
+      const { getRelatedSongs } = await import('@/app/songs/actions');
+      const related = await getRelatedSongs(song.id, [song.id], 20);
+      if (related.length > 0) {
+        dispatch({ type: 'APPEND_PLAYLIST', playlist: related });
+      }
+    } catch (e) {
+      console.error('Failed to start radio:', e);
+    }
+  }, [playerRef]);
+
+  const toggleAutoplay = useCallback(() => {
+    const nextVal = !state.isAutoplayEnabled;
+    dispatch({ type: 'SET_AUTOPLAY_ENABLED', isEnabled: nextVal });
+    localStorage.setItem(AUTOPLAY_STORAGE_KEY, nextVal.toString());
+  }, [state.isAutoplayEnabled]);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -728,6 +839,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setVideoRatioMode,
         togglePrivacyMode,
         setPrivacyMode,
+        startRadio,
+        toggleAutoplay,
         playerRef,
       }}
     >

@@ -155,6 +155,8 @@ export interface PlayerState {
   playSessionKey: number;
   pipPosition: PipPosition;
   isPrivacyMode: boolean;
+  isRadioMode: boolean;
+  isAutoplayEnabled: boolean;
 }
 
 // ===== YouTube API =====

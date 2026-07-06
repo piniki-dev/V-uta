@@ -27,6 +27,7 @@ export default function FullPlayer() {
     removeSong,
     reorderPlaylist,
     clearPlaylist,
+    toggleAutoplay,
   } = usePlayer();
   const { t, T } = useLocale();
   const { showToast } = useToast();
@@ -496,6 +497,25 @@ export default function FullPlayer() {
               />
             ))}
           </Reorder.Group>
+          {/* 自動再生トグル (モバイル) */}
+          <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-secondary)] rounded-b-[40px] shrink-0 safe-bottom">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">{T('player.autoplayDesc')}</p>
+              </div>
+              <button
+                onClick={toggleAutoplay}
+                className={`w-12 h-6 rounded-full transition-colors relative outline-none ${state.isAutoplayEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+              >
+                <motion.div 
+                  className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 shadow"
+                  animate={{ x: state.isAutoplayEnabled ? 24 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              </button>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -660,6 +680,25 @@ export default function FullPlayer() {
               </Reorder.Item>
             ))}
           </Reorder.Group>
+          {/* 自動再生トグル (デスクトップ) */}
+          <div className="p-4 lg:p-6 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50 shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">{T('player.autoplayDesc')}</p>
+              </div>
+              <button
+                onClick={toggleAutoplay}
+                className={`w-12 h-6 rounded-full transition-colors relative outline-none ${state.isAutoplayEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+              >
+                <motion.div 
+                  className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 shadow"
+                  animate={{ x: state.isAutoplayEnabled ? 24 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

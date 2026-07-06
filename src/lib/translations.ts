@@ -102,6 +102,8 @@ export const translations = {
       loopAll: '全体ループ',
       loopOne: '1曲ループ',
       clearQueueConfirm: '再生中の曲を除いて、再生リストを空にしますか？',
+      autoplay: '自動再生',
+      autoplayDesc: '似た曲を自動的に追加します',
     },
     archive: {
       title: '曲名',
@@ -240,6 +242,7 @@ export const translations = {
       removeFromFavorites: 'お気に入りから削除',
       share: '共有',
       openInYoutube: 'YouTubeで開く',
+      startRadio: 'ラジオを再生',
     },
     share: {
       title: '共有する',
@@ -523,6 +526,8 @@ export const translations = {
       loopAll: 'Loop All',
       loopOne: 'Loop One',
       clearQueueConfirm: 'Are you sure you want to clear all songs in the queue except the currently playing one?',
+      autoplay: 'Autoplay',
+      autoplayDesc: 'Automatically add similar songs',
     },
     archive: {
       title: 'Title',
@@ -661,6 +666,7 @@ export const translations = {
       removeFromFavorites: 'Remove from Favorites',
       share: 'Share',
       openInYoutube: 'Open in YouTube',
+      startRadio: 'Start Radio',
     },
     share: {
       title: 'Share',

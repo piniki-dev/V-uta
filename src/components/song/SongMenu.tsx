@@ -8,7 +8,8 @@ import {
   ListPlus, 
   Plus, 
   Share2, 
-  ExternalLink
+  ExternalLink,
+  Radio
 } from 'lucide-react';
 import { usePlayer } from '@/components/player/PlayerContext';
 import type { PlayerSong } from '@/types';
@@ -23,10 +24,15 @@ interface SongMenuProps {
 }
 
 export default function SongMenu({ song, trigger, trackNumber }: SongMenuProps) {
-  const { addSongNext, addSongLast } = usePlayer();
+  const { addSongNext, addSongLast, startRadio } = usePlayer();
   const { T } = useLocale();
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  const handleStartRadio = (e: Event) => {
+    e.stopPropagation();
+    startRadio(song);
+  };
 
   const handleAddNext = (e: Event) => {
     e.stopPropagation();
@@ -76,10 +82,18 @@ export default function SongMenu({ song, trigger, trackNumber }: SongMenuProps) 
             onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenu.Item 
-              onSelect={handleAddNext}
+              onSelect={handleStartRadio}
               className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-colors outline-none cursor-pointer group"
             >
-              <Play size={16} className="text-[var(--text-tertiary)] group-hover:text(--accent)]" />
+              <Radio size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)]" />
+              {T('songMenu.startRadio')}
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Item 
+              onSelect={handleAddNext}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer group"
+            >
+              <Play size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]" />
               {T('songMenu.playNext')}
             </DropdownMenu.Item>
             
