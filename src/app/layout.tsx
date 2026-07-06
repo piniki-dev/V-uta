@@ -6,6 +6,7 @@ import { SidebarProvider } from "@/components/SidebarContext";
 import Sidebar from "@/components/Sidebar";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import DynamicPlayer from "@/components/player/DynamicPlayer";
+import ScrollToTop from "@/components/ScrollToTop";
 import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
@@ -115,6 +116,7 @@ export default async function RootLayout({
               <PlayerProvider>
                 <ToastProvider>
                   <SidebarProvider>
+                    <ScrollToTop />
                     <Header />
                     <div className="app-layout mesh-bg">
                       <Sidebar initialUser={user} initialPlaylists={initialPlaylists} />
