@@ -107,7 +107,7 @@ export default async function RootLayout({
   const initialPlaylists = playlistsRes.success ? playlistsRes.data || [] : [];
 
   return (
-    <html lang={locale} suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang={locale} suppressHydrationWarning>
       <body className={`${outfit.variable} ${plusJakarta.variable} ${notoSansJP.variable}`}>
         <LocaleProvider initialLocale={locale}>
           <ThemeProvider>
