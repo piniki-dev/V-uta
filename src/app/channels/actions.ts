@@ -1,30 +1,30 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Channel } from '@/types';
+import { unstable_cache } from 'next/cache';
 
 type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+// チャンネル一覧をキャッシュする関数
+const getChannelsCached = unstable_cache(
+  async () => {
+    console.log('[unstable_cache] Fetching channels list from DB...');
+    return getChannelsForStatic();
+  },
+  ['channels-list-cached'],
+  {
+    tags: ['channels-list']
+  }
+);
+
 /**
- * すべて of 登録済みチャンネルを取得する
+ * すべての登録済みチャンネルを取得する
  */
 export async function getChannels(): Promise<ActionResult<Channel[]>> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from('channels')
-    .select('*')
-    .order('name', { ascending: true });
-
-  if (error) {
-    console.error('getChannels error:', error);
-    return { success: false, error: 'Failed to fetch channels' };
-  }
-
-  return { success: true, data: data as Channel[] };
+  return getChannelsCached();
 }
 
 /**

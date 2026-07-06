@@ -724,6 +724,11 @@ export async function revalidateChannel(channelRecordId: number | null): Promise
     console.log(`[ISR] Revalidating Home path and tag`);
     revalidatePath('/');
     revalidateTag('home-videos', 'max');
+
+    // 4. チャンネル一覧ページのキャッシュを再検証
+    console.log(`[ISR] Revalidating Channels list path and tag`);
+    revalidatePath('/channels');
+    revalidateTag('channels-list', 'max');
   } catch (e) {
     console.error('Failed to revalidate channel pages:', e);
   }
