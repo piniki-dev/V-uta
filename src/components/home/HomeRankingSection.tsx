@@ -115,7 +115,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
 
       <div className="bg-[var(--bg-secondary)]/30 backdrop-blur-sm rounded-[32px] border border-[var(--border)] overflow-hidden shadow-xl">
         <div className="flex flex-col">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             {isLoading ? (
               <motion.div 
                 key="loading"
@@ -154,14 +154,12 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                 key="list"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="divide-y divide-[var(--border)]/50"
               >
                 {songs.map((song, index) => (
-                  <motion.div
+                  <div
                     key={song.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
                     className="group flex items-center gap-4 p-4 hover:bg-[var(--bg-hover)]/40 transition-colors cursor-pointer"
                     onClick={() => onPlay(song)}
                   >
@@ -184,6 +182,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                         alt={song.title} 
                         width={48}
                         height={48}
+                        priority={index < 4}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -224,7 +223,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                       <TrendingUp size={12} className="text-[var(--accent)]" />
                       {song.playCount}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </motion.div>
             )}

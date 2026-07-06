@@ -20,18 +20,21 @@ const outfit = Outfit({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "700", "900"],
+  display: "swap",
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "700"],
+  display: "swap",
 });
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-jp",
   subsets: ["latin"],
   weight: ["400", "700"],
+  display: "swap",
 });
 
 import { translations } from "@/lib/translations";
