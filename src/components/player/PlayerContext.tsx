@@ -365,6 +365,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if ((state.isAutoplayEnabled || state.isRadioMode) &&
         state.currentSong &&
+        state.playlist.length > 1 &&
         state.currentIndex === state.playlist.length - 1 &&
         !state.isFetchingRadio) {
       
