@@ -43,7 +43,7 @@ export default async function ContactPage() {
   };
 
   return (
-    <main className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20">
       <JsonLd data={breadcrumbData} />
       <Hero 
         title={t.contact.title}
@@ -54,6 +54,6 @@ export default async function ContactPage() {
       
       {/* フォーム本体 (Client Component) */}
       <ContactForm />
-    </main>
+    </div>
   );
 }
