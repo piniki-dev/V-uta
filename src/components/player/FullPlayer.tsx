@@ -6,7 +6,7 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
-import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2 } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2, Loader2 } from 'lucide-react';
 import type { PlayerSong, PlayerState } from '@/types';
 import type { PanInfo } from 'framer-motion';
 
@@ -497,6 +497,13 @@ export default function FullPlayer() {
               />
             ))}
           </Reorder.Group>
+          {/* ローディングインジケーター (モバイル) */}
+          {state.isFetchingRadio && (
+            <div className="flex items-center justify-center py-4 text-[var(--accent)] gap-2 shrink-0">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-xs font-bold text-[var(--text-secondary)]">{T('common.loading')}</span>
+            </div>
+          )}
           {/* 自動再生トグル (モバイル) */}
           <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-secondary)] rounded-b-[40px] shrink-0 safe-bottom">
             <div className="flex items-center justify-between">
@@ -680,6 +687,13 @@ export default function FullPlayer() {
               </Reorder.Item>
             ))}
           </Reorder.Group>
+          {/* ローディングインジケーター (デスクトップ) */}
+          {state.isFetchingRadio && (
+            <div className="flex items-center justify-center py-4 text-[var(--accent)] gap-2 border-t border-[var(--border)] bg-[var(--bg-secondary)]/30 shrink-0">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-xs font-bold text-[var(--text-secondary)]">{T('common.loading')}</span>
+            </div>
+          )}
           {/* 自動再生トグル (デスクトップ) */}
           <div className="p-4 lg:p-6 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50 shrink-0">
             <div className="flex items-center justify-between">

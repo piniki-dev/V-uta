@@ -34,7 +34,8 @@ type PlayerAction =
   | { type: 'SET_PRIVACY_MODE'; isPrivacyMode: boolean }
   | { type: 'SET_AUTOPLAY_ENABLED'; isEnabled: boolean }
   | { type: 'START_RADIO'; song: PlayerSong; playlist: PlayerSong[] }
-  | { type: 'APPEND_PLAYLIST'; playlist: PlayerSong[] };
+  | { type: 'APPEND_PLAYLIST'; playlist: PlayerSong[] }
+  | { type: 'SET_FETCHING_RADIO'; isFetching: boolean };
 
 // ===== Constants =====
 const VOLUME_STORAGE_KEY = 'vuta-player-volume';
@@ -63,6 +64,7 @@ const initialState: PlayerState = {
   isPrivacyMode: false,
   isRadioMode: false,
   isAutoplayEnabled: true,
+  isFetchingRadio: false,
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -275,6 +277,7 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentTime: 0,
         isFullPlayerOpen: true,
         isRadioMode: true,
+        isFetchingRadio: true,
         sourceType: 'radio',
         sourceId: String(action.song.id),
         currentHistoryId: null,
@@ -284,6 +287,11 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return {
         ...state,
         playlist: [...state.playlist, ...action.playlist]
+      };
+    case 'SET_FETCHING_RADIO':
+      return {
+        ...state,
+        isFetchingRadio: action.isFetching
       };
     default:
       return state;
@@ -336,7 +344,6 @@ export function usePlayer(): PlayerContextType {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
-  const [isFetchingRadio, setIsFetchingRadio] = React.useState(false);
   const playerRef = useRef<YT.Player | null>(null);
   const isFirstMount = useRef(true);
   const isFullPlayerOpenRef = useRef(state.isFullPlayerOpen);
@@ -359,10 +366,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if ((state.isAutoplayEnabled || state.isRadioMode) &&
         state.currentSong &&
         state.currentIndex === state.playlist.length - 1 &&
-        !isFetchingRadio) {
+        !state.isFetchingRadio) {
       
       const fetchNextSongs = async () => {
-        setIsFetchingRadio(true);
+        dispatch({ type: 'SET_FETCHING_RADIO', isFetching: true });
         try {
           const excludeIds = state.playlist.map(s => s.id);
           const { getRelatedSongs } = await import('@/app/songs/actions');
@@ -374,13 +381,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error('[Autoplay] Failed to fetch related songs:', e);
         } finally {
-          setIsFetchingRadio(false);
+          dispatch({ type: 'SET_FETCHING_RADIO', isFetching: false });
         }
       };
 
       fetchNextSongs();
     }
-  }, [state.currentIndex, state.playlist, state.playlist.length, state.isAutoplayEnabled, state.isRadioMode, state.currentSong, isFetchingRadio]);
+  }, [state.currentIndex, state.playlist, state.playlist.length, state.isAutoplayEnabled, state.isRadioMode, state.currentSong, state.isFetchingRadio]);
 
   // 音量の初期ロード (クライアントサイドのみ)
   useEffect(() => {
@@ -773,7 +780,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startRadio = useCallback(async (song: PlayerSong) => {
-    // まずその曲単体を再生してUIを即時遷移させる
+    // まずその曲単体を再生してUIを即時遷移させる (START_RADIO内でisFetchingRadioがtrueになります)
     dispatch({
       type: 'START_RADIO',
       song,
@@ -803,6 +810,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error('Failed to start radio:', e);
+    } finally {
+      dispatch({ type: 'SET_FETCHING_RADIO', isFetching: false });
     }
   }, [playerRef]);
 
