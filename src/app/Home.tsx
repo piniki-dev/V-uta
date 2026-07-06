@@ -1,41 +1,83 @@
-import { createClient } from '@/utils/supabase/server';
+import { unstable_cache } from 'next/cache';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Video } from '@/types';
 import HomeVideoGrid from '@/components/home/HomeVideoGrid';
 import HomeRankingSection from '@/components/home/HomeRankingSection';
 import HomeChannelSection from '@/components/home/HomeChannelSection';
 import { getSongRankings } from '@/app/history/actions';
 
-export default async function Home() {
-  const supabase = await createClient();
+// 1. 最近追加された動画リストをキャッシュ (手動パージのみで更新)
+const getHomeVideosCached = unstable_cache(
+  async () => {
+    console.log('[unstable_cache] Fetching home videos from DB...');
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    );
 
-  // 1. & 2. & 3. データの並列取得 (Parallel Data Fetching)
-  // 全てのクエリを並列化することで、モバイル等の環境での TTFB を改善します
-  const [videoRes, rankingRes] = await Promise.all([
-    supabase
+    const { data: videoData, error } = await supabase
       .from('videos')
       .select('*, channel:channels(*), songs!inner(id)')
       .order('created_at', { ascending: false })
-      .limit(24),
-    getSongRankings({ days: 7, limit: 50, supabase })
+      .limit(24);
+
+    if (error) {
+      console.error('getHomeVideosCached error:', error);
+      return [];
+    }
+
+    const videos = ((videoData as unknown as Video[]) || [])
+      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+      .slice(0, 12);
+
+    return videos;
+  },
+  ['home-videos-cached'],
+  {
+    tags: ['home-videos']
+  }
+);
+
+// 2. 再生ランキングとそれに基づく人気チャンネルをキャッシュ (10分自動更新)
+const getHomeRankingCached = unstable_cache(
+  async () => {
+    console.log('[unstable_cache] Fetching home ranking from DB...');
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    );
+
+    const rankingRes = await getSongRankings({ days: 7, limit: 50, supabase });
+    const allRankingSongs = (rankingRes.success && rankingRes.data) ? rankingRes.data : [];
+    const initialRanking = allRankingSongs.slice(0, 10);
+
+    const popularChannels = Array.from(new Map(allRankingSongs.map(s => [s.channelId, { 
+      id: s.channelId,
+      handle: s.channelHandle,
+      name: s.channelName, 
+      image: s.channelThumbnailUrl 
+    }])).values()).slice(0, 12);
+
+    return {
+      initialRanking,
+      popularChannels
+    };
+  },
+  ['home-ranking-cached'],
+  {
+    revalidate: 600, // 10分
+    tags: ['home-ranking']
+  }
+);
+
+export default async function Home() {
+  // 並列でキャッシュデータをロード
+  const [videos, rankingData] = await Promise.all([
+    getHomeVideosCached(),
+    getHomeRankingCached()
   ]);
 
-  const { data: videoData } = videoRes;
-
-  const videos = ((videoData as unknown as Video[]) || [])
-    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-    .slice(0, 12);
-
-  const allRankingSongs = (rankingRes.success && rankingRes.data) ? rankingRes.data : [];
-  const initialRanking = allRankingSongs.slice(0, 10);
-
-  // 3. 人気チャンネル (ランキングデータから抽出)
-  // 上位50曲に含まれるチャンネルから、ユニークなものを抽出
-  const popularChannels = Array.from(new Map(allRankingSongs.map(s => [s.channelId, { 
-    id: s.channelId,
-    handle: s.channelHandle,
-    name: s.channelName, 
-    image: s.channelThumbnailUrl 
-  }])).values()).slice(0, 12);
+  const { initialRanking, popularChannels } = rankingData;
 
   return (
     <div className="min-h-screen">

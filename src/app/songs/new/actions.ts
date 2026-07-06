@@ -7,7 +7,7 @@ import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } f
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -719,6 +719,11 @@ export async function revalidateChannel(channelRecordId: number | null): Promise
         revalidatePath(cleanHandlePath);
       }
     }
+
+    // 3. トップページのキャッシュを再検証
+    console.log(`[ISR] Revalidating Home path and tag`);
+    revalidatePath('/');
+    revalidateTag('home-videos', 'max');
   } catch (e) {
     console.error('Failed to revalidate channel pages:', e);
   }
