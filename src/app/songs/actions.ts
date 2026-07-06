@@ -14,6 +14,16 @@ type PopulatedSong = Song & {
   video: (Video & { channel: Channel | null }) | null;
 };
 
+// 配列をランダムにシャッフルするユーティリティ (Fisher-Yates アルゴリズム)
+function shuffleArray<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 // Last.fm から類似曲（タイトルとアーティスト）を取得する関数
 async function fetchSimilarTracksFromLastFm(
   title: string,
@@ -149,32 +159,32 @@ export async function getRelatedSongs(
     const needed = limit - recommendedSongs.length;
     console.log(`[Recommend] Fallback 1: Fetching up to ${needed} songs from the same VTuber channel (${channelRecordId})`);
     
-    // そのチャンネルに紐づく動画IDのリストを取得
-    const { data: channelVideos } = await supabase
-      .from('videos')
-      .select('id')
-      .eq('channel_record_id', channelRecordId);
+    // チャンネル内の楽曲からランダムな曲IDを取得する (RPCの呼び出し)
+    const { data: randomIdsData, error: rpcErr } = await supabase.rpc('get_random_song_ids_by_channel', {
+      p_channel_record_id: channelRecordId,
+      p_exclude_ids: currentExcludes,
+      p_limit: needed
+    });
 
-    const videoIds = channelVideos?.map(v => v.id) || [];
+    if (rpcErr) {
+      console.error('[Recommend] Error calling get_random_song_ids_by_channel:', rpcErr);
+    }
 
-    if (videoIds.length > 0) {
-      let query = supabase
+    const randomIds = (randomIdsData as { song_id: number | string }[] | null)?.map(r => Number(r.song_id)) || [];
+
+    if (randomIds.length > 0) {
+      const { data: channelSongs } = await supabase
         .from('songs')
         .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
-        .in('video_id', videoIds)
-        .eq('is_active', true);
-      
-      if (currentExcludes.length > 0) {
-        query = query.not('id', 'in', `(${currentExcludes.join(',')})`);
-      }
-
-      const { data: channelSongs } = await query
-        .order('created_at', { ascending: false })
-        .limit(needed);
+        .in('id', randomIds);
 
       if (channelSongs && channelSongs.length > 0) {
-        recommendedSongs = [...recommendedSongs, ...channelSongs];
-        currentExcludes = Array.from(new Set([...currentExcludes, ...channelSongs.map(s => s.id)]));
+        // RPCで返ってきたランダムな順番を維持するようにソート
+        const sortedSongs = channelSongs.sort((a, b) => {
+          return randomIds.indexOf(a.id) - randomIds.indexOf(b.id);
+        });
+        recommendedSongs = [...recommendedSongs, ...sortedSongs];
+        currentExcludes = Array.from(new Set([...currentExcludes, ...sortedSongs.map(s => s.id)]));
       }
     }
   }
@@ -230,12 +240,15 @@ export async function getRelatedSongs(
       query = query.not('id', 'in', `(${currentExcludes.join(',')})`);
     }
 
+    // ランダム性を出すために多め（最大100件）に取得してシャッフル
     const { data: randomSongs } = await query
-      .order('created_at', { ascending: false }) // 簡易的に最新順
-      .limit(needed);
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (randomSongs && randomSongs.length > 0) {
-      recommendedSongs = [...recommendedSongs, ...randomSongs];
+      const shuffled = shuffleArray(randomSongs);
+      const selected = shuffled.slice(0, needed);
+      recommendedSongs = [...recommendedSongs, ...selected];
     }
   }
 
