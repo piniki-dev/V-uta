@@ -114,6 +114,12 @@ export async function getRelatedSongs(
   let currentExcludes = Array.from(new Set([songId, ...excludeIds]));
   let recommendedSongs: PopulatedSong[] = [];
 
+  // 同一原曲のカバー違いが連続するのを防ぐため、選定済みの原曲ID（master_song_id）を追跡する
+  const excludeMasterIds = new Set<number>();
+  if (baseSong.master_song_id) {
+    excludeMasterIds.add(baseSong.master_song_id);
+  }
+
   // --- A. Last.fm API を使った類似曲の取得 ---
   if (masterSong?.title && masterSong?.artist) {
     // 登録曲数が少ない状態でのマッチ率を最大化するため、Last.fmからは多め（100件）に取得する
@@ -133,20 +139,62 @@ export async function getRelatedSongs(
           .limit(5);
 
         if (matchedMasters && matchedMasters.length > 0) {
-          const masterIds = matchedMasters.map(m => m.id);
+          // すでに推薦済みの原曲は除外する
+          const masterIds = matchedMasters
+            .map(m => m.id)
+            .filter(id => !excludeMasterIds.has(id));
           
+          if (masterIds.length === 0) continue;
+
           // それらの master_songs をカバーするアクティブな歌を取得
           const { data: coverSongs } = await supabase
             .from('songs')
             .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
             .in('master_song_id', masterIds)
             .eq('is_active', true)
-            .not('id', 'in', `(${currentExcludes.join(',')})`)
-            .limit(limit - recommendedSongs.length);
+            .not('id', 'in', `(${currentExcludes.join(',')})`); // limitは後でかける
 
           if (coverSongs && coverSongs.length > 0) {
-            recommendedSongs = [...recommendedSongs, ...coverSongs];
-            currentExcludes = Array.from(new Set([...currentExcludes, ...coverSongs.map(s => s.id)]));
+            // master_song_id ごとにグループ化
+            const groupedByMaster: { [masterId: number]: PopulatedSong[] } = {};
+            for (const song of coverSongs) {
+              const mid = song.master_song_id;
+              if (mid) {
+                if (!groupedByMaster[mid]) groupedByMaster[mid] = [];
+                groupedByMaster[mid].push(song);
+              }
+            }
+
+            // 各グループ（＝各原曲）から優先順位に基づいて1曲だけを抽出
+            const selectedSongs: PopulatedSong[] = [];
+            for (const midStr of Object.keys(groupedByMaster)) {
+              const mid = Number(midStr);
+              const songsInGroup = groupedByMaster[mid];
+
+              // 優先度：検索ベース曲のチャンネルID（channelRecordId）と一致するものを探す
+              const sameArtistSong = songsInGroup.find(
+                s => s.video?.channel_record_id === channelRecordId
+              );
+
+              if (sameArtistSong) {
+                selectedSongs.push(sameArtistSong);
+              } else {
+                // 一致するものがなければ、最初の1件を選択
+                selectedSongs.push(songsInGroup[0]);
+              }
+            }
+
+            // limit を超えないように追加し、除外リストを更新
+            const finalSelected = selectedSongs.slice(0, limit - recommendedSongs.length);
+            if (finalSelected.length > 0) {
+              recommendedSongs = [...recommendedSongs, ...finalSelected];
+              currentExcludes = Array.from(new Set([...currentExcludes, ...finalSelected.map(s => s.id)]));
+              for (const s of finalSelected) {
+                if (s.master_song_id) {
+                  excludeMasterIds.add(s.master_song_id);
+                }
+              }
+            }
           }
         }
       }
