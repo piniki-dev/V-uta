@@ -116,8 +116,8 @@ export async function getRelatedSongs(
 
   // --- A. Last.fm API を使った類似曲の取得 ---
   if (masterSong?.title && masterSong?.artist) {
-    console.log(`[Recommend] Fetching Last.fm similar tracks for: "${masterSong.title}" by ${masterSong.artist}`);
-    const similarTracks = await fetchSimilarTracksFromLastFm(masterSong.title, masterSong.artist, limit);
+    // 登録曲数が少ない状態でのマッチ率を最大化するため、Last.fmからは多め（100件）に取得する
+    const similarTracks = await fetchSimilarTracksFromLastFm(masterSong.title, masterSong.artist, 100);
     
     if (similarTracks.length > 0) {
       // 類似曲をカバーしている曲をDBから検索
