@@ -126,33 +126,47 @@ export async function getRelatedSongs(
     const similarTracks = await fetchSimilarTracksFromLastFm(masterSong.title, masterSong.artist, 100);
     
     if (similarTracks.length > 0) {
-      // 類似曲をカバーしている曲をDBから検索
-      for (const track of similarTracks) {
-        if (recommendedSongs.length >= limit) break;
+      // 1. V-uta側の全 master_songs を一発で取得する (N+1回避)
+      const { data: allMasters, error: masterErr } = await supabase
+        .from('master_songs')
+        .select('id, title, artist');
 
-        // まず類似する master_songs を検索
-        const { data: matchedMasters } = await supabase
-          .from('master_songs')
-          .select('id')
-          .ilike('title', `%${track.title}%`)
-          .ilike('artist', `%${track.artist}%`)
-          .limit(5);
+      if (masterErr) {
+        console.error('[Recommend] Error fetching all master_songs:', masterErr);
+      }
 
-        if (matchedMasters && matchedMasters.length > 0) {
-          // すでに推薦済みの原曲は除外する
-          const masterIds = matchedMasters
-            .map(m => m.id)
-            .filter(id => !excludeMasterIds.has(id));
-          
-          if (masterIds.length === 0) continue;
+      if (allMasters && allMasters.length > 0) {
+        // Last.fmの類似曲リストに部分一致する master_song_id をメモリ上で検索する
+        const matchedMasterIds: number[] = [];
+        
+        for (const track of similarTracks) {
+          const trackTitleLower = track.title.toLowerCase();
+          const trackArtistLower = track.artist.toLowerCase();
 
-          // それらの master_songs をカバーするアクティブな歌を取得
+          const matches = allMasters.filter(m => {
+            const mTitleLower = (m.title || '').toLowerCase();
+            const mArtistLower = (m.artist || '').toLowerCase();
+            // 部分一致 (ilike '%track.title%' かつ ilike '%track.artist%' 相当の判定)
+            return mTitleLower.includes(trackTitleLower) && mArtistLower.includes(trackArtistLower);
+          });
+
+          if (matches.length > 0) {
+            matchedMasterIds.push(...matches.map(m => m.id));
+          }
+        }
+
+        // 重複を除去し、すでに除外対象の原曲IDを除く
+        const uniqueMatchedMasterIds = Array.from(new Set(matchedMasterIds))
+          .filter(id => !excludeMasterIds.has(id));
+
+        if (uniqueMatchedMasterIds.length > 0) {
+          // 2. マッチしたすべての master_songs をカバーするアクティブな歌を1回のクエリで一括取得
           const { data: coverSongs } = await supabase
             .from('songs')
             .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
-            .in('master_song_id', masterIds)
+            .in('master_song_id', uniqueMatchedMasterIds)
             .eq('is_active', true)
-            .not('id', 'in', `(${currentExcludes.join(',')})`); // limitは後でかける
+            .not('id', 'in', `(${currentExcludes.join(',')})`);
 
           if (coverSongs && coverSongs.length > 0) {
             // master_song_id ごとにグループ化
@@ -167,9 +181,12 @@ export async function getRelatedSongs(
 
             // 各グループ（＝各原曲）から優先順位に基づいて1曲だけを抽出
             const selectedSongs: PopulatedSong[] = [];
-            for (const midStr of Object.keys(groupedByMaster)) {
-              const mid = Number(midStr);
+            
+            // Last.fmの類似度順（similarTracksの並び順）を維持するため、
+            // uniqueMatchedMasterIds (これはsimilarTracksのループ順になっている) の順に処理する
+            for (const mid of uniqueMatchedMasterIds) {
               const songsInGroup = groupedByMaster[mid];
+              if (!songsInGroup || songsInGroup.length === 0) continue;
 
               // 優先度：検索ベース曲のチャンネルID（channelRecordId）と一致するものを探す
               const sameArtistSong = songsInGroup.find(
