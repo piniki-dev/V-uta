@@ -6,7 +6,7 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
-import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2, Loader2 } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2, Loader2, Settings } from 'lucide-react';
 import type { PlayerSong, PlayerState } from '@/types';
 import type { PanInfo } from 'framer-motion';
 
@@ -28,6 +28,7 @@ export default function FullPlayer() {
     reorderPlaylist,
     clearPlaylist,
     toggleAutoplay,
+    toggleRecommendOthers,
   } = usePlayer();
   const { t, T } = useLocale();
   const { showToast } = useToast();
@@ -35,6 +36,7 @@ export default function FullPlayer() {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const isDraggingRef = useRef(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isAutoplaySettingsOpen, setIsAutoplaySettingsOpen] = useState(false);
   const dragControls = useDragControls();
   const mobileContainerRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -507,8 +509,17 @@ export default function FullPlayer() {
           {/* 自動再生トグル (モバイル) */}
           <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-secondary)] rounded-b-[40px] shrink-0 safe-bottom">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+                  <button 
+                    onClick={() => setIsAutoplaySettingsOpen(true)}
+                    className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors active:scale-95 flex items-center justify-center rounded-full hover:bg-[var(--border)]/10"
+                    title={T('player.autoplaySettings')}
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
                 <p className="text-xs text-[var(--text-tertiary)]">{T('player.autoplayDesc')}</p>
               </div>
               <button
@@ -697,8 +708,17 @@ export default function FullPlayer() {
           {/* 自動再生トグル (デスクトップ) */}
           <div className="p-4 lg:p-6 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50 shrink-0">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-[var(--text-primary)]">{T('player.autoplay')}</p>
+                  <button 
+                    onClick={() => setIsAutoplaySettingsOpen(true)}
+                    className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors active:scale-95 flex items-center justify-center rounded-full hover:bg-[var(--border)]/10"
+                    title={T('player.autoplaySettings')}
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
                 <p className="text-xs text-[var(--text-tertiary)]">{T('player.autoplayDesc')}</p>
               </div>
               <button
@@ -715,6 +735,49 @@ export default function FullPlayer() {
           </div>
         </div>
       </div>
+
+      {/* 自動再生詳細設定モーダル */}
+      {typeof window !== 'undefined' && isAutoplaySettingsOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setIsAutoplaySettingsOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-body pb-2">
+              <h3 className="modal-title flex items-center gap-2">
+                <Settings size={20} className="text-[var(--accent)] animate-spin-slow" />
+                {T('player.autoplaySettings')}
+              </h3>
+              
+              <div className="mt-6 flex flex-col gap-4 w-full text-left">
+                {/* 他VTuberミックスオプション */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-[var(--text-primary)]">{T('player.mixOthers')}</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">{T('player.mixOthersDesc')}</p>
+                  </div>
+                  <button
+                    onClick={toggleRecommendOthers}
+                    className={`w-12 h-6 rounded-full transition-colors relative outline-none shrink-0 ${state.isRecommendOthersEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                  >
+                    <motion.div 
+                      className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 shadow"
+                      animate={{ x: state.isRecommendOthersEnabled ? 24 : 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer mt-4">
+              <button
+                className="btn btn--secondary w-full"
+                onClick={() => setIsAutoplaySettingsOpen(false)}
+              >
+                {T('common.close')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 再生リストクリア確認モーダル */}
       {typeof window !== 'undefined' && isConfirmModalOpen && createPortal(

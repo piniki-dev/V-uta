@@ -35,12 +35,14 @@ type PlayerAction =
   | { type: 'SET_AUTOPLAY_ENABLED'; isEnabled: boolean }
   | { type: 'START_RADIO'; song: PlayerSong; playlist: PlayerSong[] }
   | { type: 'APPEND_PLAYLIST'; playlist: PlayerSong[] }
-  | { type: 'SET_FETCHING_RADIO'; isFetching: boolean };
+  | { type: 'SET_FETCHING_RADIO'; isFetching: boolean }
+  | { type: 'SET_RECOMMEND_OTHERS_ENABLED'; isEnabled: boolean };
 
 // ===== Constants =====
 const VOLUME_STORAGE_KEY = 'vuta-player-volume';
 const PRIVACY_STORAGE_KEY = 'vuta-player-privacy';
 const AUTOPLAY_STORAGE_KEY = 'vuta-player-autoplay';
+const RECOMMEND_OTHERS_STORAGE_KEY = 'vuta-player-recommend-others';
 
 // ===== Reducer =====
 
@@ -65,6 +67,7 @@ const initialState: PlayerState = {
   isRadioMode: false,
   isAutoplayEnabled: true,
   isFetchingRadio: false,
+  isRecommendOthersEnabled: false,
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -293,6 +296,11 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
         ...state,
         isFetchingRadio: action.isFetching
       };
+    case 'SET_RECOMMEND_OTHERS_ENABLED':
+      return {
+        ...state,
+        isRecommendOthersEnabled: action.isEnabled
+      };
     default:
       return state;
   }
@@ -327,6 +335,7 @@ interface PlayerContextType {
   setPrivacyMode: (isPrivacyMode: boolean, persist?: boolean) => void;
   startRadio: (song: PlayerSong) => Promise<void>;
   toggleAutoplay: () => void;
+  toggleRecommendOthers: () => void;
   playerRef: React.MutableRefObject<YT.Player | null>;
 }
 
@@ -350,12 +359,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // オートプレイの初期ロード
+  // オートプレイおよび他VTuberレコメンド設定の初期ロード
   useEffect(() => {
     const timer = setTimeout(() => {
       const savedAutoplay = localStorage.getItem(AUTOPLAY_STORAGE_KEY);
       if (savedAutoplay !== null) {
         dispatch({ type: 'SET_AUTOPLAY_ENABLED', isEnabled: savedAutoplay === 'true' });
+      }
+      const savedRecommendOthers = localStorage.getItem(RECOMMEND_OTHERS_STORAGE_KEY);
+      if (savedRecommendOthers !== null) {
+        dispatch({ type: 'SET_RECOMMEND_OTHERS_ENABLED', isEnabled: savedRecommendOthers === 'true' });
       }
     }, 0);
     return () => clearTimeout(timer);
@@ -374,7 +387,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         try {
           const excludeIds = state.playlist.map(s => s.id);
           const { getRelatedSongs } = await import('@/app/songs/actions');
-          const nextSongs = await getRelatedSongs(state.currentSong!.id, excludeIds, 10);
+          const nextSongs = await getRelatedSongs(state.currentSong!.id, excludeIds, 10, state.isRecommendOthersEnabled);
           
           if (nextSongs.length > 0) {
             dispatch({ type: 'APPEND_PLAYLIST', playlist: nextSongs });
@@ -388,7 +401,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       fetchNextSongs();
     }
-  }, [state.currentIndex, state.playlist, state.playlist.length, state.isAutoplayEnabled, state.isRadioMode, state.currentSong, state.isFetchingRadio]);
+  }, [state.currentIndex, state.playlist, state.playlist.length, state.isAutoplayEnabled, state.isRadioMode, state.currentSong, state.isFetchingRadio, state.isRecommendOthersEnabled]);
 
   // 音量の初期ロード (クライアントサイドのみ)
   useEffect(() => {
@@ -805,7 +818,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // バックグラウンドで関連曲を取得してプレイリストに追加
     try {
       const { getRelatedSongs } = await import('@/app/songs/actions');
-      const related = await getRelatedSongs(song.id, [song.id], 20);
+      const related = await getRelatedSongs(song.id, [song.id], 20, state.isRecommendOthersEnabled);
       if (related.length > 0) {
         dispatch({ type: 'APPEND_PLAYLIST', playlist: related });
       }
@@ -814,13 +827,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } finally {
       dispatch({ type: 'SET_FETCHING_RADIO', isFetching: false });
     }
-  }, [playerRef]);
+  }, [playerRef, state.isRecommendOthersEnabled]);
 
   const toggleAutoplay = useCallback(() => {
     const nextVal = !state.isAutoplayEnabled;
     dispatch({ type: 'SET_AUTOPLAY_ENABLED', isEnabled: nextVal });
     localStorage.setItem(AUTOPLAY_STORAGE_KEY, nextVal.toString());
   }, [state.isAutoplayEnabled]);
+
+  const toggleRecommendOthers = useCallback(() => {
+    const nextVal = !state.isRecommendOthersEnabled;
+    dispatch({ type: 'SET_RECOMMEND_OTHERS_ENABLED', isEnabled: nextVal });
+    localStorage.setItem(RECOMMEND_OTHERS_STORAGE_KEY, nextVal.toString());
+  }, [state.isRecommendOthersEnabled]);
 
   return (
     <PlayerContext.Provider
@@ -851,6 +870,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setPrivacyMode,
         startRadio,
         toggleAutoplay,
+        toggleRecommendOthers,
         playerRef,
       }}
     >

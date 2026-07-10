@@ -158,6 +158,7 @@ export interface PlayerState {
   isRadioMode: boolean;
   isAutoplayEnabled: boolean;
   isFetchingRadio: boolean;
+  isRecommendOthersEnabled: boolean;
 }
 
 // ===== YouTube API =====

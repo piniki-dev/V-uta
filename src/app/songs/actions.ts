@@ -90,7 +90,8 @@ function mapToPlayerSong(song: PopulatedSong): PlayerSong {
 export async function getRelatedSongs(
   songId: number,
   excludeIds: number[] = [],
-  limit = 20
+  limit = 20,
+  allowOthers = true
 ): Promise<PlayerSong[]> {
   const supabase = await createClient();
 
@@ -195,8 +196,8 @@ export async function getRelatedSongs(
 
               if (sameArtistSong) {
                 selectedSongs.push(sameArtistSong);
-              } else {
-                // 一致するものがなければ、最初の1件を選択
+              } else if (allowOthers) {
+                // 他のVTuberのミックスが許可されている場合のみ、最初の1件を選択
                 selectedSongs.push(songsInGroup[0]);
               }
             }
@@ -272,10 +273,16 @@ export async function getRelatedSongs(
           .slice(0, needed);
 
         if (popularSongIds.length > 0) {
-          const { data: popularSongs } = await supabase
+          let query = supabase
             .from('songs')
-            .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
+            .select('*, master_song:master_songs(*), video:videos!inner(*, channel:channels(*))')
             .in('id', popularSongIds);
+
+          if (!allowOthers && channelRecordId) {
+            query = query.eq('video.channel_record_id', channelRecordId);
+          }
+
+          const { data: popularSongs } = await query;
 
           if (popularSongs && popularSongs.length > 0) {
             const sortedPopular = popularSongs.sort((a, b) => {
@@ -298,11 +305,15 @@ export async function getRelatedSongs(
 
     let query = supabase
       .from('songs')
-      .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
+      .select('*, master_song:master_songs(*), video:videos!inner(*, channel:channels(*))')
       .eq('is_active', true);
 
     if (currentExcludes.length > 0) {
       query = query.not('id', 'in', `(${currentExcludes.join(',')})`);
+    }
+
+    if (!allowOthers && channelRecordId) {
+      query = query.eq('video.channel_record_id', channelRecordId);
     }
 
     // ランダム性を出すために多め（最大100件）に取得してシャッフル

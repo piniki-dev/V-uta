@@ -104,6 +104,9 @@ export const translations = {
       clearQueueConfirm: '再生中の曲を除いて、再生リストを空にしますか？',
       autoplay: '自動再生',
       autoplayDesc: '似た曲を自動的に追加します',
+      mixOthers: '他のVTuberのカバーを含める',
+      mixOthersDesc: '他チャンネルの関連曲も追加します',
+      autoplaySettings: '自動再生の設定',
     },
     archive: {
       title: '曲名',
@@ -528,6 +531,9 @@ export const translations = {
       clearQueueConfirm: 'Are you sure you want to clear all songs in the queue except the currently playing one?',
       autoplay: 'Autoplay',
       autoplayDesc: 'Automatically add similar songs',
+      mixOthers: 'Mix Other VTubers',
+      mixOthersDesc: 'Add related songs from other channels',
+      autoplaySettings: 'Autoplay Settings',
     },
     archive: {
       title: 'Title',
