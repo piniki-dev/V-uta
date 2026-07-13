@@ -35,6 +35,7 @@ interface EditableSong {
   importedArtist?: string;
   importedStartTime?: string;
   importedEndTime?: string;
+  validationError?: string;
 }
 
 interface BatchProgress {
@@ -575,8 +576,56 @@ export default function ImportSongsClient() {
     if (!metadata) return;
     setError('');
     setSuccess('');
-    setSaveStatus('saving');
     setSaveErrorMsg('');
+
+    // 一括バリデーションチェック
+    let firstErrorIndex = -1;
+    const validatedSongs = allSongs.map((item, index) => {
+      const isTarget = (item.isConfirmed || item.id) && !item.isDeleted;
+      if (!isTarget) {
+        return { ...item, validationError: undefined };
+      }
+
+      const startSec = parseTime(item.startTime);
+      const endSec = parseTime(item.endTime);
+      let validationError: string | undefined = undefined;
+
+      if (!item.song.master_song?.title?.trim()) {
+        validationError = T('newSong.validationTitleRequired');
+      } else if (startSec === null) {
+        validationError = T('newSong.validationStartTimeError');
+      } else if (endSec === null) {
+        validationError = T('newSong.validationEndTimeError');
+      } else if (startSec >= endSec) {
+        validationError = T('newSong.validationTimeRangeError');
+      } else if (endSec - startSec < 10) {
+        validationError = T('newSong.validationDurationError');
+      }
+
+      if (validationError && firstErrorIndex === -1) {
+        firstErrorIndex = index;
+      }
+
+      return { ...item, validationError };
+    });
+
+    if (firstErrorIndex !== -1) {
+      setAllSongs(validatedSongs);
+      setSaveStatus('idle');
+      
+      // 最初のエラー項目へスクロール
+      setTimeout(() => {
+        const targetElement = document.getElementById(`song-card-${firstErrorIndex}`);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return;
+    }
+
+    // エラーがなかった場合はエラーをクリアし、保存中ステータスにする
+    setAllSongs(prev => prev.map(s => ({ ...s, validationError: undefined })));
+    setSaveStatus('saving');
 
     // 保存対象
     const songsToRegister = allSongs
@@ -670,7 +719,7 @@ export default function ImportSongsClient() {
 
   // --- Inline Helpers ---
   const updateSongField = (index: number, field: 'startTime' | 'endTime', value: string) => {
-    setAllSongs(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+    setAllSongs(prev => prev.map((s, i) => i === index ? { ...s, [field]: value, validationError: undefined } : s));
   };
   const handleDeleteSong = (index: number) => {
     setAllSongs((prev) =>
@@ -761,6 +810,7 @@ export default function ImportSongsClient() {
           isConfirmed: true,
           isChangingSong: false,
           searchResults: [],
+          validationError: undefined,
           endTime: updatedEndTime,
           song: {
             ...s.song,
@@ -1126,7 +1176,17 @@ export default function ImportSongsClient() {
               {/* Side-by-Side Comparison List */}
               <div className="space-y-4">
                 {allSongs.map((item, index) => (
-                  <div key={index} className={`card overflow-hidden transition-all ${item.isDeleted ? 'opacity-40 grayscale scale-[0.98]' : 'hover:border-[var(--accent)]/40 shadow-sm'}`}>
+                  <div 
+                    key={index} 
+                    id={`song-card-${index}`}
+                    className={`card overflow-hidden transition-all ${
+                      item.isDeleted 
+                        ? 'opacity-40 grayscale scale-[0.98]' 
+                        : item.validationError 
+                          ? 'border-red-500 bg-red-500/5 shadow-sm shadow-red-500/5' 
+                          : 'hover:border-[var(--accent)]/40 shadow-sm'
+                    }`}
+                  >
                     {/* Top Section: Raw Imported Data */}
                     <div className="bg-[var(--bg-tertiary)]/50 px-4 py-3 border-b border-[var(--border)] flex flex-wrap items-center gap-x-6 gap-y-2">
                       <div className="flex items-center gap-2 text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest whitespace-nowrap">
@@ -1194,9 +1254,17 @@ export default function ImportSongsClient() {
                               <p className="text-sm text-[var(--text-secondary)] font-medium truncate mb-3">
                                 {item.song.master_song?.artist || 'Click to search manually'}
                               </p>
-                              <button onClick={() => openSongEditModal(index)} className="btn btn--sm btn--secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider h-8">
-                                <Search size={12} /> {T('newSong.changeSong')}
-                              </button>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <button onClick={() => openSongEditModal(index)} className="btn btn--sm btn--secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider h-8">
+                                  <Search size={12} /> {T('newSong.changeSong')}
+                                </button>
+                        {item.validationError && (
+                                  <div className="text-red-500 text-xs font-bold flex items-center gap-1.5 bg-red-500/10 p-1.5 px-3 rounded-lg border border-red-500/20 shadow-sm">
+                                    <AlertCircle size={14} className="flex-shrink-0" />
+                                    <span>{item.validationError}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* 時間入力エリアをコンパクトに右側に配置 */}
@@ -1221,14 +1289,14 @@ export default function ImportSongsClient() {
                                   placeholder="Required"
                                 />
                               </div>
+
+                              {(!item.endTime || item.endTime === '0:00') && (
+                                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1 text-red-500 font-bold text-[8px] tracking-tight animate-pulse whitespace-nowrap bg-[var(--bg-secondary)] px-1.5 py-0.5 rounded border border-red-500/10 shadow-sm z-10">
+                                  <AlertCircle size={10} className="flex-shrink-0" />
+                                  <span>{T('newSong.missingEndTime')}</span>
+                                </div>
+                              )}
                             </div>
-                            
-                            {(!item.endTime || item.endTime === '0:00') && (
-                              <div className="lg:absolute lg:-right-4 lg:top-1/2 lg:-translate-y-1/2 flex items-center gap-1 text-red-500 font-bold text-[10px] animate-pulse">
-                                <AlertCircle size={14} />
-                                <span>MISSING END TIME</span>
-                              </div>
-                            )}
                           </div>
                         </div>
 
