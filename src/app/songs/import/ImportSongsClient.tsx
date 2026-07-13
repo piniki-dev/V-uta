@@ -45,6 +45,7 @@ interface BatchProgress {
   channelTitle?: string;
   duration?: number;
   publishedAt?: string;
+  isSkipped?: boolean;
 }
 
 export default function ImportSongsClient() {
@@ -227,11 +228,22 @@ export default function ImportSongsClient() {
       try {
         const result = await fetchVideoPreview(item.url);
         if (result.success) {
+          const existingSongs = result.data.existingSongs || [];
+          const existingStartTimes = existingSongs.map(s => s.start_sec);
+          const newImportSongs = item.songs.filter(s => {
+            const startSec = parseTime(s.startTime);
+            if (startSec === null) return true;
+            return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 15);
+          });
+
+          const isSkipped = existingSongs.length > 0 && newImportSongs.length === 0;
+
           setProgress(prev => ({
             ...prev,
             [item.url]: { 
               ...prev[item.url], 
-              status: 'pending', // 準備完了の意味。処理開始待ち
+              status: isSkipped ? 'completed' : 'pending',
+              isSkipped: isSkipped,
               videoTitle: result.data.metadata.title,
               thumbnailUrl: result.data.metadata.thumbnailUrl,
               channelTitle: result.data.metadata.channelName,
@@ -326,7 +338,7 @@ export default function ImportSongsClient() {
     });
   };
 
-  const startProcessingItem = useCallback((index: number, archives = batchArchives) => {
+  const startProcessingItem = useCallback((index: number, archives = batchArchives, isManualClick = false) => {
     if (index < 0 || index >= archives.length) return;
 
     // 実際の読み込み＆処理開始ロジックを切り出し
@@ -400,8 +412,35 @@ export default function ImportSongsClient() {
         const newImportSongs = item.songs.filter(s => {
           const startSec = parseTime(s.startTime);
           if (startSec === null) return true;
-          return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 5);
+          return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 15);
         });
+
+        const isSkipped = result.data.existingSongs.length > 0 && newImportSongs.length === 0;
+
+        if (isSkipped) {
+          setProgress(prev => ({
+            ...prev,
+            [item.url]: { 
+              ...prev[item.url], 
+              status: 'completed',
+              isSkipped: true
+            }
+          }));
+
+          setSuccess(T('newSong.skippedNoNewSongs', { title: result.data.metadata.title }));
+
+          if (!isManualClick) {
+            const nextIndex = index + 1;
+            if (nextIndex < archives.length) {
+              setTimeout(() => {
+                startProcessingItem(nextIndex, archives, false);
+              }, 1000);
+            } else {
+              setSuccess(T('newSong.saveSuccess'));
+            }
+            return;
+          }
+        }
 
         const convertedSongs: EditableSong[] = newImportSongs.map(s => ({
           song: {
@@ -770,7 +809,7 @@ export default function ImportSongsClient() {
                     return (
                       <button
                         key={idx}
-                        onClick={() => startProcessingItem(idx)}
+                        onClick={() => startProcessingItem(idx, batchArchives, true)}
                         disabled={isPending}
                         className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all border-2 mb-1 group ${
                           isCurrent 
@@ -789,9 +828,15 @@ export default function ImportSongsClient() {
                           )}
                           {info?.status === 'completed' && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
-                              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-emerald-500 animate-in zoom-in-50 duration-200">
-                                <CheckCircle2 size={20} className="text-emerald-500 fill-emerald-500/10" />
-                              </div>
+                              {info.isSkipped ? (
+                                <div className="px-2 py-0.5 rounded bg-gray-800 text-[10px] text-gray-300 border border-gray-600 font-bold shadow-lg animate-in zoom-in-50 duration-200">
+                                  {T('newSong.skipped')}
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-emerald-500 animate-in zoom-in-50 duration-200">
+                                  <CheckCircle2 size={20} className="text-emerald-500 fill-emerald-500/10" />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -827,7 +872,14 @@ export default function ImportSongsClient() {
               </div>
               <div className="card__footer p-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)]/50">
                 <div className="flex justify-between text-xs font-bold text-[var(--text-secondary)]">
-                  <span>{Object.values(progress).filter(p => p.status === 'completed').length} / {batchArchives.length} Completed</span>
+                  <span>
+                    {Object.values(progress).filter(p => p.status === 'completed').length} / {batchArchives.length} {T('newSong.processed')}
+                    {Object.values(progress).filter(p => p.status === 'completed' && p.isSkipped).length > 0 && (
+                      <span className="text-[var(--text-tertiary)] font-normal text-[10px] ml-1">
+                        ({Object.values(progress).filter(p => p.status === 'completed' && p.isSkipped).length} {T('newSong.skippedCount')})
+                      </span>
+                    )}
+                  </span>
                   <span>{Math.round((Object.values(progress).filter(p => p.status === 'completed').length / batchArchives.length) * 100)}%</span>
                 </div>
                 <div className="mt-2 h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
@@ -861,7 +913,7 @@ export default function ImportSongsClient() {
                     {T('newSong.selectFile')}
                     <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
                   </label>
-                </div>
+                 </div>
 
                 <div className="card p-8 flex flex-col items-center text-center gap-6">
                   <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner border border-emerald-500/10">

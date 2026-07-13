@@ -236,6 +236,10 @@ export const translations = {
       googleSheetStep2: 'メニューの「ファイル」＞「共有」＞「ウェブに公開」を選択します。',
       googleSheetStep3: '公開設定で「リンク」タブのまま、ドキュメント全体（または該当シート）と「カンマ区切り値 (.csv)」を選択し、「公開」をクリックします。',
       googleSheetStep4: '生成された `https://docs.google.com/spreadsheets/d/.../pub?output=csv` のようなURLをコピーし、上の入力欄に貼り付けて「取得」をクリックします。',
+      skippedNoNewSongs: '「{title}」は新規の曲がないためスキップしました。',
+      skipped: '重複スキップ',
+      skippedCount: 'スキップ',
+      processed: '処理済み',
     },
     songMenu: {
       playNext: '次に再生',
@@ -663,6 +667,10 @@ export const translations = {
       googleSheetStep2: 'Go to "File" > "Share" > "Publish to web" in the Google Sheets menu.',
       googleSheetStep3: 'In the publish settings, select "Link", choose the sheet, select "Comma-separated values (.csv)", and click "Publish".',
       googleSheetStep4: 'Copy the generated URL (looks like `https://docs.google.com/spreadsheets/d/.../pub?output=csv`) and paste it into the input field above, then click "Fetch".',
+      skippedNoNewSongs: 'Skipped "{title}" because there are no new songs to add.',
+      skipped: 'Skipped',
+      skippedCount: 'skipped',
+      processed: 'Processed',
     },
     songMenu: {
       playNext: 'Play Next',
