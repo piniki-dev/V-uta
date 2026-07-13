@@ -41,15 +41,20 @@ export default function ShareModal({ song, onClose, trackNumber }: Props) {
   const shareText = `${song.title} / ${song.artist || '不明'} - ${song.videoTitle || '動画'} / ${song.channelName || '不明'} #V_uta`;
   const xIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}`;
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!appUrl) return;
-    sendGAEvent('event', 'share_song', {
-      song_id: song.id,
-      song_title: song.title,
-      method: 'copy_url',
-    });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(appUrl);
+      sendGAEvent('event', 'share_song', {
+        song_id: song.id,
+        song_title: song.title,
+        method: 'copy_url',
+      });
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy url: ', err);
+    }
   };
 
   if (!isMounted) return null;
