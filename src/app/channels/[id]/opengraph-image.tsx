@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 import { createClient } from '@supabase/supabase-js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';

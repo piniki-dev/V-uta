@@ -1,7 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 import { createClient } from '@supabase/supabase-js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { Song, MasterSong } from '@/types';
 
 export const runtime = 'nodejs';
 
@@ -85,7 +87,7 @@ export default async function Image({
 
   // 登録曲リストを取得（動画IDに紐づくすべての有効な曲）
   let songInfo = null;
-  let songsList: any[] = [];
+  let songsList: (Song & { master_song: MasterSong | null })[] = [];
   let totalSongsCount = 0;
 
   const { data: songs } = await supabase
@@ -144,7 +146,7 @@ export default async function Image({
   }
 
   const rawArtist = songInfo ? (songInfo.master_song?.artist || channelName) : channelName;
-  let displayArtist = rawArtist; // アーティスト名のJSカットを全廃し、CSS Ellipsisに完全委任
+  const displayArtist = rawArtist; // アーティスト名のJSカットを全廃し、CSS Ellipsisに完全委任
   
   // アーティスト名のフォントサイズを大きく調整
   let artistFontSize = '34px'; // 28px -> 34px
