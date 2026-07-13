@@ -124,6 +124,18 @@ export default async function Image({ params }: Props) {
     console.error('Failed to fetch channel metadata for OGP:', e);
   }
 
+  // チャンネル名の長さ調整とフォントサイズ決定（スマホでの視認性重視）
+  let displayName = channelName;
+  let nameFontSize = '34px';
+  if (channelName.length > 22) {
+    displayName = channelName.slice(0, 21) + '...';
+    nameFontSize = '28px';
+  } else if (channelName.length > 14) {
+    nameFontSize = '28px';
+  } else if (channelName.length > 8) {
+    nameFontSize = '30px';
+  }
+
   const fontData = await loadFont();
 
   return new ImageResponse(
@@ -228,14 +240,14 @@ export default async function Image({ params }: Props) {
               <div
                 style={{
                   display: 'flex',
-                  fontSize: '34px',
+                  fontSize: nameFontSize,
                   fontWeight: 900,
                   color: '#ffffff',
                   letterSpacing: '-1px',
                   lineHeight: 1.2,
                 }}
               >
-                {channelName}
+                {displayName}
               </div>
               <div
                 style={{
@@ -249,34 +261,6 @@ export default async function Image({ params }: Props) {
               >
                 VTuber CHANNEL
               </div>
-            </div>
-          </div>
-
-          {/* キャッチコピー */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div
-              style={{
-                display: 'flex',
-                fontSize: '28px',
-                fontWeight: 700,
-                color: '#ffffff',
-                lineHeight: 1.4,
-                letterSpacing: '-0.5px',
-              }}
-            >
-              歌枠から、歌だけ連続再生。
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                fontSize: '14px',
-                color: 'rgba(255, 255, 255, 0.4)',
-                fontWeight: 500,
-                lineHeight: 1.5,
-                marginTop: '10px',
-              }}
-            >
-              聴きたい曲をすぐ再生。お気に入りをプレイリストにまとめよう。
             </div>
           </div>
 
@@ -357,6 +341,34 @@ export default async function Image({ params }: Props) {
               >
                 登録曲
               </div>
+            </div>
+          </div>
+
+          {/* キャッチコピー */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: '28px',
+                fontWeight: 700,
+                color: '#ffffff',
+                lineHeight: 1.4,
+                letterSpacing: '-0.5px',
+              }}
+            >
+              歌枠から、歌だけ連続再生。
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: '14px',
+                color: 'rgba(255, 255, 255, 0.4)',
+                fontWeight: 500,
+                lineHeight: 1.5,
+                marginTop: '10px',
+              }}
+            >
+              聴きたい曲をすぐ再生。お気に入りをプレイリストにまとめよう。
             </div>
           </div>
 
@@ -492,7 +504,7 @@ export default async function Image({ params }: Props) {
             </div>
             {/* チャンネル名 */}
             <div style={{ display: 'flex', fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginTop: '4px', fontWeight: 500 }}>
-              {channelName}
+              {displayName}
             </div>
 
             {/* イコライザー */}
