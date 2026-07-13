@@ -58,13 +58,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: {
       title: `${channel.name} | ${t.common.siteTitle}`,
       description,
-      images: channel.image ? [channel.image] : [],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: `${channel.name} | ${t.common.siteTitle}`,
       description,
-      images: channel.image ? [channel.image] : [],
     }
   };
 }
