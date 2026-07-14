@@ -567,7 +567,7 @@ export async function registerFullArchive(input: {
     // RPC から返却された型付き JSON データをマッピングして返却
     const result = data as { video: Video; songs: Song[] };
     if (result.video) {
-      await revalidateChannel(result.video.channel_record_id);
+      await revalidateChannelByVideo(result.video.id);
     }
     return { success: true, data: result };
   } catch (e) {
@@ -767,6 +767,9 @@ export async function revalidateChannelByVideo(videoDbId: number): Promise<void>
         const videoOgPath = `/videos/${video.video_id}/og`;
         console.log(`[ISR] Revalidating video OG path: ${videoOgPath}`);
         revalidatePath(videoOgPath);
+
+        console.log('[ISR] Revalidating unstable_cache tag: video-details');
+        revalidateTag('video-details', 'max');
       }
     }
   } catch (e) {
