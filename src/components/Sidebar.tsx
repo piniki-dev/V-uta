@@ -17,18 +17,12 @@ import { useSidebar } from './SidebarContext';
 import { useLocale } from './LocaleProvider';
 import { usePlayer } from './player/PlayerContext';
 
-export default function Sidebar({ 
-  initialUser, 
-  initialPlaylists 
-}: { 
-  initialUser: SupabaseUser | null,
-  initialPlaylists: Playlist[]
-}) {
+export default function Sidebar() {
   const { isOpen, close } = useSidebar();
   const { state: playerState } = usePlayer();
-  const [user, setUser] = useState<SupabaseUser | null>(initialUser);
-  const [isPlaylistOpen, setIsPlaylistOpen] = useState(!!initialUser);
-  const playlists = initialPlaylists;
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { T, isMounted } = useLocale();
   const hasPlayer = !!playerState.currentSong;
   const router = useRouter();
@@ -38,17 +32,41 @@ export default function Sidebar({
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      if (user) setIsPlaylistOpen(true);
     };
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const newUser = session?.user ?? null;
+      setUser(newUser);
+      if (newUser) setIsPlaylistOpen(true);
     });
 
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // プレイリストの読み込みはサーバーサイドに移行したため削除
+  // プレイリストをクライアントサイドで取得
+  useEffect(() => {
+    if (!user) {
+      if (playlists.length > 0) {
+        setPlaylists([]);
+      }
+      return;
+    }
+    const fetchPlaylists = async () => {
+      try {
+        const res = await fetch('/api/playlists');
+        if (res.ok) {
+          const data = await res.json();
+          setPlaylists(data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch playlists:', e);
+      }
+    };
+    fetchPlaylists();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

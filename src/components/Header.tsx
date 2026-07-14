@@ -1,22 +1,21 @@
-import { createClient } from '@/utils/supabase/server';
+import { Suspense } from 'react';
 import AuthButton from './AuthButton';
 import HeaderToggle from './HeaderToggle';
 import SearchForm from './SearchForm';
 import { HeaderProvider } from './HeaderProvider';
 
-export default async function Header() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function Header() {
   return (
     <HeaderProvider>
       <header className="header">
         <div className="header__inner">
           <HeaderToggle />
-          <SearchForm />
+          <Suspense fallback={null}>
+            <SearchForm />
+          </Suspense>
 
           <div className="header__actions font-bold">
-            <AuthButton user={user} />
+            <AuthButton />
           </div>
         </div>
       </header>

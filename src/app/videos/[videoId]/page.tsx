@@ -1,36 +1,44 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Video, Song } from '@/types';
 import ArchiveView from './ArchiveView';
 import { translations } from '@/lib/translations';
-import { cookies } from 'next/headers';
 import JsonLd from '@/components/JsonLd';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { getVideosForStatic } from '@/app/songs/new/actions';
 
-// 同一リクエスト内でのデータ取得をキャッシュ（重複排除）
-const getCachedVideoDetails = cache(async (videoId: string) => {
-  console.log('getCachedVideoDetails called for videoId:', videoId);
-  const supabase = await createClient();
+// unstable_cache でリクエスト間キャッシュ（手動パージで更新）
+const getCachedVideoDetails = unstable_cache(
+  async (videoId: string) => {
+    console.log('[unstable_cache] Fetching video details for:', videoId);
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    );
   
-  const { data: video } = await supabase
-    .from('videos')
-    .select('*, channel:channels(*)')
-    .eq('video_id', videoId)
-    .single();
+    const { data: video } = await supabase
+      .from('videos')
+      .select('*, channel:channels(*)')
+      .eq('video_id', videoId)
+      .single();
 
-  if (!video) {
-    return { video: null, songs: [] };
+    if (!video) {
+      return { video: null, songs: [] };
+    }
+
+    const { data: songs } = await supabase
+      .from('songs')
+      .select('*, master_song:master_songs(*)')
+      .eq('video_id', video.id)
+      .eq('is_active', true)
+      .order('start_sec', { ascending: true });
+
+    return { video, songs: songs || [] };
+  },
+  ['video-details'],
+  {
+    tags: ['video-details']
   }
-
-  const { data: songs } = await supabase
-    .from('songs')
-    .select('*, master_song:master_songs(*)')
-    .eq('video_id', video.id)
-    .eq('is_active', true)
-    .order('start_sec', { ascending: true });
-
-  return { video, songs: songs || [] };
-});
+);
 
 export async function generateStaticParams() {
   const result = await getVideosForStatic();
@@ -55,8 +63,7 @@ export async function generateMetadata({
 
   const { video, songs } = await getCachedVideoDetails(videoId);
 
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const locale = 'ja';
   const t = translations[locale];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 
@@ -69,12 +76,8 @@ export async function generateMetadata({
   
   const channelName = video.channel?.name || t.common.unknown;
   const description = songList 
-    ? (locale === 'ja' 
-        ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList} を連続再生・スキップして視聴できます。`
-        : `Karaoke archive by ${channelName}. Setlist: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList}. Play and skip through songs.`)
-    : (locale === 'ja'
-        ? `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`
-        : `Karaoke archive by ${channelName}. No songs registered yet.`);
+    ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songList.length > 100 ? songList.substring(0, 100) + '...' : songList} を連続再生・スキップして視聴できます。`
+    : `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`;
 
   const ogUrl = track ? `${baseUrl}/videos/${videoId}/og?track=${track}` : `${baseUrl}/videos/${videoId}/og`;
 
@@ -105,8 +108,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   
   const { video, songs } = await getCachedVideoDetails(videoId);
 
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const locale = 'ja';
   const t = translations[locale];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 
@@ -132,12 +134,8 @@ export default async function ArchivePage({ params, searchParams }: Props) {
 
   const channelName = typedVideo.channel?.name || "Unknown VTuber";
   const songDescription = songListText
-    ? (locale === 'ja'
-        ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText} を連続再生・スキップして視聴できます。`
-        : `Karaoke archive by ${channelName}. Setlist: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText}. Play and skip through songs.`)
-    : (locale === 'ja'
-        ? `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`
-        : `Karaoke archive by ${channelName}. No songs registered yet.`);
+    ? `${channelName}の歌枠・ライブアーカイブ。収録曲: ${songListText.length > 100 ? songListText.substring(0, 100) + '...' : songListText} を連続再生・スキップして視聴できます。`
+    : `${channelName}の歌枠・ライブアーカイブ。曲は登録されていません。`;
 
   // track パラメータ (1-indexed) から songId を特定
   const trackNum = typeof sParams.track === 'string' ? parseInt(sParams.track) : null;

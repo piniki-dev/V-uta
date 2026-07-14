@@ -1,13 +1,10 @@
 import { getChannels } from './actions';
 import ChannelsView from './ChannelsView';
-import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 
-export async function generateMetadata() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export function generateMetadata() {
+  const t = translations['ja'];
 
   return {
     title: `${t.sidebar.channels} | ${t.common.siteTitle}`,
@@ -17,7 +14,6 @@ export async function generateMetadata() {
 
 export default async function ChannelsPage() {
   const result = await getChannels();
-  const cookieStore = await cookies();
 
   if (!result.success) {
     return (
@@ -29,7 +25,7 @@ export default async function ChannelsPage() {
   }
 
   const channels = result.data || [];
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const locale = 'ja';
   const t = translations[locale];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 

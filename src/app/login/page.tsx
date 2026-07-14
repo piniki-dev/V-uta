@@ -1,12 +1,9 @@
 import { Metadata } from 'next';
 import LoginForm from './LoginForm';
 import { translations } from '@/lib/translations';
-import { cookies } from 'next/headers';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export function generateMetadata(): Metadata {
+  const t = translations['ja'];
 
   return {
     title: `${t.auth.loginTitle} | ${t.common.siteTitle}`,
@@ -14,10 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function LoginPage() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export default function LoginPage() {
+  const t = translations['ja'];
 
   const initialTranslations = {
     title: t.auth.loginTitle,

@@ -581,8 +581,11 @@ export async function registerFullArchive(input: {
  */
 export async function getChannelWithVideos(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
   console.log('getChannelWithVideos called with identifier:', identifier);
-  const supabase = await createClient();
-  const t = await getLocaleT();
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  );
+  const t = translations['ja'];
 
   let query = supabase
     .from('channels')
@@ -634,8 +637,11 @@ export async function getChannelWithVideos(identifier: string | number): Promise
  */
 export async function getChannelMetadata(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
   console.log('getChannelMetadata called with identifier:', identifier);
-  const supabase = await createClient();
-  const t = await getLocaleT();
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  );
+  const t = translations['ja'];
 
   let query = supabase
     .from('channels')
@@ -795,7 +801,7 @@ export async function getVideosForStatic(): Promise<ActionResult<{ video_id: str
  * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする
  */
 async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
-  const t = await getLocaleT();
+  const t = translations['ja'];
   const { data: videos, error: vidErr } = await supabase
     .from('videos')
     .select(`

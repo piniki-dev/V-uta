@@ -1,12 +1,11 @@
+'use client';
+
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { getT } from '@/lib/translations';
+import { useLocale } from '@/components/LocaleProvider';
 import './Footer.css';
 
-export default async function Footer() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const T = getT(locale);
+export default function Footer() {
+  const { T } = useLocale();
 
   return (
     <footer className="footer">

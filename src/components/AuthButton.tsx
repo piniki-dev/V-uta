@@ -11,10 +11,10 @@ import { useLocale } from './LocaleProvider';
 import { useHeader } from './HeaderProvider';
 import Image from 'next/image';
 
-export default function AuthButton({ user: initialUser }: { user: User | null }) {
+export default function AuthButton() {
   const router = useRouter();
   const supabase = createClient();
-  const [user, setUser] = useState<User | null>(initialUser);
+  const [user, setUser] = useState<User | null>(null);
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, T, isMounted } = useLocale();
   const { isMobileSearchActive, toggleMobileSearch } = useHeader();
@@ -22,14 +22,10 @@ export default function AuthButton({ user: initialUser }: { user: User | null })
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? initialUser);
-      
-      if (session?.user && !initialUser) {
-        router.refresh();
-      }
+      setUser(session?.user ?? null);
     };
     checkSession();
-  }, [initialUser, supabase, router]);
+  }, [supabase]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

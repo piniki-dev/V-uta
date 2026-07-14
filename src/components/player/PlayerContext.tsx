@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, Suspense, type ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { PlayerSong, PlayerState, PipPosition } from '@/types';
 import { recordPlayHistory, updatePlayDuration } from '@/app/history/actions';
@@ -354,10 +354,6 @@ export function usePlayer(): PlayerContextType {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const playerRef = useRef<YT.Player | null>(null);
-  const isFirstMount = useRef(true);
-  const isFullPlayerOpenRef = useRef(state.isFullPlayerOpen);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   // オートプレイおよび他VTuberレコメンド設定の初期ロード
   useEffect(() => {
@@ -428,23 +424,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    isFullPlayerOpenRef.current = state.isFullPlayerOpen;
-  }, [state.isFullPlayerOpen]);
 
-  // ページ遷移時にフルプレイヤーを閉じる
-  useEffect(() => {
-    // 初回マウント（ランディング時）は無視する
-    // これにより共有リンクからの自動再生時にプレイヤーが即座に閉じるのを防ぐ
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      return;
-    }
-
-    if (isFullPlayerOpenRef.current) {
-      dispatch({ type: 'CLOSE_FULL_PLAYER' });
-    }
-  }, [pathname, searchParams]);
 
   // 自動アスペクト比検出
   useEffect(() => {
@@ -874,7 +854,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playerRef,
       }}
     >
+      <Suspense fallback={null}>
+        <PlayerRouteWatcher />
+      </Suspense>
       {children}
     </PlayerContext.Provider>
   );
+}
+
+function PlayerRouteWatcher() {
+  const { state, closeFullPlayer } = usePlayer();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isFirstMount = useRef(true);
+  const isFullPlayerOpenRef = useRef(state.isFullPlayerOpen);
+
+  useEffect(() => {
+    isFullPlayerOpenRef.current = state.isFullPlayerOpen;
+  }, [state.isFullPlayerOpen]);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
+    if (isFullPlayerOpenRef.current) {
+      closeFullPlayer();
+    }
+  }, [pathname, searchParams, closeFullPlayer]);
+
+  return null;
 }

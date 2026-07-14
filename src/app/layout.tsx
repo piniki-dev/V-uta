@@ -10,8 +10,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import Footer from "@/components/Footer";
-import { createClient } from "@/utils/supabase/server";
-import { getPlaylists } from "@/app/playlists/actions";
+
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -38,12 +37,9 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 import { translations } from "@/lib/translations";
-import { cookies } from "next/headers";
 
-export async function generateMetadata() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export function generateMetadata() {
+  const t = translations['ja'];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
   return {
@@ -67,7 +63,7 @@ export async function generateMetadata() {
       description: t.home.description,
       url: baseUrl,
       siteName: t.common.siteTitle,
-      locale: locale === 'ja' ? 'ja_JP' : 'en_US',
+      locale: 'ja_JP',
       type: 'website',
     },
     twitter: {
@@ -98,22 +94,16 @@ export const viewport = {
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const playlistsRes = await getPlaylists();
-  const initialPlaylists = playlistsRes.success ? playlistsRes.data || [] : [];
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="ja" suppressHydrationWarning>
       <body className={`${outfit.variable} ${plusJakarta.variable} ${notoSansJP.variable}`}>
-        <LocaleProvider initialLocale={locale}>
+        <LocaleProvider>
           <ThemeProvider>
             <FavoritesProvider>
               <PlayerProvider>
@@ -122,7 +112,7 @@ export default async function RootLayout({
                     <ScrollToTop />
                     <Header />
                     <div className="app-layout mesh-bg">
-                      <Sidebar initialUser={user} initialPlaylists={initialPlaylists} />
+                      <Sidebar />
                       <LayoutWrapper>
                         <main className="main-content">
                           <div className="flex-1">

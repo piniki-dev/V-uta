@@ -2,7 +2,6 @@ import type { Video, Song } from '@/types';
 import ArchiveHeader from './ArchiveHeader';
 import ArchiveSongList from './ArchiveSongList';
 import { translations } from '@/lib/translations';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import AutoPlayHandler from '@/components/player/AutoPlayHandler';
 
@@ -12,10 +11,8 @@ interface Props {
   songId?: string | null;
 }
 
-export default async function ArchiveView({ video, songs, songId }: Props) {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export default function ArchiveView({ video, songs, songId }: Props) {
+  const t = translations['ja'];
 
   return (
     <div className="page-container">

@@ -2,7 +2,6 @@ import { getChannelWithVideos, getChannelMetadata } from '@/app/songs/new/action
 import { getChannelsForStatic } from '@/app/channels/actions';
 import ChannelView from './ChannelView';
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 import type { Metadata } from 'next';
@@ -35,8 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const decodedId = decodeURIComponent(id);
   const result = await getChannelMetadata(decodedId);
   
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
+  const locale = 'ja';
   const t = translations[locale];
 
   if (!result.success) {
@@ -75,7 +73,7 @@ export default async function ChannelPage({ params }: PageProps) {
   const { id } = await params;
   const decodedId = decodeURIComponent(id);
   const result = await getChannelWithVideos(decodedId);
-  const cookieStore = await cookies();
+  const locale = 'ja';
 
   if (!result.success) {
     if (result.error?.includes('見つかりませんでした')) {
@@ -94,9 +92,7 @@ export default async function ChannelPage({ params }: PageProps) {
     notFound();
     return null;
   }
-
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
   const t = translations[locale];
 
   // アーティスト用の構造化データ

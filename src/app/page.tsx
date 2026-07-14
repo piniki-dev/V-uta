@@ -1,12 +1,9 @@
 import Home from './Home';
-import { cookies } from 'next/headers';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 
-export async function generateMetadata() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export function generateMetadata() {
+  const t = translations['ja'];
 
   return {
     title: `${t.common.siteTitle} | ${t.home.title}`,
@@ -14,10 +11,8 @@ export async function generateMetadata() {
   };
 }
 
-export default async function HomePage() {
-  const cookieStore = await cookies();
-  const locale = (cookieStore.get('vuta-locale')?.value as 'ja' | 'en') || 'ja';
-  const t = translations[locale];
+export default function HomePage() {
+  const t = translations['ja'];
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
 
   const websiteData = {
