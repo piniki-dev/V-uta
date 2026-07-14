@@ -7,38 +7,39 @@ import { unstable_cache } from 'next/cache';
 import { getVideosForStatic } from '@/app/songs/new/actions';
 
 // unstable_cache でリクエスト間キャッシュ（手動パージで更新）
-const getCachedVideoDetails = unstable_cache(
-  async (videoId: string) => {
-    console.log('[unstable_cache] Fetching video details for:', videoId);
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
-    );
-  
-    const { data: video } = await supabase
-      .from('videos')
-      .select('*, channel:channels(*)')
-      .eq('video_id', videoId)
-      .single();
+const getCachedVideoDetails = (videoId: string) =>
+  unstable_cache(
+    async () => {
+      console.log('[unstable_cache] Fetching video details for:', videoId);
+      const supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+      );
+    
+      const { data: video } = await supabase
+        .from('videos')
+        .select('*, channel:channels(*)')
+        .eq('video_id', videoId)
+        .single();
 
-    if (!video) {
-      return { video: null, songs: [] };
+      if (!video) {
+        return { video: null, songs: [] };
+      }
+
+      const { data: songs } = await supabase
+        .from('songs')
+        .select('*, master_song:master_songs(*)')
+        .eq('video_id', video.id)
+        .eq('is_active', true)
+        .order('start_sec', { ascending: true });
+
+      return { video, songs: songs || [] };
+    },
+    ['video-details', videoId],
+    {
+      tags: ['video-details']
     }
-
-    const { data: songs } = await supabase
-      .from('songs')
-      .select('*, master_song:master_songs(*)')
-      .eq('video_id', video.id)
-      .eq('is_active', true)
-      .order('start_sec', { ascending: true });
-
-    return { video, songs: songs || [] };
-  },
-  ['video-details'],
-  {
-    tags: ['video-details']
-  }
-);
+  )();
 
 export async function generateStaticParams() {
   const result = await getVideosForStatic();
