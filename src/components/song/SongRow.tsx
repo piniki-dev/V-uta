@@ -215,9 +215,9 @@ export default function SongRow({
           </Link>
         </div>
       ) : showTimeInfo ? (
-        <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-tertiary)] font-medium tabular-nums group-hover:text-[var(--accent)] transition-colors">
-          <Clock size={14} className="opacity-40" />
-          <span>{formatTime(song.startSec)} - {formatTime(song.endSec)}</span>
+        <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-tertiary)] font-medium tabular-nums group-hover:text-[var(--accent)] transition-colors whitespace-nowrap">
+          <Clock size={14} className="opacity-40 shrink-0" />
+          <span className="whitespace-nowrap">{formatTime(song.startSec)} - {formatTime(song.endSec)}</span>
         </div>
       ) : (
         <div className="hidden md:block" />
