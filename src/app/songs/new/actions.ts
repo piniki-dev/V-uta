@@ -822,11 +822,22 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
     return { success: false, error: `${t.common.errorOccurred} (videos)` };
   }
 
+  // songs のうち is_active なもののみを抽出し、開始時間 (start_sec) の昇順でソートする
+  const processedVideos = (videos || []).map((video) => {
+    const activeSongs = (video.songs || [])
+      .filter((song: Song) => song.is_active)
+      .sort((a: Song, b: Song) => a.start_sec - b.start_sec);
+    return {
+      ...video,
+      songs: activeSongs,
+    };
+  });
+
   return {
     success: true,
     data: {
       ...channel,
-      videos: (videos || []) as (Video & { songs: Song[] })[]
+      videos: processedVideos as (Video & { songs: Song[] })[]
     }
   };
 }
