@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction } from '../new/actions';
 import type { ITunesSearchResult } from '../new/actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
@@ -52,7 +52,7 @@ interface BatchProgress {
 export default function ImportSongsClient() {
   const { locale, t: tl, T } = useLocale();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
   // --- States ---
   const [batchArchives, setBatchArchives] = useState<BatchArchive[]>([]);
@@ -311,39 +311,40 @@ export default function ImportSongsClient() {
   const handleGsImport = async () => {
     if (!gsUrl.trim()) return;
     setError('');
-    startTransition(async () => {
-      try {
-        const result = await fetchSpreadsheetCsvAction(gsUrl);
-        if (!result.success) throw new Error(result.error);
-        const text = result.data;
-        const csvData = parseCsv(text);
-        const processed = processImportedData(csvData);
-        if (processed.length === 0) {
-          setError(T('newSong.error'));
-          return;
-        }
-        setBatchArchives(processed);
-        
-        const initialProgress: Record<string, BatchProgress> = {};
-        processed.forEach(item => {
-          initialProgress[item.url] = { url: item.url, status: 'pending' };
-        });
-        setProgress(initialProgress);
-
-        startProcessingItem(0, processed);
-        // バックグラウンド取得開始
-        prefetchBatchMetadata(processed);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : T('newSong.gsLoadError'));
+    setIsLoading(true);
+    try {
+      const result = await fetchSpreadsheetCsvAction(gsUrl);
+      if (!result.success) throw new Error(result.error);
+      const text = result.data;
+      const csvData = parseCsv(text);
+      const processed = processImportedData(csvData);
+      if (processed.length === 0) {
+        setError(T('newSong.error'));
+        return;
       }
-    });
+      setBatchArchives(processed);
+      
+      const initialProgress: Record<string, BatchProgress> = {};
+      processed.forEach(item => {
+        initialProgress[item.url] = { url: item.url, status: 'pending' };
+      });
+      setProgress(initialProgress);
+
+      startProcessingItem(0, processed);
+      // バックグラウンド取得開始
+      prefetchBatchMetadata(processed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : T('newSong.gsLoadError'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const startProcessingItem = useCallback((index: number, archives = batchArchives, isManualClick = false) => {
     if (index < 0 || index >= archives.length) return;
 
     // 実際の読み込み＆処理開始ロジックを切り出し
-    const proceedToItem = () => {
+    const proceedToItem = async () => {
       const item = archives[index];
       setCurrentBatchIndex(index);
       setError('');
@@ -364,7 +365,8 @@ export default function ImportSongsClient() {
         };
       });
 
-      startTransition(async () => {
+      setIsLoading(true);
+      try {
         const info = progressRef.current[item.url];
         let result;
         
@@ -533,7 +535,11 @@ export default function ImportSongsClient() {
           const videoResult = await registerVideo(result.data.metadata);
           if (videoResult.success) setVideo(videoResult.data);
         }
-      });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : T('common.errorOccurred'));
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     // 現在処理中のアイテムがあり、それが別の動画への遷移であり、かつ未保存の場合に確認する
@@ -643,51 +649,52 @@ export default function ImportSongsClient() {
         searchLocale: item.searchLocale || (locale as 'ja' | 'en'),
       }));
 
-    startTransition(async () => {
-      try {
-        const result = await registerFullArchive({
-          videoMetadata: metadata,
-          songs: songsToRegister,
-        });
+    setIsLoading(true);
+    try {
+      const result = await registerFullArchive({
+        videoMetadata: metadata,
+        songs: songsToRegister,
+      });
 
-        if (!result.success) {
-          setError(result.error);
-          setSaveErrorMsg(result.error);
-          setSaveStatus('error');
-          return;
-        }
-
-        setSuccess(T('newSong.saveSuccess'));
-        
-        // 進捗を完了にする
-        const currentUrl = batchArchives[currentBatchIndex].url;
-        setProgress(prev => ({
-          ...prev,
-          [currentUrl]: { ...prev[currentUrl], status: 'completed' }
-        }));
-
-        setSaveStatus('success');
-
-        // 自動遷移
-        if (isAutoNext) {
-          const nextIndex = currentBatchIndex + 1;
-          if (nextIndex < batchArchives.length) {
-            if (autoNextTimeoutRef.current) {
-              clearTimeout(autoNextTimeoutRef.current);
-            }
-            autoNextTimeoutRef.current = setTimeout(() => {
-              setSaveStatus('idle');
-              startProcessingItem(nextIndex);
-            }, 2000);
-          }
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : T('common.errorOccurred');
-        setError(msg);
-        setSaveErrorMsg(msg);
+      if (!result.success) {
+        setError(result.error);
+        setSaveErrorMsg(result.error);
         setSaveStatus('error');
+        return;
       }
-    });
+
+      setSuccess(T('newSong.saveSuccess'));
+      
+      // 進捗を完了にする
+      const currentUrl = batchArchives[currentBatchIndex].url;
+      setProgress(prev => ({
+        ...prev,
+        [currentUrl]: { ...prev[currentUrl], status: 'completed' }
+      }));
+
+      setSaveStatus('success');
+
+      // 自動遷移
+      if (isAutoNext) {
+        const nextIndex = currentBatchIndex + 1;
+        if (nextIndex < batchArchives.length) {
+          if (autoNextTimeoutRef.current) {
+            clearTimeout(autoNextTimeoutRef.current);
+          }
+          autoNextTimeoutRef.current = setTimeout(() => {
+            setSaveStatus('idle');
+            startProcessingItem(nextIndex);
+          }, 2000);
+        }
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : T('common.errorOccurred');
+      setError(msg);
+      setSaveErrorMsg(msg);
+      setSaveStatus('error');
+    } finally {
+      setIsLoading(false);
+    }
   }, [metadata, allSongs, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem]);
 
   const handleSaveBatch = () => {
@@ -866,7 +873,7 @@ export default function ImportSongsClient() {
                       <button
                         key={idx}
                         onClick={() => startProcessingItem(idx, batchArchives, true)}
-                        disabled={isPending}
+                        disabled={isLoading}
                         className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all border-2 mb-1 group ${
                           isCurrent 
                             ? 'bg-[var(--accent)]/10 border-[var(--accent)]' 
@@ -1168,9 +1175,9 @@ export default function ImportSongsClient() {
                         <button 
                           className="btn btn--primary btn--sm ml-auto flex items-center gap-2"
                           onClick={handleSaveBatch}
-                          disabled={isPending || allSongs.filter(s => !s.isDeleted).length === 0}
+                          disabled={isLoading || allSongs.filter(s => !s.isDeleted).length === 0}
                         >
-                          {isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                          {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                           {T('newSong.saveAll')}
                         </button>
                       </div>
@@ -1330,9 +1337,9 @@ export default function ImportSongsClient() {
                 <button 
                   className="btn btn--primary btn--lg flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20"
                   onClick={handleSaveBatch}
-                  disabled={isPending || allSongs.filter(s => !s.isDeleted).length === 0}
+                  disabled={isLoading || allSongs.filter(s => !s.isDeleted).length === 0}
                 >
-                  {isPending ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
                   {T('newSong.saveAll')}
                 </button>
               </div>
@@ -1624,7 +1631,7 @@ export default function ImportSongsClient() {
               <button
                 className="btn btn--secondary"
                 onClick={() => setIsModalOpen(false)}
-                disabled={isPending}
+                disabled={isLoading}
               >
                 {modalConfig.cancelText}
               </button>
@@ -1634,7 +1641,7 @@ export default function ImportSongsClient() {
                   setIsModalOpen(false);
                   if (onConfirmAction) onConfirmAction();
                 }}
-                disabled={isPending}
+                disabled={isLoading}
               >
                 {modalConfig.confirmText}
               </button>
