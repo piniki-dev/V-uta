@@ -370,6 +370,10 @@ export const translations = {
       noProduction: '選択なし / 個人勢',
       registerSuccess: '{name} さんのチャンネルを登録しました！',
       createNew: '新規作成',
+      cancelConfirmTitle: 'VTuber登録を中止しますか？',
+      cancelConfirmMessage: '登録を中止すると、現在の一括インポート処理もキャンセルされ、初期画面に戻ります。',
+      cancelConfirmButton: '中止する',
+      cancelBackButton: '登録に戻る',
     },
     legal: {
       terms: '利用規約',
@@ -807,6 +811,10 @@ export const translations = {
       noProduction: 'None / Indie',
       registerSuccess: 'Registered channel for {name}!',
       createNew: 'Create New',
+      cancelConfirmTitle: 'Cancel VTuber Registration?',
+      cancelConfirmMessage: 'If you cancel, the current batch import process will also be canceled and you will return to the initial screen.',
+      cancelConfirmButton: 'Cancel Import',
+      cancelBackButton: 'Back to Register',
     },
     legal: {
       terms: 'Terms of Service',

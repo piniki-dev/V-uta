@@ -127,6 +127,7 @@ export default function ImportSongsClient() {
   // 共通確認モーダル用のState
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+  const [onCancelAction, setOnCancelAction] = useState<(() => void) | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     title: string;
     message: string;
@@ -193,6 +194,7 @@ export default function ImportSongsClient() {
           setOnConfirmAction(() => () => {
             router.push(href);
           });
+          setOnCancelAction(null);
           setIsModalOpen(true);
         }
       }
@@ -558,6 +560,7 @@ export default function ImportSongsClient() {
           type: 'warning',
         });
         setOnConfirmAction(() => proceedToItem);
+        setOnCancelAction(null);
         setIsModalOpen(true);
         return;
       }
@@ -728,6 +731,36 @@ export default function ImportSongsClient() {
     } finally {
       setIsRegisteringVtuber(false);
     }
+  };
+
+  const resetImportState = () => {
+    setBatchArchives([]);
+    setProgress({});
+    setCurrentBatchIndex(-1);
+    setGsUrl('');
+    setMetadata(null);
+    setVideo(null);
+    setAllSongs([]);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCancelVtuberRegister = () => {
+    setIsVtuberModalOpen(false);
+    setModalConfig({
+      title: T('vtuber.cancelConfirmTitle'),
+      message: T('vtuber.cancelConfirmMessage'),
+      confirmText: T('vtuber.cancelConfirmButton'),
+      cancelText: T('vtuber.cancelBackButton'),
+      type: 'danger',
+    });
+    setOnConfirmAction(() => () => {
+      resetImportState();
+    });
+    setOnCancelAction(() => () => {
+      setIsVtuberModalOpen(true);
+    });
+    setIsModalOpen(true);
   };
 
   // --- Inline Helpers ---
@@ -1599,7 +1632,7 @@ export default function ImportSongsClient() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn--secondary" onClick={() => setIsVtuberModalOpen(false)} disabled={isRegisteringVtuber}>{T('common.cancel')}</button>
+              <button className="btn btn--secondary" onClick={handleCancelVtuberRegister} disabled={isRegisteringVtuber}>{T('common.cancel')}</button>
               <button
                 className="btn btn--primary"
                 onClick={handleRegisterVtuber}
@@ -1614,7 +1647,10 @@ export default function ImportSongsClient() {
 
       {/* カスタム確認モーダル */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setIsModalOpen(false);
+          if (onCancelAction) onCancelAction();
+        }}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()}>
             <div className="modal-body">
               <div className={`modal-icon modal-icon--${modalConfig.type}`}>
@@ -1630,7 +1666,10 @@ export default function ImportSongsClient() {
             <div className="modal-footer">
               <button
                 className="btn btn--secondary"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  if (onCancelAction) onCancelAction();
+                }}
                 disabled={isLoading}
               >
                 {modalConfig.cancelText}
