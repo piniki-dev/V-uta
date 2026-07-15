@@ -73,6 +73,7 @@ export default function ImportSongsClient() {
 
   // VTuber登録モーダル等（NewSongClientから流用）
   const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
+  const [isRegisteringVtuber, setIsRegisteringVtuber] = useState(false);
   const [productions, setProductions] = useState<Production[]>([]);
   const [vtuberForm, setVtuberForm] = useState<{
     name: string;
@@ -695,7 +696,9 @@ export default function ImportSongsClient() {
 
   const handleRegisterVtuber = async () => {
     if (!channelDataForReg) return;
-    startTransition(async () => {
+    setIsRegisteringVtuber(true);
+    setError('');
+    try {
       const result = await registerVtuberAndChannel({
         vtuberName: vtuberForm.name,
         gender: vtuberForm.gender,
@@ -713,7 +716,11 @@ export default function ImportSongsClient() {
       } else {
         setError(result.error);
       }
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : T('common.errorOccurred'));
+    } finally {
+      setIsRegisteringVtuber(false);
+    }
   };
 
   // --- Inline Helpers ---
@@ -1585,13 +1592,13 @@ export default function ImportSongsClient() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn--secondary" onClick={() => setIsVtuberModalOpen(false)} disabled={isPending}>{T('common.cancel')}</button>
+              <button className="btn btn--secondary" onClick={() => setIsVtuberModalOpen(false)} disabled={isRegisteringVtuber}>{T('common.cancel')}</button>
               <button
                 className="btn btn--primary"
                 onClick={handleRegisterVtuber}
-                disabled={isPending || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
+                disabled={isRegisteringVtuber || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
               >
-                {isPending ? T('newSong.adding') : T('vtuber.registerAndProceed')}
+                {isRegisteringVtuber ? T('newSong.adding') : T('vtuber.registerAndProceed')}
               </button>
             </div>
           </div>
