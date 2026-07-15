@@ -8,7 +8,8 @@ import { formatTime, parseTime, formatTimeFull } from '@/lib/utils';
 import { 
   Search, X, Music, Info, Save, Trash2, AlertCircle, 
   UserPlus, Building2, FileUp, Table, ChevronRight,
-  CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw
+  CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw,
+  Youtube
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
@@ -1534,17 +1535,30 @@ export default function ImportSongsClient() {
                             </div>
 
                             {/* 時間入力エリアをコンパクトに右側に配置 */}
-                            <div className="flex-shrink-0 flex items-center gap-3 bg-[var(--bg-tertiary)]/50 p-2 px-3 rounded-xl border border-[var(--border)]/40 relative">
-                              <div className="flex flex-col items-center">
-                                <span className="text-[9px] font-black text-[var(--text-tertiary)] mb-0.5">START</span>
-                                <input 
-                                  type="text" 
-                                  className="input input--sm w-20 font-mono text-center bg-transparent border-none focus:ring-0 text-sm font-bold p-0 h-auto" 
-                                  value={item.startTime}
-                                  onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
-                                />
-                              </div>
-                              <div className="text-[var(--text-tertiary)] font-light mt-1">→</div>
+                            <div className="flex-shrink-0 flex flex-col items-center gap-1.5 bg-[var(--bg-tertiary)]/50 p-2 px-3 rounded-xl border border-[var(--border)]/40 relative">
+                              {metadata && (
+                                <a 
+                                  href={`https://www.youtube.com/watch?v=${metadata.id}&t=${parseTime(item.startTime) || 0}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn--sm btn--secondary flex items-center gap-1.5 text-[9px] font-bold py-1 px-2 h-auto w-full justify-center text-[var(--text-secondary)] hover:text-white"
+                                  title={T('newSong.playFromStart')}
+                                >
+                                  <Youtube size={12} className="text-red-500 flex-shrink-0" />
+                                  <span>{T('newSong.playFromStart')}</span>
+                                </a>
+                              )}
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[9px] font-black text-[var(--text-tertiary)] mb-0.5">START</span>
+                                  <input 
+                                    type="text" 
+                                    className="input input--sm w-20 font-mono text-center bg-transparent border-none focus:ring-0 text-sm font-bold p-0 h-auto" 
+                                    value={item.startTime}
+                                    onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
+                                  />
+                                </div>
+                                <div className="text-[var(--text-tertiary)] font-light mt-1">→</div>
                               <div className="flex flex-col items-center">
                                 <span className="text-[9px] font-black text-[var(--text-tertiary)] mb-0.5">END</span>
                                 <input 
