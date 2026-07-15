@@ -49,7 +49,7 @@ export async function fetchVideoMetadata(
     throw new Error('YOUTUBE_API_KEY が設定されていません');
   }
 
-  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails,contentDetails&id=${videoId}&key=${apiKey}`;
+  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails,contentDetails,status&id=${videoId}&key=${apiKey}`;
 
   const res = await fetch(url, { next: { revalidate: 3600 } });
   if (!res.ok) {
@@ -66,9 +66,11 @@ export async function fetchVideoMetadata(
   const snippet = item.snippet;
   const contentDetails = item.contentDetails;
   const liveDetails = item.liveStreamingDetails;
+  const status = item.status;
   // プレミア公開の場合、liveStreamingDetails を持つが actualStartTime が publishedAt と同じになる性質を利用
   const isStream = !!liveDetails && snippet.publishedAt !== liveDetails.actualStartTime;
   const duration = contentDetails?.duration ? parseISO8601Duration(contentDetails.duration) : 0;
+  const embeddable = status?.embeddable ?? true;
 
   return {
     videoId,
@@ -85,6 +87,7 @@ export async function fetchVideoMetadata(
     isStream,
     duration,
     description: snippet.description || '',
+    embeddable,
   };
 }
 

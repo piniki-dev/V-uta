@@ -47,6 +47,7 @@ interface BatchProgress {
   duration?: number;
   publishedAt?: string;
   isSkipped?: boolean;
+  isNotEmbeddable?: boolean;
 }
 
 export default function ImportSongsClient() {
@@ -104,6 +105,7 @@ export default function ImportSongsClient() {
   const currentBatchIndexRef = useRef(currentBatchIndex);
   const contentRef = useRef<HTMLDivElement>(null);
   const autoNextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCloseModal = useCallback(() => {
     if (autoNextTimeoutRef.current) {
@@ -123,6 +125,24 @@ export default function ImportSongsClient() {
 
   useEffect(() => {
     currentBatchIndexRef.current = currentBatchIndex;
+  }, [currentBatchIndex]);
+
+  // アクティブなバッチアイテムをスクロール領域の一番上にスクロール
+  useEffect(() => {
+    if (currentBatchIndex !== -1 && sidebarContainerRef.current) {
+      const activeEl = document.getElementById(`batch-item-${currentBatchIndex}`);
+      const container = sidebarContainerRef.current;
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+        // ページ全体のスクロールを誘発させないように、コンテナの絶対スクロール位置を調整して上部に合わせる
+        const relativeTop = activeRect.top - containerRect.top + container.scrollTop;
+        container.scrollTo({
+          top: relativeTop - 8, // 余白考慮
+          behavior: 'smooth'
+        });
+      }
+    }
   }, [currentBatchIndex]);
 
   useEffect(() => {
@@ -216,74 +236,7 @@ export default function ImportSongsClient() {
 
   // --- Handlers ---
 
-  const prefetchBatchMetadata = useCallback((archives: BatchArchive[]) => {
-    // 3件ずつ並列実行制限をかけながら取得
-    const CONCURRENCY = 3;
-    let index = 0;
 
-    const runNext = async () => {
-      if (index >= archives.length) return;
-      
-      const currentIndex = index++;
-      const item = archives[currentIndex];
-
-      // すでに処理済みか読み込み中ならスキップ
-      if (progress[item.url]?.status === 'completed' || progress[item.url]?.status === 'loading' || progress[item.url]?.status === 'processing') {
-        runNext();
-        return;
-      }
-
-      setProgress(prev => ({
-        ...prev,
-        [item.url]: { ...prev[item.url], status: 'loading' }
-      }));
-
-      try {
-        const result = await fetchVideoPreview(item.url);
-        if (result.success) {
-          const existingSongs = result.data.existingSongs || [];
-          const existingStartTimes = existingSongs.map(s => s.start_sec);
-          const newImportSongs = item.songs.filter(s => {
-            const startSec = parseTime(s.startTime);
-            if (startSec === null) return true;
-            return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 15);
-          });
-
-          const isSkipped = existingSongs.length > 0 && newImportSongs.length === 0;
-
-          setProgress(prev => ({
-            ...prev,
-            [item.url]: { 
-              ...prev[item.url], 
-              status: isSkipped ? 'completed' : 'pending',
-              isSkipped: isSkipped,
-              videoTitle: result.data.metadata.title,
-              thumbnailUrl: result.data.metadata.thumbnailUrl,
-              channelTitle: result.data.metadata.channelName,
-              duration: result.data.metadata.duration,
-              publishedAt: result.data.metadata.publishedAt
-            }
-          }));
-        } else {
-          setProgress(prev => ({
-            ...prev,
-            [item.url]: { ...prev[item.url], status: 'pending' }
-          }));
-        }
-      } catch {
-        setProgress(prev => ({
-            ...prev,
-            [item.url]: { ...prev[item.url], status: 'pending' }
-          }));
-      }
-
-      runNext();
-    };
-
-    for (let i = 0; i < Math.min(CONCURRENCY, archives.length); i++) {
-      runNext();
-    }
-  }, [progress]);
 
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -308,9 +261,7 @@ export default function ImportSongsClient() {
         });
         setProgress(initialProgress);
         
-        // 最初のアイテムを開始
-        startProcessingItem(0, processed);
-        // バックグラウンド取得開始
+        // バックグラウンド取得開始（最初の有効動画のロードも自動的に行う）
         prefetchBatchMetadata(processed);
       } catch (err) {
         setError(err instanceof Error ? err.message : T('newSong.csvLoadError'));
@@ -340,9 +291,8 @@ export default function ImportSongsClient() {
         initialProgress[item.url] = { url: item.url, status: 'pending' };
       });
       setProgress(initialProgress);
-
-      startProcessingItem(0, processed);
-      // バックグラウンド取得開始
+      
+      // バックグラウンド取得開始（最初の有効動画のロードも自動的に行う）
       prefetchBatchMetadata(processed);
     } catch (err) {
       setError(err instanceof Error ? err.message : T('newSong.gsLoadError'));
@@ -351,13 +301,13 @@ export default function ImportSongsClient() {
     }
   };
 
+
   const startProcessingItem = useCallback((index: number, archives = batchArchives, isManualClick = false) => {
     if (index < 0 || index >= archives.length) return;
 
     // 実際の読み込み＆処理開始ロジックを切り出し
     const proceedToItem = async () => {
       const item = archives[index];
-      setCurrentBatchIndex(index);
       setError('');
       setSuccess('');
       
@@ -392,6 +342,51 @@ export default function ImportSongsClient() {
           setError(result.error);
           return;
         }
+
+        // 埋め込み禁止チェック
+        if (result.data.metadata.embeddable === false) {
+          setProgress(prev => ({
+            ...prev,
+            [item.url]: { 
+              ...prev[item.url], 
+              status: 'completed',
+              isSkipped: true,
+              isNotEmbeddable: true,
+              videoTitle: result.data.metadata.title,
+              thumbnailUrl: result.data.metadata.thumbnailUrl,
+              channelTitle: result.data.metadata.channelName,
+              duration: result.data.metadata.duration,
+              publishedAt: result.data.metadata.publishedAt
+            }
+          }));
+
+          setMetadata(null);
+
+          if (isManualClick) {
+            setCurrentBatchIndex(index);
+            setError('');
+            setModalConfig({
+              title: T('common.error') || 'Error',
+              message: T('newSong.notEmbeddableError'),
+              confirmText: T('common.confirm') || 'OK',
+              cancelText: '',
+              type: 'danger',
+            });
+            setOnConfirmAction(() => () => {
+              setIsModalOpen(false);
+            });
+            setOnCancelAction(null);
+            setIsModalOpen(true);
+          } else {
+            const nextIndex = index + 1;
+            if (nextIndex < archives.length) {
+              startProcessingItem(nextIndex, archives, false);
+            } else {
+              setSuccess(T('newSong.saveSuccess'));
+            }
+          }
+          return;
+        }
         
         setMetadata(result.data.metadata);
         setProgress(prev => ({
@@ -408,6 +403,7 @@ export default function ImportSongsClient() {
 
         // チャンネル登録チェック（最優先）
         if (!result.data.isChannelRegistered && result.data.channelData) {
+          setCurrentBatchIndex(index);
           const channelData = result.data.channelData as unknown as YouTubeChannelData;
           setChannelDataForReg(channelData);
           setVtuberForm(prev => ({
@@ -458,18 +454,21 @@ export default function ImportSongsClient() {
 
           setSuccess(T('newSong.skippedNoNewSongs', { title: result.data.metadata.title }));
 
-          if (!isManualClick) {
+          if (isManualClick) {
+            setCurrentBatchIndex(index);
+          } else {
             const nextIndex = index + 1;
             if (nextIndex < archives.length) {
-              setTimeout(() => {
-                startProcessingItem(nextIndex, archives, false);
-              }, 1000);
+              startProcessingItem(nextIndex, archives, false);
             } else {
               setSuccess(T('newSong.saveSuccess'));
             }
             return;
           }
         }
+
+        // 正常に編集可能な状態が確定した時点で、初めてUIの選択インデックスを切り替える
+        setCurrentBatchIndex(index);
 
         const convertedSongs: EditableSong[] = newImportSongs.map(s => ({
           song: {
@@ -600,6 +599,84 @@ export default function ImportSongsClient() {
     proceedToItem();
   }, [batchArchives, locale, T]);
 
+  const prefetchBatchMetadata = useCallback((archives: BatchArchive[]) => {
+    // 並列実行数を5に増やして、より高速化する
+    const CONCURRENCY = 5;
+    let index = 0;
+    let hasStartedFirstValid = false;
+
+    const runNext = async () => {
+      if (index >= archives.length) return;
+      
+      const currentIndex = index++;
+      const item = archives[currentIndex];
+
+      // すでに処理済みか読み込み中ならスキップ
+      if (progress[item.url]?.status === 'completed' || progress[item.url]?.status === 'loading' || progress[item.url]?.status === 'processing') {
+        runNext();
+        return;
+      }
+
+      setProgress(prev => ({
+        ...prev,
+        [item.url]: { ...prev[item.url], status: 'loading' }
+      }));
+
+      try {
+        const result = await fetchVideoPreview(item.url);
+        if (result.success) {
+          const isNotEmbeddable = result.data.metadata.embeddable === false;
+          const existingSongs = result.data.existingSongs || [];
+          const existingStartTimes = existingSongs.map(s => s.start_sec);
+          const newImportSongs = item.songs.filter(s => {
+            const startSec = parseTime(s.startTime);
+            if (startSec === null) return true;
+            return !existingStartTimes.some(existingSec => Math.abs(existingSec - startSec) <= 15);
+          });
+
+          const isSkipped = (existingSongs.length > 0 && newImportSongs.length === 0) || isNotEmbeddable;
+
+          setProgress(prev => ({
+            ...prev,
+            [item.url]: { 
+              ...prev[item.url], 
+              status: isSkipped ? 'completed' : 'pending',
+              isSkipped: isSkipped,
+              isNotEmbeddable: isNotEmbeddable,
+              videoTitle: result.data.metadata.title,
+              thumbnailUrl: result.data.metadata.thumbnailUrl,
+              channelTitle: result.data.metadata.channelName,
+              duration: result.data.metadata.duration,
+              publishedAt: result.data.metadata.publishedAt
+            }
+          }));
+
+          // 最初の有効な（スキップされない）動画が見つかり、まだ何もアクティブになっていない場合
+          if (!isSkipped && !hasStartedFirstValid && currentBatchIndexRef.current === -1) {
+            hasStartedFirstValid = true;
+            startProcessingItem(currentIndex, archives, false);
+          }
+        } else {
+          setProgress(prev => ({
+            ...prev,
+            [item.url]: { ...prev[item.url], status: 'completed', isSkipped: true }
+          }));
+        }
+      } catch {
+        setProgress(prev => ({
+            ...prev,
+            [item.url]: { ...prev[item.url], status: 'completed', isSkipped: true }
+          }));
+      }
+
+      runNext();
+    };
+
+    for (let i = 0; i < Math.min(CONCURRENCY, archives.length); i++) {
+      runNext();
+    }
+  }, [progress, startProcessingItem]);
+
   const goToNextItem = useCallback(() => {
     if (autoNextTimeoutRef.current) {
       clearTimeout(autoNextTimeoutRef.current);
@@ -723,7 +800,18 @@ export default function ImportSongsClient() {
 
       // 自動遷移
       if (isAutoNext) {
-        const nextIndex = currentBatchIndex + 1;
+        let nextIndex = currentBatchIndex + 1;
+        // すでにバックグラウンド取得で completed (スキップ) になっているものは一気にスキップ
+        while (nextIndex < batchArchives.length) {
+          const nextUrl = batchArchives[nextIndex].url;
+          const nextProgress = progressRef.current[nextUrl];
+          if (nextProgress && nextProgress.status === 'completed') {
+            nextIndex++;
+          } else {
+            break;
+          }
+        }
+
         if (nextIndex < batchArchives.length) {
           if (autoNextTimeoutRef.current) {
             clearTimeout(autoNextTimeoutRef.current);
@@ -989,7 +1077,7 @@ export default function ImportSongsClient() {
                   {T('newSong.importSummary')}
                 </h3>
               </div>
-              <div className="card__body p-2 max-h-[60vh] overflow-y-auto">
+              <div ref={sidebarContainerRef} className="card__body p-2 max-h-[60vh] overflow-y-auto">
                 <div className="space-y-1">
                   {batchArchives.map((item, idx) => {
                     const info = progress[item.url];
@@ -997,6 +1085,7 @@ export default function ImportSongsClient() {
                     return (
                       <button
                         key={idx}
+                        id={`batch-item-${idx}`}
                         onClick={() => startProcessingItem(idx, batchArchives, true)}
                         disabled={isLoading}
                         className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all border-2 mb-1 group ${
@@ -1016,7 +1105,11 @@ export default function ImportSongsClient() {
                           )}
                           {info?.status === 'completed' && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
-                              {info.isSkipped ? (
+                              {info.isNotEmbeddable ? (
+                                <div className="px-2 py-0.5 rounded bg-red-950 text-[10px] text-red-300 border border-red-800 font-bold shadow-lg animate-in zoom-in-50 duration-200">
+                                  {T('newSong.skipped')}
+                                </div>
+                              ) : info.isSkipped ? (
                                 <div className="px-2 py-0.5 rounded bg-gray-800 text-[10px] text-gray-300 border border-gray-600 font-bold shadow-lg animate-in zoom-in-50 duration-200">
                                   {T('newSong.skipped')}
                                 </div>
@@ -1033,7 +1126,11 @@ export default function ImportSongsClient() {
                           <p className={`text-[13px] font-bold truncate leading-tight mb-1 ${isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
                             {info?.videoTitle || (info?.status === 'loading' ? 'Loading metadata...' : `Video ${idx + 1}`)}
                           </p>
-                          {info?.channelTitle && (
+                          {info?.isNotEmbeddable ? (
+                            <p className="text-[10px] font-bold text-[var(--error)] truncate mt-0.5 animate-pulse">
+                              ⚠️ {T('newSong.skippedCount') === 'skipped' ? 'Embedding disabled' : '埋め込み禁止動画'}
+                            </p>
+                          ) : info?.channelTitle && (
                             <div className="flex items-center gap-2">
                               <p className="text-[11px] font-medium text-[var(--text-secondary)] truncate uppercase tracking-tight">{info.channelTitle}</p>
                               {info?.publishedAt && (
@@ -1083,8 +1180,8 @@ export default function ImportSongsClient() {
 
         {/* Main Content Area */}
         <div className="flex-1 min-w-0">
-          {error && <div className="alert alert--error mb-6">{error}</div>}
-          {success && <div className="alert alert--success mb-6">{success}</div>}
+          {error && <div className="alert alert--error mb-6" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
+          {success && <div className="alert alert--success mb-6" style={{ whiteSpace: 'pre-wrap' }}>{success}</div>}
 
           {batchArchives.length === 0 ? (
             <div className="space-y-8">
@@ -1787,16 +1884,18 @@ export default function ImportSongsClient() {
               </p>
             </div>
             <div className="modal-footer">
-              <button
-                className="btn btn--secondary"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  if (onCancelAction) onCancelAction();
-                }}
-                disabled={isLoading}
-              >
-                {modalConfig.cancelText}
-              </button>
+              {modalConfig.cancelText && (
+                <button
+                  className="btn btn--secondary"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    if (onCancelAction) onCancelAction();
+                  }}
+                  disabled={isLoading}
+                >
+                  {modalConfig.cancelText}
+                </button>
+              )}
               <button
                 className={`btn ${modalConfig.type === 'warning' ? 'btn--warning' : modalConfig.type === 'danger' ? 'btn--danger' : 'btn--primary'}`}
                 onClick={() => {

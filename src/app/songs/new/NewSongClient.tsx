@@ -187,6 +187,25 @@ export default function NewSongClient() {
         setError(result.error);
         return;
       }
+
+      // 埋め込み禁止チェック
+      if (result.data.metadata.embeddable === false) {
+        setMetadata(null);
+        setError('');
+        setModalConfig({
+          title: T('common.error') || 'Error',
+          message: T('newSong.notEmbeddableError'),
+          confirmText: T('common.confirm') || 'OK',
+          cancelText: '',
+          type: 'danger',
+        });
+        setOnConfirmAction(() => () => {
+          setIsModalOpen(false);
+        });
+        setIsModalOpen(true);
+        return;
+      }
+
       setMetadata(result.data.metadata);
       const isActuallyCover = !result.data.metadata.isStream;
       setIsCoverVideo(isActuallyCover); // 自動判定
@@ -760,8 +779,8 @@ export default function NewSongClient() {
       <div className="container py-12 pb-48 px-6 max-w-5xl mx-auto">
 
         {/* エラー・成功メッセージ */}
-        {error && <div className="alert alert--error">{error}</div>}
-        {success && <div className="alert alert--success">{success}</div>}
+        {error && <div className="alert alert--error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
+        {success && <div className="alert alert--success" style={{ whiteSpace: 'pre-wrap' }}>{success}</div>}
 
         {/* Step 1: YouTube URL 入力 */}
         <div className={`card ${step === 1 ? '' : 'card--completed'}`}>
@@ -1436,13 +1455,15 @@ export default function NewSongClient() {
               </p>
             </div>
             <div className="modal-footer">
-              <button
-                className="btn btn--secondary"
-                onClick={() => setIsModalOpen(false)}
-                disabled={isPending}
-              >
-                {modalConfig.cancelText}
-              </button>
+              {modalConfig.cancelText && (
+                <button
+                  className="btn btn--secondary"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={isPending}
+                >
+                  {modalConfig.cancelText}
+                </button>
+              )}
               <button
                 className={`btn ${modalConfig.type === 'warning' ? 'btn--warning' : modalConfig.type === 'danger' ? 'btn--danger' : 'btn--primary'}`}
                 onClick={() => {

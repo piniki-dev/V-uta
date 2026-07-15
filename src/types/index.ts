@@ -173,6 +173,7 @@ export interface YouTubeVideoMetadata {
   isStream: boolean;
   duration: number;
   description: string;
+  embeddable: boolean;
 }
 
 export interface YouTubeChannelData {
