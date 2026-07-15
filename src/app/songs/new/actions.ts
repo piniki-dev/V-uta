@@ -1023,20 +1023,29 @@ export async function fetchSpreadsheetCsvAction(
     return { success: false, error: 'URLが入力されていません。' };
   }
 
+  console.log(`[fetchSpreadsheetCsvAction] Input URL: ${gsUrl}`);
+
   try {
     const csvUrl = convertGSheetUrlToCsv(gsUrl);
+    console.log(`[fetchSpreadsheetCsvAction] Converted CSV URL: ${csvUrl}`);
+
     const response = await fetch(csvUrl, {
       method: 'GET',
       headers: {
         'Accept': 'text/csv,text/plain',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
       cache: 'no-store'
     });
 
+    console.log(`[fetchSpreadsheetCsvAction] Response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No response body');
+      console.error(`[fetchSpreadsheetCsvAction] Failed to fetch. Status: ${response.status}, Body: ${errorText.substring(0, 500)}`);
       return { 
         success: false, 
-        error: 'スプレッドシートの取得に失敗しました。共有設定を確認してください。' 
+        error: `スプレッドシートの取得に失敗しました (Status: ${response.status})。共有設定を確認してください。` 
       };
     }
 
@@ -1044,6 +1053,7 @@ export async function fetchSpreadsheetCsvAction(
     return { success: true, data: text };
   } catch (e) {
     const message = e instanceof Error ? e.message : t.common.errorOccurred;
-    return { success: false, error: message };
+    console.error(`[fetchSpreadsheetCsvAction] Exception occurred:`, e);
+    return { success: false, error: `例外が発生しました: ${message}` };
   }
 }

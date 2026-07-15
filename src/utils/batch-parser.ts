@@ -19,6 +19,27 @@ export interface BatchArchive {
  */
 export function convertGSheetUrlToCsv(url: string): string {
   try {
+    // 既に公開用のCSVリンクやエクスポート用リンクの場合はそのまま返す
+    if (url.includes('/pub?output=csv') || url.includes('/export?format=csv')) {
+      return url;
+    }
+
+    // 「Webに公開」されたHTMLリンクの場合、末尾をCSV形式に変更する
+    // 例: https://docs.google.com/spreadsheets/d/e/2PACX-.../pub
+    if (url.includes('/spreadsheets/d/e/')) {
+      const pubMatch = url.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9-_]+)\/pub/);
+      if (pubMatch) {
+        const pubId = pubMatch[1];
+        // gid（シート選択）がある場合は引き継ぐ
+        const gidMatch = url.match(/gid=([0-9]+)/);
+        const gid = gidMatch ? `&gid=${gidMatch[1]}` : '';
+        return `https://docs.google.com/spreadsheets/d/e/${pubId}/pub?output=csv${gid}`;
+      }
+      return url;
+    }
+
+    // 通常の共有リンクの場合
+    // 例: https://docs.google.com/spreadsheets/d/1BxiMVs.../edit
     const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     if (!match) return url;
     const scrollId = match[1];
