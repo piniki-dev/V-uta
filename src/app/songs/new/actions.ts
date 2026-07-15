@@ -8,6 +8,7 @@ import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { convertGSheetUrlToCsv } from '@/utils/batch-parser';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -1009,4 +1010,40 @@ export async function deleteSong(
   }
 
   return { success: true, data: null };
+}
+
+/**
+ * GoogleスプレッドシートのURLからCSVデータをサーバーサイドで取得する
+ */
+export async function fetchSpreadsheetCsvAction(
+  gsUrl: string
+): Promise<ActionResult<string>> {
+  const t = await getLocaleT();
+  if (!gsUrl.trim()) {
+    return { success: false, error: 'URLが入力されていません。' };
+  }
+
+  try {
+    const csvUrl = convertGSheetUrlToCsv(gsUrl);
+    const response = await fetch(csvUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/csv,text/plain',
+      },
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      return { 
+        success: false, 
+        error: 'スプレッドシートの取得に失敗しました。共有設定を確認してください。' 
+      };
+    }
+
+    const text = await response.text();
+    return { success: true, data: text };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : t.common.errorOccurred;
+    return { success: false, error: message };
+  }
 }

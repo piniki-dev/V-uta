@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel } from '../new/actions';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction } from '../new/actions';
 import type { ITunesSearchResult } from '../new/actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime, formatTimeFull } from '@/lib/utils';
@@ -11,7 +11,7 @@ import {
   CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { convertGSheetUrlToCsv, parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
+import { parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
 import { useLocale } from '@/components/LocaleProvider';
 import Image from 'next/image';
 import Hero from '@/components/Hero';
@@ -312,10 +312,9 @@ export default function ImportSongsClient() {
     setError('');
     startTransition(async () => {
       try {
-        const csvUrl = convertGSheetUrlToCsv(gsUrl);
-        const response = await fetch(csvUrl);
-        if (!response.ok) throw new Error('スプレッドシートの取得に失敗しました。共有設定を確認してください。');
-        const text = await response.text();
+        const result = await fetchSpreadsheetCsvAction(gsUrl);
+        if (!result.success) throw new Error(result.error);
+        const text = result.data;
         const csvData = parseCsv(text);
         const processed = processImportedData(csvData);
         if (processed.length === 0) {
