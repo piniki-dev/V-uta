@@ -1025,8 +1025,15 @@ export default function ImportSongsClient() {
                       onChange={(e) => setGsUrl(e.target.value)}
                     />
                   </div>
-                  <button className="btn btn--secondary w-full" onClick={handleGsImport} disabled={!gsUrl.trim()}>
-                    {T('newSong.fetch')}
+                  <button className="btn btn--secondary w-full" onClick={handleGsImport} disabled={isLoading || !gsUrl.trim()}>
+                    {isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="animate-spin" size={16} />
+                        {T('newSong.fetching')}
+                      </span>
+                    ) : (
+                      T('newSong.fetch')
+                    )}
                   </button>
                 </div>
               </div>
