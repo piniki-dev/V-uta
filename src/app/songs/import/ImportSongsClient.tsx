@@ -1538,7 +1538,7 @@ export default function ImportSongsClient() {
                             <div className="flex-shrink-0 flex flex-col items-center gap-1.5 bg-[var(--bg-tertiary)]/50 p-2 px-3 rounded-xl border border-[var(--border)]/40 relative">
                               {metadata && (
                                 <a 
-                                  href={`https://www.youtube.com/watch?v=${metadata.id}&t=${parseTime(item.startTime) || 0}`}
+                                  href={`https://www.youtube.com/watch?v=${metadata.videoId}&t=${parseTime(item.startTime) || 0}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="btn btn--sm btn--secondary flex items-center gap-1.5 text-[9px] font-bold py-1 px-2 h-auto w-full justify-center text-[var(--text-secondary)] hover:text-white"
@@ -1559,15 +1559,16 @@ export default function ImportSongsClient() {
                                   />
                                 </div>
                                 <div className="text-[var(--text-tertiary)] font-light mt-1">→</div>
-                              <div className="flex flex-col items-center">
-                                <span className="text-[9px] font-black text-[var(--text-tertiary)] mb-0.5">END</span>
-                                <input 
-                                  type="text" 
-                                  className={`input input--sm w-20 font-mono text-center bg-transparent border-none focus:ring-0 text-sm font-bold p-0 h-auto ${(!item.endTime || item.endTime === '0:00') ? 'text-red-500' : ''}`} 
-                                  value={item.endTime}
-                                  onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
-                                  placeholder="Required"
-                                />
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[9px] font-black text-[var(--text-tertiary)] mb-0.5">END</span>
+                                  <input 
+                                    type="text" 
+                                    className={`input input--sm w-20 font-mono text-center bg-transparent border-none focus:ring-0 text-sm font-bold p-0 h-auto ${(!item.endTime || item.endTime === '0:00') ? 'text-red-500' : ''}`} 
+                                    value={item.endTime}
+                                    onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
+                                    placeholder="Required"
+                                  />
+                                </div>
                               </div>
 
                               {(!item.endTime || item.endTime === '0:00') && (
