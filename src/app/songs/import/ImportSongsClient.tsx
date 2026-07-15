@@ -125,6 +125,14 @@ export default function ImportSongsClient() {
     currentBatchIndexRef.current = currentBatchIndex;
   }, [currentBatchIndex]);
 
+  useEffect(() => {
+    const fetchProds = async () => {
+      const prods = await getProductions();
+      if (prods.success) setProductions(prods.data);
+    };
+    fetchProds();
+  }, []);
+
   // 共通確認モーダル用のState
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
@@ -398,6 +406,21 @@ export default function ImportSongsClient() {
           }
         }));
 
+        // チャンネル登録チェック（最優先）
+        if (!result.data.isChannelRegistered && result.data.channelData) {
+          const channelData = result.data.channelData as unknown as YouTubeChannelData;
+          setChannelDataForReg(channelData);
+          setVtuberForm(prev => ({
+            ...prev,
+            name: channelData.name,
+            link: channelData.officialLink || ''
+          }));
+          setIsVtuberModalOpen(true);
+        } else {
+          const videoResult = await registerVideo(result.data.metadata);
+          if (videoResult.success) setVideo(videoResult.data);
+        }
+
         // 既存の曲
         const existingSongs: EditableSong[] = result.data.existingSongs.map(song => ({
           id: song.id,
@@ -544,22 +567,7 @@ export default function ImportSongsClient() {
           return { ...song, isSearching: false };
         }));
 
-        // チャンネル登録チェック
-        if (!result.data.isChannelRegistered && result.data.channelData) {
-          const channelData = result.data.channelData as unknown as YouTubeChannelData;
-          setChannelDataForReg(channelData);
-          setVtuberForm(prev => ({
-            ...prev,
-            name: channelData.name,
-            link: channelData.officialLink || ''
-          }));
-          const prods = await getProductions();
-          if (prods.success) setProductions(prods.data);
-          setIsVtuberModalOpen(true);
-        } else {
-          const videoResult = await registerVideo(result.data.metadata);
-          if (videoResult.success) setVideo(videoResult.data);
-        }
+        // 後続のマッチング処理等の終了のため、ここは何も行わない（チェックは上部に移動済み）
       } catch (err) {
         setError(err instanceof Error ? err.message : T('common.errorOccurred'));
       } finally {
