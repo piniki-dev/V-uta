@@ -70,6 +70,7 @@ export default function ImportSongsClient() {
   const [video, setVideo] = useState<Video | null>(null);
   const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
   const [isAutoNext, setIsAutoNext] = useState(true);
+  const [coverVideos, setCoverVideos] = useState<Record<string, boolean>>({});
 
   // VTuber登録モーダル等（NewSongClientから流用）
   const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
@@ -468,7 +469,29 @@ export default function ImportSongsClient() {
           endTime: s.endTime ? formatTimeFull(parseTime(s.endTime) || 0) : '',
         }));
 
-        const finalSongs = [...existingSongs, ...convertedSongs];
+        // カバー自動判定（配信ではない動画で、かつ全曲数が1曲以下の場合）
+        const isActuallyCover = !result.data.metadata.isStream;
+        const totalSongsCount = existingSongs.length + convertedSongs.length;
+        const shouldCover = isActuallyCover && totalSongsCount <= 1;
+
+        setCoverVideos(prev => ({
+          ...prev,
+          [item.url]: shouldCover
+        }));
+
+        let finalSongs = [...existingSongs, ...convertedSongs];
+        if (shouldCover) {
+          finalSongs = finalSongs.map(s => ({
+            ...s,
+            startTime: formatTimeFull(0),
+            endTime: formatTimeFull(result.data.metadata.duration),
+            song: {
+              ...s.song,
+              start_sec: 0,
+              end_sec: result.data.metadata.duration
+            }
+          }));
+        }
 
         setAllSongs(finalSongs);
 
@@ -582,10 +605,20 @@ export default function ImportSongsClient() {
   }, [currentBatchIndex, batchArchives, startProcessingItem]);
 
   const performSave = useCallback(async () => {
-    if (!metadata) return;
+    if (!metadata || currentBatchIndex === -1) return;
     setError('');
     setSuccess('');
     setSaveErrorMsg('');
+
+    const currentUrl = batchArchives[currentBatchIndex].url;
+    const isCurrentCover = coverVideos[currentUrl] || false;
+
+    // 歌ってみた動画バリデーション
+    const activeSongs = allSongs.filter(s => (s.isConfirmed || s.id) && !s.isDeleted);
+    if (isCurrentCover && activeSongs.length > 1) {
+      setError(T('newSong.isCoverError'));
+      return;
+    }
 
     // 一括バリデーションチェック
     let firstErrorIndex = -1;
@@ -655,7 +688,10 @@ export default function ImportSongsClient() {
     setIsLoading(true);
     try {
       const result = await registerFullArchive({
-        videoMetadata: metadata,
+        videoMetadata: {
+          ...metadata,
+          isStream: isCurrentCover ? false : metadata.isStream,
+        },
         songs: songsToRegister,
       });
 
@@ -698,7 +734,7 @@ export default function ImportSongsClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [metadata, allSongs, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem]);
+  }, [metadata, allSongs, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem, coverVideos]);
 
   const handleSaveBatch = () => {
     performSave();
@@ -761,6 +797,54 @@ export default function ImportSongsClient() {
       setIsVtuberModalOpen(true);
     });
     setIsModalOpen(true);
+  };
+
+  const handleToggleCoverVideo = (checked: boolean) => {
+    if (!metadata || currentBatchIndex === -1) return;
+    const currentUrl = batchArchives[currentBatchIndex].url;
+
+    if (checked) {
+      const activeSongs = allSongs.filter(s => (s.isConfirmed || s.id) && !s.isDeleted);
+      if (activeSongs.length > 1) {
+        setModalConfig({
+          title: T('newSong.isCoverError') || '歌ってみた動画に登録できるのは1曲のみです',
+          message: '現在2曲以上の楽曲が登録されています。歌ってみた動画として登録するには、不要な楽曲を削除してください。',
+          confirmText: T('common.confirm') || '了解',
+          cancelText: '',
+          type: 'warning',
+        });
+        setOnConfirmAction(() => () => {});
+        setOnCancelAction(null);
+        setIsModalOpen(true);
+        return;
+      }
+
+      setCoverVideos(prev => ({
+        ...prev,
+        [currentUrl]: true
+      }));
+
+      setAllSongs(prev => prev.map(s => {
+        if ((s.isConfirmed || s.id) && !s.isDeleted) {
+          return {
+            ...s,
+            startTime: formatTimeFull(0),
+            endTime: formatTimeFull(metadata.duration),
+            song: {
+              ...s.song,
+              start_sec: 0,
+              end_sec: metadata.duration
+            }
+          };
+        }
+        return s;
+      }));
+    } else {
+      setCoverVideos(prev => ({
+        ...prev,
+        [currentUrl]: false
+      }));
+    }
   };
 
   // --- Inline Helpers ---
@@ -1199,7 +1283,31 @@ export default function ImportSongsClient() {
                       </div>
                       <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-4">{metadata.description}</p>
                       
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center gap-6">
+                        {/* 歌ってみた動画トグル */}
+                        <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
+                          <label className="flex items-center gap-3 cursor-pointer select-none">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                checked={batchArchives[currentBatchIndex] ? (coverVideos[batchArchives[currentBatchIndex].url] || false) : false}
+                                onChange={(e) => {
+                                  handleToggleCoverVideo(e.target.checked);
+                                }}
+                                className="sr-only peer"
+                              />
+                              <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                            </div>
+                            <span className="text-[13px] font-bold text-[var(--text-primary)]">{T('newSong.isCover')}</span>
+                          </label>
+                          <div className="group relative">
+                            <Info size={14} className="text-[var(--text-tertiary)] animate-pulse" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-[11px] text-[#999] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl leading-relaxed">
+                              {T('newSong.coverTooltip')}
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="flex items-center gap-2">
                           <input 
                             type="checkbox" 
