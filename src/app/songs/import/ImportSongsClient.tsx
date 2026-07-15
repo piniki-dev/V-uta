@@ -1368,8 +1368,46 @@ export default function ImportSongsClient() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Active Item Metadata */}
-              {metadata && (
+              {isLoading ? (
+                <div className="space-y-6 animate-pulse">
+                  {/* Active Item Metadata Skeleton */}
+                  <div className="card bg-[var(--bg-secondary)] overflow-hidden">
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-64 aspect-video bg-[var(--bg-tertiary)]" />
+                      <div className="p-6 flex-1 space-y-4">
+                        <div className="h-6 bg-[var(--bg-tertiary)] rounded-lg w-2/3" />
+                        <div className="space-y-2">
+                          <div className="h-4 bg-[var(--bg-tertiary)] rounded-lg w-full" />
+                          <div className="h-4 bg-[var(--bg-tertiary)] rounded-lg w-5/6" />
+                        </div>
+                        <div className="h-8 bg-[var(--bg-tertiary)] rounded-xl w-32" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Header Skeleton */}
+                  <div className="flex justify-between items-center pb-4 border-b border-[var(--border)]">
+                    <div className="h-6 bg-[var(--bg-secondary)] rounded-lg w-40" />
+                    <div className="h-9 bg-[var(--bg-secondary)] rounded-xl w-24" />
+                  </div>
+
+                  {/* Song List Skeleton */}
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="card p-6 bg-[var(--bg-secondary)] border border-[var(--border)]/50 rounded-2xl flex items-center justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="h-5 bg-[var(--bg-tertiary)] rounded-lg w-1/3" />
+                          <div className="h-4 bg-[var(--bg-tertiary)] rounded-lg w-1/4" />
+                        </div>
+                        <div className="w-48 h-12 bg-[var(--bg-tertiary)] rounded-xl" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Active Item Metadata */}
+                  {metadata && (
                 <div className="card bg-[var(--bg-secondary)] overflow-hidden">
                   <div className="flex flex-col md:flex-row">
                     <div className="md:w-64 aspect-video relative">
@@ -1611,6 +1649,8 @@ export default function ImportSongsClient() {
                   {T('newSong.saveAll')}
                 </button>
               </div>
+                </>
+              )}
             </div>
           )}
         </div>
