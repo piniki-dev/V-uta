@@ -60,15 +60,7 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
     };
   }, [hasMore, initialVideos]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05
-      }
-    }
-  };
+
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -117,15 +109,15 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
         </motion.div>
       ) : (
         <>
-          <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {displayedVideos.map((video) => (
-              <motion.div key={video.id} variants={itemVariants}>
+              <motion.div
+                key={video.id}
+                variants={itemVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-50px' }}
+              >
                 <Link
                   href={`/videos/${video.video_id}`}
                   className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
@@ -167,7 +159,7 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
                 </Link>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
 
           {hasMore && (
             <div ref={observerRef} className="h-10 w-full flex items-center justify-center mt-12 text-[var(--text-tertiary)] font-bold text-sm">
