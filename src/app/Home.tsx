@@ -6,7 +6,7 @@ import HomeRankingSection from '@/components/home/HomeRankingSection';
 import HomeChannelSection from '@/components/home/HomeChannelSection';
 import { getSongRankings } from '@/app/history/actions';
 
-// 1. 最近追加された動画リストをキャッシュ (手動パージのみで更新)
+// 1. 最近追加された動画リストをキャッシュ (過去7日間分を1時間ごと自動更新 + 手動パージ)
 const getHomeVideosCached = unstable_cache(
   async () => {
     console.log('[unstable_cache] Fetching home videos from DB...');
@@ -15,11 +15,17 @@ const getHomeVideosCached = unstable_cache(
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
     );
 
+    // 7日前の日時を計算 (ISO-8601 形式)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
+
     const { data: videoData, error } = await supabase
       .from('videos')
       .select('*, channel:channels(*), songs!inner(id)')
+      .gte('created_at', sevenDaysAgoISO)
       .order('created_at', { ascending: false })
-      .limit(24);
+      .limit(100);
 
     if (error) {
       console.error('getHomeVideosCached error:', error);
@@ -34,6 +40,7 @@ const getHomeVideosCached = unstable_cache(
   },
   ['home-videos-cached'],
   {
+    revalidate: 3600, // 過去7日間の基準時刻が経過するのに合わせて自動更新
     tags: ['home-videos']
   }
 );
