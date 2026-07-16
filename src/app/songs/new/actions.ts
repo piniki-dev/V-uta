@@ -7,7 +7,7 @@ import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } f
 import { translations } from '@/lib/translations';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
-import { revalidatePath, revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { convertGSheetUrlToCsv } from '@/utils/batch-parser';
 
 async function getLocaleT() {
@@ -580,8 +580,8 @@ export async function registerFullArchive(input: {
 /**
  * チャンネル詳細と紐付く動画・曲リストを取得する (ID またはハンドルに対応)
  */
-export async function getChannelWithVideos(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
-  console.log('getChannelWithVideos called with identifier:', identifier);
+async function fetchChannelWithVideosFromDb(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
+  console.log('fetchChannelWithVideosFromDb called with identifier:', identifier);
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
@@ -633,11 +633,22 @@ export async function getChannelWithVideos(identifier: string | number): Promise
   return fetchVideosForChannel(channel, supabase);
 }
 
+export const getChannelWithVideos = unstable_cache(
+  async (identifier: string | number) => {
+    return fetchChannelWithVideosFromDb(identifier);
+  },
+  ['channel-with-videos-cached'],
+  {
+    revalidate: 3600, // 1時間キャッシュ
+    tags: ['channel-details']
+  }
+);
+
 /**
  * チャンネルの基本情報（メタデータ生成用）のみを取得する (ID またはハンドルに対応)
  */
-export async function getChannelMetadata(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
-  console.log('getChannelMetadata called with identifier:', identifier);
+async function fetchChannelMetadataFromDb(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
+  console.log('fetchChannelMetadataFromDb called with identifier:', identifier);
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
@@ -689,6 +700,17 @@ export async function getChannelMetadata(identifier: string | number): Promise<A
   return { success: true, data: channel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
 }
 
+export const getChannelMetadata = unstable_cache(
+  async (identifier: string | number) => {
+    return fetchChannelMetadataFromDb(identifier);
+  },
+  ['channel-metadata-cached'],
+  {
+    revalidate: 3600, // 1時間キャッシュ
+    tags: ['channel-details']
+  }
+);
+
 /**
  * チャンネルのキャッシュを再検証（パージ）する
  */
@@ -736,6 +758,10 @@ export async function revalidateChannel(channelRecordId: number | null): Promise
     console.log(`[ISR] Revalidating Channels list path and tag`);
     revalidatePath('/channels');
     revalidateTag('channels-list', 'max');
+
+    // 5. チャンネル詳細データのキャッシュをパージ
+    console.log(`[ISR] Revalidating unstable_cache tag: channel-details`);
+    revalidateTag('channel-details', 'max');
   } catch (e) {
     console.error('Failed to revalidate channel pages:', e);
   }

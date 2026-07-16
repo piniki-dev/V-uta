@@ -57,7 +57,7 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: 0.02
       }
     }
   };
@@ -67,7 +67,11 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
     visible: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.5, ease: 'easeOut' }
+      transition: {
+        type: 'spring',
+        stiffness: 100,
+        damping: 15
+      }
     }
   } as const;
 
