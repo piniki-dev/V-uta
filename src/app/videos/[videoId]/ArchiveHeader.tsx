@@ -76,9 +76,15 @@ export default function ArchiveHeader({ video, songs }: Props) {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <span className="text-xs font-black uppercase tracking-[0.2em] text-white bg-[var(--accent)] px-3 py-1 rounded-full shadow-lg shadow-[var(--accent-glow)]">
-            Archive
-          </span>
+          {video.is_stream ? (
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
+              {T('common.stream') || 'Archive'}
+            </span>
+          ) : (
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-pink-400 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full">
+              {T('common.cover') || 'Cover'}
+            </span>
+          )}
           <span className="text-[var(--text-secondary)] text-xs font-black flex items-center gap-2 px-3 py-1 bg-[var(--bg-tertiary)] rounded-full border border-[var(--border)]">
             <Music size={14} className="text-[var(--accent)]" /> {playerSongs.length} <span>{T('archive.songs')}</span>
           </span>
