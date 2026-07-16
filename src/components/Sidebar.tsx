@@ -104,7 +104,7 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
 
-      <aside className={`sidebar ${isOpen ? 'is-open' : ''}`}>
+      <aside className={`sidebar ${isOpen ? 'is-toggled' : ''}`}>
         <div 
           className="sidebar__inner custom-scrollbar"
           style={{ paddingBottom: hasPlayer ? 'var(--player-height)' : '0' }}
@@ -152,17 +152,20 @@ export default function Sidebar() {
               <span>{T('sidebar.addSong')}</span>
             </Link>
 
-            {isMounted && (user ? (
+            {isMounted && user ? (
               <Link href="/history" className="sidebar__link" onClick={handleLinkClick}>
                 <div className="sidebar__icon-box"><History size={22} /></div>
                 <span>{T('sidebar.history')}</span>
               </Link>
             ) : (
-              <div className="sidebar__link opacity-40 cursor-not-allowed select-none" title={T('common.loginRequired')}>
+              <div 
+                className={`sidebar__link opacity-40 ${isMounted ? 'cursor-not-allowed' : ''} select-none`} 
+                title={isMounted ? T('common.loginRequired') : ''}
+              >
                 <div className="sidebar__icon-box"><History size={22} /></div>
                 <span>{T('sidebar.history')}</span>
               </div>
-            ))}
+            )}
 
             <Link href="/channels" className="sidebar__link" onClick={handleLinkClick}>
               <div className="sidebar__icon-box"><User size={22} /></div>
@@ -171,56 +174,54 @@ export default function Sidebar() {
 
             <div className="sidebar__divider" />
 
-            {/* プレイリストセクション (マウント後に表示制御) */}
-            {isMounted && (
-              <div className={`sidebar__section ${!user ? 'opacity-40 pointer-events-none' : ''}`}>
-                <button 
-                  className="sidebar__link w-full"
-                  onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
-                  disabled={!user}
-                >
-                  <div className="sidebar__icon-box"><ListMusic size={22} /></div>
-                  <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
-                  {isPlaylistOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                </button>
-                
-                <AnimatePresence>
-                  {isPlaylistOpen && (
-                    <motion.div 
-                      className="sidebar__subnav"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ display: 'flex', flexDirection: 'column' }}
-                    >
-                      <div className="sidebar__sublink-container">
-                        <Link href="/playlists" className="sidebar__sublink font-bold text-[var(--accent)]" onClick={handleLinkClick}>
-                          {T('sidebar.allPlaylists')}
+            {/* プレイリストセクション */}
+            <div className={`sidebar__section ${isMounted && !user ? 'opacity-40 pointer-events-none' : ''}`}>
+              <button 
+                className="sidebar__link w-full"
+                onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
+                disabled={!isMounted || !user}
+              >
+                <div className="sidebar__icon-box"><ListMusic size={22} /></div>
+                <span className="flex-1 text-left">{T('sidebar.playlists')}</span>
+                {isMounted && isPlaylistOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+              </button>
+              
+              <AnimatePresence>
+                {isMounted && isPlaylistOpen && (
+                  <motion.div 
+                    className="sidebar__subnav"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ display: 'flex', flexDirection: 'column' }}
+                  >
+                    <div className="sidebar__sublink-container">
+                      <Link href="/playlists" className="sidebar__sublink font-bold text-[var(--accent)]" onClick={handleLinkClick}>
+                        {T('sidebar.allPlaylists')}
+                      </Link>
+                    </div>
+                    {playlists.map(playlist => (
+                      <div key={playlist.id} className="sidebar__sublink-container">
+                        <Link 
+                          href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.slug}`}
+                          className="sidebar__sublink"
+                          onClick={handleLinkClick}
+                        >
+                          {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
                         </Link>
                       </div>
-                      {playlists.map(playlist => (
-                        <div key={playlist.id} className="sidebar__sublink-container">
-                          <Link 
-                            href={playlist.is_favorites ? '/playlists/favorite' : `/playlists/${playlist.slug}`}
-                            className="sidebar__sublink"
-                            onClick={handleLinkClick}
-                          >
-                            {playlist.is_favorites ? T('playlist.favorites') : playlist.name}
-                          </Link>
-                        </div>
-                      ))}
-                      {user && playlists.length === 0 && (
-                        <div className="sidebar__empty">{T('sidebar.noPlaylists')}</div>
-                      )}
-                      {!user && (
-                        <div className="sidebar__empty">{T('sidebar.signInToView')}</div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+                    ))}
+                    {user && playlists.length === 0 && (
+                      <div className="sidebar__empty">{T('sidebar.noPlaylists')}</div>
+                    )}
+                    {!user && (
+                      <div className="sidebar__empty">{T('sidebar.signInToView')}</div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <div className="sidebar__divider" />
 

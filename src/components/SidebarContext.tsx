@@ -12,30 +12,8 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  // 初期状態を「開いた状態」にする
-  const [isOpen, setIsOpen] = useState(true);
-
-  // モバイル初期化時に画面幅に応じて閉じる
-  useEffect(() => {
-    // 起動時の初期チェック（setTimeout で同期 setState を回避）
-    const timer = setTimeout(() => {
-      if (window.innerWidth <= 768) {
-        setIsOpen(false);
-      }
-    }, 0);
-
-    const handleResize = () => {
-      if (window.innerWidth <= 768) {
-        setIsOpen(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+  // 初期状態を「トグルされていない状態」(false) にする
+  const [isOpen, setIsOpen] = useState(false);
 
   const toggle = () => setIsOpen(prev => !prev);
   const close = () => setIsOpen(false);

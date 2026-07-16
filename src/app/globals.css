@@ -218,6 +218,23 @@ input[type="range"]:hover::-webkit-slider-thumb {
   padding: 0 16px !important;
 }
 
+/* デスクトップでは左右幅を固定し、ログイン状態の変化による検索窓のCLS（幅伸縮）を完全防止 */
+@media (min-width: 769px) {
+  .header__inner {
+    display: grid !important;
+    grid-template-columns: 240px 1fr 240px !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+  }
+
+  .header__actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+}
+
 .header__logo {
   font-family: var(--font-heading);
   display: flex;
@@ -1978,17 +1995,27 @@ input[type="range"]:hover::-webkit-slider-thumb {
   opacity: 1 !important;
   border-right: 1px solid var(--border);
   z-index: 900;
-  transform: translateX(-100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar.is-open {
-  transform: translateX(0);
+/* モバイル: デフォルト非表示、トグルで表示 */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.is-toggled {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
 }
 
-@media (max-width: 768px) {
-  .sidebar.is-open {
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+/* デスクトップ: デフォルト表示、トグルで非表示 */
+@media (min-width: 769px) {
+  .sidebar {
+    transform: translateX(0);
+  }
+  .sidebar.is-toggled {
+    transform: translateX(-100%);
   }
 }
 

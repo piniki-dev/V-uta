@@ -10,7 +10,7 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const hasPlayer = !!state.currentSong;
 
   return (
-    <div className={`layout-content ${isOpen ? 'sidebar-open' : ''} ${hasPlayer ? 'has-player' : ''}`}>
+    <div className={`layout-content ${isOpen ? 'sidebar-toggled' : ''} ${hasPlayer ? 'has-player' : ''}`}>
       {children}
       <style jsx>{`
         .layout-content {
@@ -25,8 +25,11 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
         }
 
         @media (min-width: 769px) {
-          .layout-content.sidebar-open {
+          .layout-content {
             padding-left: var(--sidebar-width);
+          }
+          .layout-content.sidebar-toggled {
+            padding-left: 0;
           }
         }
       `}</style>
