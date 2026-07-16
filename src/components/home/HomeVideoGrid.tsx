@@ -113,6 +113,18 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
                 <div className="p-6 flex-1 flex flex-col gap-3">
+                  {/* カテゴリタグ (歌ってみた / アーカイブ) */}
+                  <div className="flex gap-2">
+                    {video.is_stream ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        {T('common.stream') || 'Archive'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                        {T('common.cover') || 'Cover'}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="font-bold text-[15px] text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent)] transition-colors min-h-[2.4em]">
                     {video.title}
                   </h3>

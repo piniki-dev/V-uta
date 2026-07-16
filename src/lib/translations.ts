@@ -31,6 +31,8 @@ export const translations = {
       errorTitle: 'エラーが発生しました',
       errorText: 'ウェブサイトの読み込み中に問題が発生しました。',
       tryAgain: 'もう一度試す',
+      cover: '歌ってみた',
+      stream: 'アーカイブ',
     },
     header: {
       searchPlaceholder: '楽曲、チャンネルを検索',
@@ -475,6 +477,8 @@ export const translations = {
       errorTitle: 'An Error Occurred',
       errorText: 'Something went wrong while loading the page.',
       tryAgain: 'Try Again',
+      cover: 'Cover',
+      stream: 'Archive',
     },
     header: {
       searchPlaceholder: 'Search songs, channels',
