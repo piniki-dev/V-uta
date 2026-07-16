@@ -110,7 +110,7 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
                 disabled={isDisabled}
                 onClick={() => {
                   if (!isDisabled) {
-                    setActiveTab(tab.id as any);
+                    setActiveTab(tab.id as 'all' | 'cover' | 'stream');
                     setExpandedVideoId(null);
                   }
                 }}
