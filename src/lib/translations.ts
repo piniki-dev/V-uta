@@ -33,6 +33,7 @@ export const translations = {
       tryAgain: 'もう一度試す',
       cover: '歌ってみた',
       stream: 'アーカイブ',
+      all: 'すべて',
     },
     header: {
       searchPlaceholder: '楽曲、チャンネルを検索',
@@ -479,6 +480,7 @@ export const translations = {
       tryAgain: 'Try Again',
       cover: 'Cover',
       stream: 'Archive',
+      all: 'All',
     },
     header: {
       searchPlaceholder: 'Search songs, channels',

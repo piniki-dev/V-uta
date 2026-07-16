@@ -19,11 +19,21 @@ interface ChannelVideoGridProps {
 }
 
 export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridProps) {
+  const [activeTab, setActiveTab] = useState<'all' | 'cover' | 'stream'>('all');
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
   const { T, locale, isMounted } = useLocale();
 
   // 曲が1件以上登録されているアーカイブのみ表示する
-  const filteredVideos = videos.filter((v) => v.songs.length > 0);
+  const allVideos = videos.filter((v) => v.songs.length > 0);
+  const coverVideos = allVideos.filter((v) => !v.is_stream);
+  const streamVideos = allVideos.filter((v) => v.is_stream);
+
+  const displayVideos = activeTab === 'all'
+    ? allVideos
+    : activeTab === 'cover'
+      ? coverVideos
+      : streamVideos;
+
   const [cols, setCols] = useState(4);
 
   // ウィンドウサイズに応じて列数を更新 (矢印位置の計算に使用)
@@ -65,7 +75,7 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
     <section className="py-20 pb-48">
       <div className="container">
         <motion.div
-          className="flex items-center gap-4 mb-14"
+          className="flex items-center gap-4 mb-10"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -74,20 +84,76 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
           <h2 className="text-3xl font-black tracking-tight text-[var(--text-primary)] flex items-center gap-4 glow-text-subtle">
             {T('archive.registeredArchives')}
             <span className="text-sm font-black bg-[var(--bg-tertiary)] text-[var(--accent)] px-4 py-1 rounded-full border border-[var(--border)] shadow-inner">
-              {filteredVideos.length} <span className="text-[var(--text-tertiary)] ml-1">Archives</span>
+              {allVideos.length} <span className="text-[var(--text-tertiary)] ml-1">Archives</span>
             </span>
           </h2>
         </motion.div>
 
+        {/* タブ切り替えUI */}
+        <motion.div
+          className="flex flex-wrap gap-2.5 mb-14 border-b border-[var(--border)] pb-5"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+        >
+          {[
+            { id: 'all', label: T('common.all') || 'すべて', count: allVideos.length },
+            { id: 'cover', label: T('common.cover') || '歌ってみた', count: coverVideos.length },
+            { id: 'stream', label: T('common.stream') || 'アーカイブ', count: streamVideos.length },
+          ].map((tab) => {
+            const isDisabled = tab.count === 0;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                disabled={isDisabled}
+                onClick={() => {
+                  if (!isDisabled) {
+                    setActiveTab(tab.id as any);
+                    setExpandedVideoId(null);
+                  }
+                }}
+                className={`relative z-0 px-5 py-2.5 rounded-full text-[13px] font-black transition-all duration-300 flex items-center gap-2 border select-none outline-none focus:outline-none
+                  ${isActive 
+                    ? 'text-white border-transparent' 
+                    : isDisabled
+                      ? 'text-[var(--text-tertiary)] bg-[var(--bg-secondary)]/10 border-[var(--border)]/30 opacity-40 cursor-not-allowed'
+                      : 'text-[var(--text-secondary)] bg-[var(--bg-secondary)]/40 border-[var(--border)] hover:text-[var(--text-primary)] hover:border-[var(--accent)]/30 hover:bg-[var(--bg-tertiary)]'
+                  }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTabBg"
+                    className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[#8e4eff] rounded-full -z-10 shadow-[0_0_15px_var(--accent-glow)]"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span>{tab.label}</span>
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full tabular-nums transition-colors duration-300
+                  ${isActive 
+                    ? 'bg-white/20 text-white' 
+                    : isDisabled
+                      ? 'bg-[var(--bg-tertiary)]/20 text-[var(--text-tertiary)]'
+                      : 'bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] border border-[var(--border)] group-hover:border-[var(--accent)]/20'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
+
         <motion.div 
+          key={activeTab}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative"
           variants={containerVariants}
           initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
+          animate="visible"
         >
-          {filteredVideos.length > 0 ? (
-            filteredVideos.map((video, index) => {
+          {displayVideos.length > 0 ? (
+            displayVideos.map((video, index) => {
               const isExpanded = expandedVideoId === video.id;
               const colIdx = index % cols;
               const arrowLeft = `calc(${(100 / cols) * colIdx + (50 / cols)}% - 12px)`;
