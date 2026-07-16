@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Music } from 'lucide-react';
@@ -29,6 +30,35 @@ const SkeletonGrid = () => (
 
 export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
   const { T } = useLocale();
+  const [visibleCount, setVisibleCount] = useState(12);
+  const observerRef = useRef<HTMLDivElement | null>(null);
+
+  const displayedVideos = initialVideos ? initialVideos.slice(0, visibleCount) : [];
+  const hasMore = initialVideos ? visibleCount < initialVideos.length : false;
+
+  useEffect(() => {
+    if (!hasMore || !initialVideos) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 12, initialVideos.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    const currentSentinel = observerRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) {
+        observer.unobserve(currentSentinel);
+      }
+    };
+  }, [hasMore, initialVideos]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -86,57 +116,66 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
           </p>
         </motion.div>
       ) : (
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {initialVideos.map((video) => (
-            <motion.div key={video.id} variants={itemVariants}>
-              <Link
-                href={`/videos/${video.video_id}`}
-                className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
-              >
-                <div className="aspect-video relative overflow-hidden bg-[var(--bg-tertiary)]">
-                  {video.thumbnail_url && (
-                    <Image
-                      src={video.thumbnail_url}
-                      alt={video.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-                <div className="p-6 flex-1 flex flex-col gap-3">
-                  {/* カテゴリタグ (歌ってみた / アーカイブ) */}
-                  <div className="flex gap-2">
-                    {video.is_stream ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                        {T('common.stream') || 'Archive'}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">
-                        {T('common.cover') || 'Cover'}
-                      </span>
+        <>
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {displayedVideos.map((video) => (
+              <motion.div key={video.id} variants={itemVariants}>
+                <Link
+                  href={`/videos/${video.video_id}`}
+                  className="group flex flex-col bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl md:rounded-[32px] overflow-hidden hover:border-[var(--accent)]/30 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-2 active:scale-[0.98] h-full"
+                >
+                  <div className="aspect-video relative overflow-hidden bg-[var(--bg-tertiary)]">
+                    {video.thumbnail_url && (
+                      <Image
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
                     )}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
-                  <h3 className="font-bold text-[15px] text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent)] transition-colors min-h-[2.4em]">
-                    {video.title}
-                  </h3>
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[var(--text-tertiary)] mt-auto flex items-center gap-2">
-                    <span className="w-1 h-1 bg-[var(--accent)] rounded-full" />
-                    {video.channel?.name || T('common.unknown')}
-                  </p>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
+                  <div className="p-6 flex-1 flex flex-col gap-3">
+                    {/* カテゴリタグ (歌ってみた / アーカイブ) */}
+                    <div className="flex gap-2">
+                      {video.is_stream ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {T('common.stream') || 'Archive'}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                          {T('common.cover') || 'Cover'}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-[15px] text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent)] transition-colors min-h-[2.4em]">
+                      {video.title}
+                    </h3>
+                    <p className="text-[11px] font-black uppercase tracking-wider text-[var(--text-tertiary)] mt-auto flex items-center gap-2">
+                      <span className="w-1 h-1 bg-[var(--accent)] rounded-full" />
+                      {video.channel?.name || T('common.unknown')}
+                    </p>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {hasMore && (
+            <div ref={observerRef} className="h-10 w-full flex items-center justify-center mt-12 text-[var(--text-tertiary)] font-bold text-sm">
+              <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mr-2" />
+              Loading...
+            </div>
+          )}
+        </>
       )}
     </section>
   );

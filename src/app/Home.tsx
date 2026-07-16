@@ -25,7 +25,7 @@ const getHomeVideosCached = unstable_cache(
       .select('*, channel:channels(*), songs!inner(id)')
       .gte('created_at', sevenDaysAgoISO)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(300);
 
     if (error) {
       console.error('getHomeVideosCached error:', error);
@@ -33,8 +33,7 @@ const getHomeVideosCached = unstable_cache(
     }
 
     const videos = ((videoData as unknown as Video[]) || [])
-      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-      .slice(0, 12);
+      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
     return videos;
   },
