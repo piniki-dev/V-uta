@@ -32,7 +32,8 @@ export default function FullPlayer() {
   } = usePlayer();
   const { t, T } = useLocale();
   const { showToast } = useToast();
-  const { isOpen: isSidebarOpen } = useSidebar();
+  const { isOpen: isSidebarToggled } = useSidebar();
+  const isSidebarOpen = !isSidebarToggled;
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const isDraggingRef = useRef(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);

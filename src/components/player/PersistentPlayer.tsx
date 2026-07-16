@@ -7,7 +7,8 @@ import { useSidebar } from '@/components/SidebarContext';
 
 export default function PersistentPlayer() {
   const { state } = usePlayer();
-  const { isOpen: isSidebarOpen } = useSidebar();
+  const { isOpen: isSidebarToggled } = useSidebar();
+  const isSidebarOpen = !isSidebarToggled;
   const videoWindowRef = useRef<HTMLDivElement>(null);
 
   // モバイル + フルプレイヤー時: ポータルターゲットの座標を取得してvideo-windowを重ねる
