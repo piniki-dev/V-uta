@@ -73,24 +73,30 @@ export default async function Image({ params }: Props) {
     );
 
     // チャンネル情報を取得
-    let query = supabase.from('channels').select('*');
-    if (decodedId.startsWith('@')) {
-      query = query.ilike('handle', decodedId);
-    } else {
-      query = query.eq('id', Number(decodedId));
-    }
+    let activeChannel = null;
+    const isHandle = decodedId.startsWith('@');
+    const channelId = Number(decodedId);
 
-    const { data: channel, error } = await query.single();
+    if (isHandle || !isNaN(channelId)) {
+      let query = supabase.from('channels').select('*');
+      if (isHandle) {
+        query = query.ilike('handle', decodedId);
+      } else {
+        query = query.eq('id', channelId);
+      }
 
-    let activeChannel = channel;
-    if ((error || !channel) && decodedId.startsWith('@')) {
-      const cleanHandle = decodedId.replace('@', '');
-      const { data: retryChannel } = await supabase
-        .from('channels')
-        .select('*')
-        .ilike('handle', cleanHandle)
-        .single();
-      activeChannel = retryChannel;
+      const { data: channel, error } = await query.single();
+      activeChannel = channel;
+
+      if ((error || !channel) && isHandle) {
+        const cleanHandle = decodedId.replace('@', '');
+        const { data: retryChannel } = await supabase
+          .from('channels')
+          .select('*')
+          .ilike('handle', cleanHandle)
+          .single();
+        activeChannel = retryChannel;
+      }
     }
 
     if (activeChannel) {

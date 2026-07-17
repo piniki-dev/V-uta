@@ -603,7 +603,11 @@ async function fetchChannelWithVideosFromDb(identifier: string | number): Promis
     query = query.ilike('handle', identifier);
   } else {
     // ID で検索
-    query = query.eq('id', Number(identifier));
+    const channelId = Number(identifier);
+    if (isNaN(channelId)) {
+      return { success: false, error: t.archive.notFound };
+    }
+    query = query.eq('id', channelId);
   }
 
   const { data: channel, error: chanErr } = await query.single();
@@ -670,7 +674,11 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
     query = query.ilike('handle', identifier);
   } else {
     // ID で検索
-    query = query.eq('id', Number(identifier));
+    const channelId = Number(identifier);
+    if (isNaN(channelId)) {
+      return { success: false, error: t.archive.notFound };
+    }
+    query = query.eq('id', channelId);
   }
 
   const { data: channel, error: chanErr } = await query.single();
