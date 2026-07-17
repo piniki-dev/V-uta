@@ -16,22 +16,24 @@ export default function Loading() {
         </div>
 
         {/* ランキングリスト */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-4 bg-[var(--bg-secondary)]/30 border border-[var(--border)] rounded-3xl p-6 md:p-8">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 py-3 border-b border-[var(--border)]/50 last:border-0">
-              {/* 順位 */}
-              <Skeleton variant="circle" className="w-8 h-8 shrink-0 opacity-40" />
-              {/* アートワーク */}
-              <Skeleton variant="rect" className="w-12 h-12 rounded-lg shrink-0 opacity-70" />
-              {/* 曲情報 */}
-              <div className="flex-1 space-y-2">
-                <Skeleton variant="text" className="w-1/2 h-4" />
-                <Skeleton variant="text" className="w-1/3 h-3 opacity-60" />
+        <div className="bg-[var(--bg-secondary)]/30 border border-[var(--border)] rounded-[32px] overflow-hidden shadow-xl">
+          <div className="flex flex-col divide-y divide-[var(--border)]/50">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                {/* 順位 */}
+                <Skeleton variant="circle" className="w-8 h-8 shrink-0 opacity-40" />
+                {/* アートワーク */}
+                <Skeleton variant="rect" className="w-12 h-12 rounded-lg shrink-0 opacity-70" />
+                {/* 曲情報 */}
+                <div className="flex-1 space-y-2">
+                  <Skeleton variant="text" className="w-1/2 h-4" />
+                  <Skeleton variant="text" className="w-1/3 h-3 opacity-60" />
+                </div>
+                {/* 再生回数・操作 */}
+                <Skeleton variant="text" className="w-16 h-4 opacity-50" />
               </div>
-              {/* 再生回数・操作 */}
-              <Skeleton variant="text" className="w-16 h-4 opacity-50" />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 

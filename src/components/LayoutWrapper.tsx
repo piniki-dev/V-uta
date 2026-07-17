@@ -2,37 +2,25 @@
 
 import { useSidebar } from './SidebarContext';
 import { usePlayer } from './player/PlayerContext';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 
 export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const { isOpen } = useSidebar();
   const { state } = usePlayer();
   const hasPlayer = !!state.currentSong;
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // 初期描画（0ms）はトランジション無効にするため、マウント後 100ms 遅延させて有効化する
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <div className={`layout-content ${isOpen ? 'sidebar-toggled' : ''} ${hasPlayer ? 'has-player' : ''}`}>
+    <div className={`layout-content ${isOpen ? 'sidebar-toggled' : ''} ${hasPlayer ? 'has-player' : ''} ${isMounted ? 'is-ready' : ''}`}>
       {children}
-      <style jsx>{`
-        .layout-content {
-          flex: 1;
-          width: 100%;
-          transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding-bottom 0.3s ease;
-          min-width: 0;
-        }
-
-        .layout-content.has-player {
-          padding-bottom: calc(var(--player-height) + 16px);
-        }
-
-        @media (min-width: 769px) {
-          .layout-content {
-            padding-left: var(--sidebar-width);
-          }
-          .layout-content.sidebar-toggled {
-            padding-left: 0;
-          }
-        }
-      `}</style>
     </div>
   );
 }

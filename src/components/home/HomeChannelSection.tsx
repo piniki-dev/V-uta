@@ -23,12 +23,17 @@ export default function HomeChannelSection({ channels }: HomeChannelSectionProps
 
   return (
     <section>
-      <div className="flex items-center gap-4 mb-8">
+      <motion.div 
+        className="flex items-center gap-4 mb-8"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+      >
         <div className="w-2 h-8 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full" />
         <h2 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
           {T('home.popularChannels')}
         </h2>
-      </div>
+      </motion.div>
 
       <div className="flex overflow-x-auto pb-4 gap-6 no-scrollbar -mx-6 px-6">
         {channels.map((channel, index) => (

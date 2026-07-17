@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Play, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import { useLocale } from '@/components/LocaleProvider';
@@ -78,7 +77,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
   return (
     <section>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 animate-slide-up">
           <div className="w-2 h-8 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full" />
           <div>
             <h2 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
@@ -110,13 +109,9 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
 
       <div className="bg-[var(--bg-secondary)]/30 backdrop-blur-sm rounded-[32px] border border-[var(--border)] overflow-hidden shadow-xl">
         <div className="flex flex-col">
-          <AnimatePresence mode="wait" initial={false}>
             {isLoading ? (
-              <motion.div 
+              <div 
                 key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
                 className="p-4 space-y-4"
               >
                 {[...Array(5)].map((_, i) => (
@@ -129,12 +124,10 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                     </div>
                   </div>
                 ))}
-              </motion.div>
+              </div>
             ) : songs.length === 0 ? (
-              <motion.div 
+              <div 
                 key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
                 className="py-20 text-center"
               >
                 <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mx-auto mb-4 text-[var(--text-tertiary)]">
@@ -143,7 +136,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                 <p className="text-[var(--text-secondary)] font-medium">
                   {T('playlist.noSongs')}
                 </p>
-              </motion.div>
+              </div>
             ) : (
               <div 
                 key="list"
@@ -219,7 +212,6 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                 ))}
               </div>
             )}
-          </AnimatePresence>
         </div>
       </div>
     </section>

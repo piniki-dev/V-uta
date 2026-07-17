@@ -2392,3 +2392,32 @@ input[type="range"]:hover::-webkit-slider-thumb {
     opacity: 1;
   }
 }
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ===== Layout Content (LayoutWrapper Styles) ===== */
+.layout-content {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+/* マウント完了後（100ms後）に付与され、開閉時のみアニメーションを有効にする */
+.layout-content.is-ready {
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding-bottom 0.3s ease;
+}
+
+.layout-content.has-player {
+  padding-bottom: calc(var(--player-height) + 16px);
+}
+
+@media (min-width: 769px) {
+  .layout-content {
+    padding-left: var(--sidebar-width);
+  }
+  .layout-content.sidebar-toggled {
+    padding-left: 0;
+  }
+}
