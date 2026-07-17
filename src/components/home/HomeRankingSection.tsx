@@ -78,12 +78,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
   return (
     <section>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-        <motion.div 
-          className="flex items-center gap-4"
-          initial={{ opacity: 1, x: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-        >
+        <div className="flex items-center gap-4">
           <div className="w-2 h-8 bg-gradient-to-b from-[var(--accent)] to-[#8e4eff] rounded-full" />
           <div>
             <h2 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
@@ -93,7 +88,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
               Trending music highlights
             </p>
           </div>
-        </motion.div>
+        </div>
 
         {/* 期間切り替えタブ */}
         <div className="flex p-1 bg-[var(--bg-tertiary)]/50 backdrop-blur-md rounded-2xl border border-[var(--border)] self-start md:self-auto">
@@ -150,11 +145,8 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                 </p>
               </motion.div>
             ) : (
-              <motion.div 
+              <div 
                 key="list"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
                 className="divide-y divide-[var(--border)]/50"
               >
                 {songs.map((song, index) => (
@@ -225,7 +217,7 @@ export default function HomeRankingSection({ initialSongs }: HomeRankingSectionP
                     </div>
                   </div>
                 ))}
-              </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>
