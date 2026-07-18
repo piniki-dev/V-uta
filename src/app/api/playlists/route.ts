@@ -5,19 +5,16 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let query = supabase
-    .from('playlists')
-    .select('*')
-    .order('is_favorites', { ascending: false })
-    .order('created_at', { ascending: false });
-
-  if (user) {
-    query = query.or(`is_public.eq.true,created_by.eq.${user.id}`);
-  } else {
-    query = query.eq('is_public', true);
+  if (!user) {
+    return NextResponse.json([]);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await supabase
+    .from('playlists')
+    .select('*')
+    .eq('created_by', user.id)
+    .order('is_favorites', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json([], { status: 500 });

@@ -24,27 +24,22 @@ async function getLocaleT() {
 }
 
 /**
- * プレイリスト一覧を取得する（自分のもの、または公開プレイリスト）
+ * プレイリスト一覧を取得する（自分が作成したもののみ）
  */
 export async function getPlaylists(): Promise<ActionResult<Playlist[]>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let query = supabase
-    .from('playlists')
-    .select('*')
-    .order('is_favorites', { ascending: false })
-    .order('created_at', { ascending: false });
-
-  if (user) {
-    // ログイン中の場合: 自分の全て + 他人の公開分
-    query = query.or(`is_public.eq.true,created_by.eq.${user.id}`);
-  } else {
-    // 未ログインの場合: 公開分のみ
-    query = query.eq('is_public', true);
+  if (!user) {
+    return { success: true, data: [] };
   }
 
-  const { data, error } = await query;
+  const { data, error } = await supabase
+    .from('playlists')
+    .select('*')
+    .eq('created_by', user.id)
+    .order('is_favorites', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
     const t = await getLocaleT();
@@ -95,8 +90,9 @@ export async function createPlaylist(name: string, description: string, isPublic
  */
 export async function getPlaylistDetail(slug: string): Promise<ActionResult<Playlist & { items: PlaylistItem[] }>> {
   const supabase = await createClient();
-  
-  const { data, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let query = supabase
     .from('playlists')
     .select(`
       *,
@@ -109,7 +105,15 @@ export async function getPlaylistDetail(slug: string): Promise<ActionResult<Play
         )
       )
     `)
-    .eq('slug', slug)
+    .eq('slug', slug);
+
+  if (user) {
+    query = query.or(`is_public.eq.true,created_by.eq.${user.id}`);
+  } else {
+    query = query.eq('is_public', true);
+  }
+
+  const { data, error } = await query
     .order('position', { foreignTable: 'playlist_items', ascending: true })
     .single();
 
