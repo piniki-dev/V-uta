@@ -38,7 +38,7 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
 
   const { data, error } = await supabase
     .from('channels')
-    .select('*')
+    .select('*, videos!inner(id, songs!inner(id))')
     .order('name', { ascending: true });
 
   if (error) {
@@ -46,5 +46,7 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
     return { success: false, error: 'Failed to fetch channels for static rendering' };
   }
 
-  return { success: true, data: data as Channel[] };
+  const channels: Channel[] = (data || []).map(({ videos: _videos, ...channel }) => channel as unknown as Channel);
+
+  return { success: true, data: channels };
 }
