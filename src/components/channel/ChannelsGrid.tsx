@@ -59,7 +59,7 @@ export default function ChannelsGrid({ channels }: ChannelsGridProps) {
           {channels.map((channel) => (
             <motion.div key={channel.id} variants={itemVariants}>
               <Link
-                href={`/channels/${channel.handle || channel.id}`}
+                href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
                 className="group flex flex-col items-center gap-4 transition-all duration-300 active:scale-95"
               >
                 <div className="relative w-full aspect-square">

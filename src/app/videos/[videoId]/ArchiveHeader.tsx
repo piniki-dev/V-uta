@@ -96,7 +96,7 @@ export default function ArchiveHeader({ video, songs }: Props) {
         
         <div className="mb-8">
           {video.channel ? (
-            <Link href={`/channels/${video.channel.handle || video.channel.id}`} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
+            <Link href={`/channels/${encodeURIComponent(video.channel.handle || video.channel.id)}`} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
               <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)] group-hover/ch:scale-110 transition-transform overflow-hidden border border-[var(--border)] group-hover/ch:border-[var(--accent)]">
                 {video.channel.image ? (
                   <Image src={video.channel.image} alt="" width={32} height={32} className="w-full h-full object-cover" />

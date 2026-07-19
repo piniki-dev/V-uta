@@ -39,7 +39,7 @@ export default async function ChannelsPage() {
       "@type": "ListItem",
       "position": index + 1,
       "name": channel.name,
-      "url": `${baseUrl}/channels/${channel.handle || channel.id}`
+      "url": `${baseUrl}/channels/${encodeURIComponent(channel.handle || channel.id)}`
     }))
   };
 

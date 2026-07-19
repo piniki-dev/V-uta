@@ -29,9 +29,17 @@ export async function generateStaticParams() {
   return params;
 }
 
+function safeDecode(str: string): string {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const decodedId = decodeURIComponent(id);
+  const decodedId = safeDecode(id);
   const result = await getChannelMetadata(decodedId);
   
   const locale = 'ja';
@@ -71,7 +79,7 @@ interface PageProps {
 
 export default async function ChannelPage({ params }: PageProps) {
   const { id } = await params;
-  const decodedId = decodeURIComponent(id);
+  const decodedId = safeDecode(id);
   const result = await getChannelWithVideos(decodedId);
   const locale = 'ja';
 

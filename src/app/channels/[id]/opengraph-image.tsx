@@ -47,9 +47,17 @@ async function loadFont() {
   return undefined;
 }
 
+function safeDecode(str: string): string {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 export default async function Image({ params }: Props) {
   const { id } = await params;
-  const decodedId = decodeURIComponent(id);
+  const decodedId = safeDecode(id).trim();
 
   let channelName = 'VTuber Channel';
   let channelImage = '';
@@ -74,29 +82,27 @@ export default async function Image({ params }: Props) {
 
     // チャンネル情報を取得
     let activeChannel = null;
-    const isHandle = decodedId.startsWith('@');
-    const channelId = Number(decodedId);
+    const isNumeric = /^\d+$/.test(decodedId);
 
-    if (isHandle || !isNaN(channelId)) {
-      let query = supabase.from('channels').select('*');
-      if (isHandle) {
-        query = query.ilike('handle', decodedId);
-      } else {
-        query = query.eq('id', channelId);
-      }
+    let query = supabase.from('channels').select('*');
+    if (isNumeric) {
+      query = query.eq('id', Number(decodedId));
+    } else {
+      const handleWithAt = decodedId.startsWith('@') ? decodedId : `@${decodedId}`;
+      query = query.ilike('handle', handleWithAt);
+    }
 
-      const { data: channel, error } = await query.single();
-      activeChannel = channel;
+    const { data: channel, error } = await query.single();
+    activeChannel = channel;
 
-      if ((error || !channel) && isHandle) {
-        const cleanHandle = decodedId.replace('@', '');
-        const { data: retryChannel } = await supabase
-          .from('channels')
-          .select('*')
-          .ilike('handle', cleanHandle)
-          .single();
-        activeChannel = retryChannel;
-      }
+    if ((error || !channel) && !isNumeric) {
+      const altHandle = decodedId.startsWith('@') ? decodedId.substring(1) : decodedId;
+      const { data: retryChannel } = await supabase
+        .from('channels')
+        .select('*')
+        .ilike('handle', altHandle)
+        .single();
+      activeChannel = retryChannel;
     }
 
     if (activeChannel) {

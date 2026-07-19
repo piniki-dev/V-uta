@@ -92,7 +92,7 @@ export function ChannelsGrid({ channels }: ChannelsGridProps) {
       {channels.map(channel => (
         <motion.div key={channel.id} variants={itemVariants}>
           <Link 
-            href={`/channels/${channel.handle || channel.id}`}
+            href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
             className="flex items-center gap-6 p-6 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl hover:border-[var(--accent)]/30 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1 transition-all duration-500 group"
           >
             <div className="relative">

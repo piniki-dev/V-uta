@@ -45,7 +45,7 @@ export default function HomeChannelSection({ channels }: HomeChannelSectionProps
             viewport={{ once: true }}
           >
             <Link 
-              href={`/channels/${channel.handle || channel.id}`}
+              href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
               className="flex flex-col items-center gap-3 group"
             >
               <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-transparent group-hover:border-[var(--accent)] transition-all duration-300 shadow-lg">

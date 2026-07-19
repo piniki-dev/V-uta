@@ -578,6 +578,17 @@ export async function registerFullArchive(input: {
 }
 
 /**
+ * 安全に decodeURIComponent を実行するヘルパー
+ */
+function safeDecode(str: string): string {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
+/**
  * チャンネル詳細と紐付く動画・曲リストを取得する (ID またはハンドルに対応)
  */
 async function fetchChannelWithVideosFromDb(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
@@ -587,6 +598,10 @@ async function fetchChannelWithVideosFromDb(identifier: string | number): Promis
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
   );
   const t = translations['ja'];
+
+  const rawStr = String(identifier).trim();
+  const decodedStr = safeDecode(rawStr).trim();
+  const isNumeric = /^\d+$/.test(decodedStr);
 
   let query = supabase
     .from('channels')
@@ -598,23 +613,22 @@ async function fetchChannelWithVideosFromDb(identifier: string | number): Promis
       )
     `);
 
-  if (typeof identifier === 'string' && identifier.startsWith('@')) {
-    // ハンドルで検索 (大文字小文字を区別しない)
-    query = query.ilike('handle', identifier);
-  } else {
-    // ID で検索
-    const channelId = Number(identifier);
-    if (isNaN(channelId)) {
-      return { success: false, error: t.archive.notFound };
-    }
+  if (isNumeric) {
+    // 数値 ID で検索
+    const channelId = Number(decodedStr);
     query = query.eq('id', channelId);
+  } else {
+    // ハンドルで検索 (DB の handle は @ 付きで格納されている)
+    const handleWithAt = decodedStr.startsWith('@') ? decodedStr : `@${decodedStr}`;
+    query = query.ilike('handle', handleWithAt);
   }
 
   const { data: channel, error: chanErr } = await query.single();
 
   if (chanErr || !channel) {
-    // ハンドルで不一致の場合、@ を取って再試行
-    if (typeof identifier === 'string' && identifier.startsWith('@')) {
+    // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
+    if (!isNumeric) {
+      const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
       const { data: retryChannel } = await supabase
         .from('channels')
         .select(`
@@ -624,7 +638,7 @@ async function fetchChannelWithVideosFromDb(identifier: string | number): Promis
             production:productions (*)
           )
         `)
-        .eq('handle', identifier.substring(1))
+        .ilike('handle', altHandle)
         .single();
       
       if (retryChannel) {
@@ -659,6 +673,10 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
   );
   const t = translations['ja'];
 
+  const rawStr = String(identifier).trim();
+  const decodedStr = safeDecode(rawStr).trim();
+  const isNumeric = /^\d+$/.test(decodedStr);
+
   let query = supabase
     .from('channels')
     .select(`
@@ -669,23 +687,22 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
       )
     `);
 
-  if (typeof identifier === 'string' && identifier.startsWith('@')) {
-    // ハンドルで検索 (大文字小文字を区別しない)
-    query = query.ilike('handle', identifier);
-  } else {
-    // ID で検索
-    const channelId = Number(identifier);
-    if (isNaN(channelId)) {
-      return { success: false, error: t.archive.notFound };
-    }
+  if (isNumeric) {
+    // 数値 ID で検索
+    const channelId = Number(decodedStr);
     query = query.eq('id', channelId);
+  } else {
+    // ハンドルで検索 (DB の handle は @ 付きで格納されている)
+    const handleWithAt = decodedStr.startsWith('@') ? decodedStr : `@${decodedStr}`;
+    query = query.ilike('handle', handleWithAt);
   }
 
   const { data: channel, error: chanErr } = await query.single();
 
   if (chanErr || !channel) {
-    // ハンドルで不一致の場合、@ を取って再試行
-    if (typeof identifier === 'string' && identifier.startsWith('@')) {
+    // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
+    if (!isNumeric) {
+      const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
       const { data: retryChannel } = await supabase
         .from('channels')
         .select(`
@@ -695,7 +712,7 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
             production:productions (*)
           )
         `)
-        .eq('handle', identifier.substring(1))
+        .ilike('handle', altHandle)
         .single();
       
       if (retryChannel) {
