@@ -22,9 +22,13 @@ export async function generateStaticParams() {
     params.push({ id: String(channel.id) });
     // 英数字ハンドルの場合のみ static params に登録
     if (channel.handle && /^@[a-zA-Z0-9_-]+$/.test(channel.handle)) {
-      params.push({ id: encodeURIComponent(channel.handle) });
-      const cleanHandle = channel.handle.replace('@', '');
-      if (cleanHandle !== channel.handle) {
+      const targetHandle = channel.handle.startsWith('@') ? channel.handle : `@${channel.handle}`;
+      params.push({ id: targetHandle }); // 生の @handle パス (/channels/@nijisanji)
+      params.push({ id: encodeURIComponent(targetHandle) }); // エンコードパス (/channels/%40nijisanji)
+      
+      const cleanHandle = targetHandle.replace('@', '');
+      if (cleanHandle !== targetHandle) {
+        params.push({ id: cleanHandle }); // クリーンハンドル (/channels/nijisanji)
         params.push({ id: encodeURIComponent(cleanHandle) });
       }
     }
