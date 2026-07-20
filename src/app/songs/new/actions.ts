@@ -1178,10 +1178,29 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
   const { data: videos, error: vidErr } = await supabase
     .from('videos')
     .select(`
-      *,
+      id,
+      video_id,
+      title,
+      thumbnail_url,
+      published_at,
+      duration,
+      is_stream,
+      channel_record_id,
       songs (
-        *,
-        master_song:master_songs (*)
+        id,
+        video_id,
+        start_sec,
+        end_sec,
+        is_active,
+        master_song_id,
+        master_song:master_songs (
+          id,
+          title,
+          artist,
+          title_en,
+          artist_en,
+          artwork_url
+        )
       )
     `)
     .in('channel_record_id', channelIds)
@@ -1196,10 +1215,11 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
   const subChannelCountMap = new Map<number, number>();
 
   // songs のうち is_active なもののみを抽出し、開始時間 (start_sec) の昇順でソートする
+  type SongItem = { is_active?: boolean; start_sec?: number };
   const processedVideos = (videos || []).map((video) => {
     const activeSongs = (video.songs || [])
-      .filter((song: Song) => song.is_active)
-      .sort((a: Song, b: Song) => a.start_sec - b.start_sec);
+      .filter((song: SongItem) => song.is_active !== false)
+      .sort((a: SongItem, b: SongItem) => (a.start_sec || 0) - (b.start_sec || 0));
 
     const sourceChan = channelMap.get(video.channel_record_id);
     const isMainChannel = video.channel_record_id === channel.id;
@@ -1231,7 +1251,7 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
     success: true,
     data: {
       ...channel,
-      videos: processedVideos as (Video & { songs: Song[]; sourceChannelName?: string })[],
+      videos: processedVideos as unknown as (Video & { songs: Song[]; sourceChannelName?: string })[],
       subChannels: subChannelsInfo.length > 0 ? subChannelsInfo : undefined,
     }
   };
