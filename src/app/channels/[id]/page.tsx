@@ -6,6 +6,10 @@ import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 import type { Metadata } from 'next';
 
+function isPureAscii(str: string): boolean {
+  return /^[\x20-\x7E]*$/.test(str);
+}
+
 export async function generateStaticParams() {
   const result = await getAllChannelsForStatic();
   if (!result.success || !result.data) {
@@ -14,10 +18,10 @@ export async function generateStaticParams() {
 
   const params: { id: string }[] = [];
   result.data.forEach((channel) => {
-    // ID パターン
+    // ID パターン (100% ASCII)
     params.push({ id: String(channel.id) });
-    // ハンドル パターン
-    if (channel.handle) {
+    // 英数字ハンドルの場合のみ static params に登録 (非ASCII日本語ハンドルは数値IDでレンダリング)
+    if (channel.handle && /^@[a-zA-Z0-9_-]+$/.test(channel.handle)) {
       params.push({ id: encodeURIComponent(channel.handle) });
       const cleanHandle = channel.handle.replace('@', '');
       if (cleanHandle !== channel.handle) {
@@ -39,7 +43,6 @@ function safeDecode(str: string): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  // unstable_cache のキャッシュタグに日本語が含まれるのを防ぐため、エンコード済みの ASCII 文字列 id を渡す
   const result = await getChannelMetadata(id);
   
   const locale = 'ja';
@@ -79,10 +82,10 @@ interface PageProps {
 
 export default async function ChannelPage({ params }: PageProps) {
   const { id } = await params;
-  // unstable_cache のキャッシュタグに日本語が含まれるのを防ぐため、エンコード済みの ASCII 文字列 id を渡す
-  const result = await getChannelWithVideos(id);
   const decodedId = safeDecode(id);
   const locale = 'ja';
+
+  const result = await getChannelWithVideos(id);
 
   if (!result.success) {
     if (result.error?.includes('見つかりませんでした')) {
@@ -102,8 +105,14 @@ export default async function ChannelPage({ params }: PageProps) {
     return null;
   }
 
+  // 1. サブ/トピックチャンネルからのリダイレクト優先
   if (channel.redirectTo) {
     redirect(channel.redirectTo);
+  }
+
+  // 2. 非 ASCII 文字（日本語など）を含むハンドルでアクセスされた場合、x-next-cache-tags の ERR_INVALID_CHAR エラーを防ぐため数値 ID パスへリダイレクト
+  if (!isPureAscii(id) || !isPureAscii(decodedId)) {
+    redirect(`/channels/${channel.id}`);
   }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
   const t = translations[locale];

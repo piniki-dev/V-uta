@@ -1054,11 +1054,11 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
       .or('is_primary.eq.true,is_primary.is.null')
       .neq('id', channel.id)
       .limit(1);
-
     const primaryChan = primaryChans?.[0];
 
     if (primaryChan && primaryChan.id !== channel.id) {
-      const targetIdentifier = primaryChan.handle ? encodeURIComponent(primaryChan.handle) : String(primaryChan.id);
+      const isPureAsciiHandle = primaryChan.handle && /^@[a-zA-Z0-9_-]+$/.test(primaryChan.handle);
+      const targetIdentifier = isPureAsciiHandle ? encodeURIComponent(primaryChan.handle!) : String(primaryChan.id);
       const redirectToPath = `/channels/${targetIdentifier}`;
 
       // 自分自身への循環リダイレクトを防御
