@@ -1,48 +1,11 @@
 import { unstable_cache } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import type { Video } from '@/types';
 import HomeVideoGrid from '@/components/home/HomeVideoGrid';
 import HomeRankingSection from '@/components/home/HomeRankingSection';
 import HomeChannelSection from '@/components/home/HomeChannelSection';
 import { getSongRankings } from '@/app/history/actions';
+import { getHomeVideosCached } from '@/app/videos/actions';
 
-// 1. 最近追加された動画リストをキャッシュ (過去7日間分を1時間ごと自動更新 + 手動パージ)
-const getHomeVideosCached = unstable_cache(
-  async () => {
-    console.log('[unstable_cache] Fetching home videos from DB...');
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
-    );
-
-    // 7日前の日時を計算 (ISO-8601 形式)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
-
-    const { data: videoData, error } = await supabase
-      .from('videos')
-      .select('*, channel:channels(*), songs!inner(id)')
-      .gte('created_at', sevenDaysAgoISO)
-      .order('created_at', { ascending: false })
-      .limit(300);
-
-    if (error) {
-      console.error('getHomeVideosCached error:', error);
-      return [];
-    }
-
-    const videos = ((videoData as unknown as Video[]) || [])
-      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-
-    return videos;
-  },
-  ['home-videos-cached'],
-  {
-    revalidate: 3600, // 過去7日間の基準時刻が経過するのに合わせて自動更新
-    tags: ['home-videos']
-  }
-);
 
 // 2. 再生ランキングとそれに基づく人気チャンネルをキャッシュ (10分自動更新)
 const getHomeRankingCached = unstable_cache(
@@ -98,7 +61,7 @@ export default async function Home() {
         )}
 
         {/* 最近追加されたアーカイブ */}
-        <HomeVideoGrid initialVideos={videos} />
+        <HomeVideoGrid initialVideos={videos} limit={12} />
       </div>
     </div>
   );

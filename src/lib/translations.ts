@@ -343,6 +343,7 @@ export const translations = {
       heroSub1: '歌枠アーカイブから歌区間だけを抽出して連続再生。',
       heroSub2: 'お気に入りの歌を見つけよう。',
       registerBtn: '歌を登録する',
+      viewMore: 'さらに表示',
       recentArchives: '最近追加されたアーカイブ',
       recentSongs: '最近追加された曲',
       songRanking: '楽曲ランキング',
@@ -356,6 +357,13 @@ export const translations = {
       registerFirst: '最初の歌を登録してみましょう！',
       title: 'VTuber 歌枠プレイヤー',
       description: 'VTuber の YouTube 歌枠アーカイブから歌っている区間だけを再生できる音楽ストリーミング風 Web アプリ',
+    },
+    recently: {
+      title: '最近追加されたアーカイブ',
+      description: '過去7日間に登録された歌枠アーカイブの一覧です。',
+      all: 'すべて',
+      filterByChannel: 'チャンネルで絞り込み',
+      noArchives: '該当するアーカイブが見つかりません。',
     },
     vtuber: {
       registerTitle: 'VTuber情報を登録',
@@ -790,6 +798,7 @@ export const translations = {
       heroSub1: 'Extract and play song segments from stream archives.',
       heroSub2: 'Find your favorite songs.',
       registerBtn: 'Register Song',
+      viewMore: 'View More',
       recentArchives: 'Recently Added Archives',
       recentSongs: 'Recently Added Songs',
       songRanking: 'Song Ranking',
@@ -803,6 +812,13 @@ export const translations = {
       registerFirst: 'Try registering the first song!',
       title: 'VTuber Karaoke Player',
       description: 'A music streaming-style web app to play song segments from VTuber stream archives.',
+    },
+    recently: {
+      title: 'Recently Added Archives',
+      description: 'A list of stream archives registered in the last 7 days.',
+      all: 'ALL',
+      filterByChannel: 'Filter by Channel',
+      noArchives: 'No archives found.',
     },
     vtuber: {
       registerTitle: 'Register VTuber Info',

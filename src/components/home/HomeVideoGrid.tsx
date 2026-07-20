@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Music } from 'lucide-react';
+import { Music, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import type { Video } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
@@ -11,6 +11,7 @@ import Skeleton from '@/components/Skeleton';
 
 interface HomeVideoGridProps {
   initialVideos: Video[] | null;
+  limit?: number;
 }
 
 // スケルトン表示 (初期データがない場合に使用可能だが、サーバーコンポーネントからは初期データが渡されるはず)
@@ -28,13 +29,13 @@ const SkeletonGrid = () => (
   </div>
 );
 
-export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
+export default function HomeVideoGrid({ initialVideos, limit }: HomeVideoGridProps) {
   const { T } = useLocale();
   const [visibleCount, setVisibleCount] = useState(12);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
-  const displayedVideos = initialVideos ? initialVideos.slice(0, visibleCount) : [];
-  const hasMore = initialVideos ? visibleCount < initialVideos.length : false;
+  const displayedVideos = initialVideos ? initialVideos.slice(0, limit ? limit : visibleCount) : [];
+  const hasMore = limit ? false : (initialVideos ? visibleCount < initialVideos.length : false);
 
   useEffect(() => {
     if (!hasMore || !initialVideos) return;
@@ -162,6 +163,18 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
             ))}
           </div>
 
+          {limit && initialVideos && initialVideos.length > limit && (
+            <div className="mt-12 text-center">
+              <Link
+                href="/recently"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border border-[var(--border)] hover:border-[var(--accent)]/50 rounded-2xl text-[var(--text-primary)] font-bold transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5 group"
+              >
+                <span>{T('home.viewMore')}</span>
+                <ChevronRight size={18} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] group-hover:translate-x-1 transition-all" />
+              </Link>
+            </div>
+          )}
+
           {hasMore && (
             <div ref={observerRef} className="h-10 w-full flex items-center justify-center mt-12 text-[var(--text-tertiary)] font-bold text-sm">
               <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mr-2" />
@@ -173,3 +186,4 @@ export default function HomeVideoGrid({ initialVideos }: HomeVideoGridProps) {
     </section>
   );
 }
+
