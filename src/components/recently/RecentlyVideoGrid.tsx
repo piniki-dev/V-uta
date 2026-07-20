@@ -33,20 +33,67 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
   // 選択されたチャンネルIDのセット（空の場合はALL扱い）
   const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
 
-  // 動画データからユニークなチャンネルリストを抽出
-  const channels = useMemo(() => {
-    if (!initialVideos) return [];
-    const map = new Map<number, { id: number; name: string; image?: string | null }>();
+  // 動画データからメインチャンネルリストおよびサブチャンネルマッピングを抽出
+  const { channels, channelToPrimaryIdMap } = useMemo(() => {
+    if (!initialVideos) return { channels: [], channelToPrimaryIdMap: new Map<number, number>() };
+
+    const primaryChannelsMap = new Map<number, { id: number; name: string; image?: string | null; vtuber_id?: number | null }>();
+    const vtuberToPrimaryIdMap = new Map<number, number>();
+    const channelToPrimaryIdMap = new Map<number, number>();
+
+    // 1. メインチャンネル(is_primary !== false)の収集と vtuber_id マッピング
     initialVideos.forEach((v) => {
-      if (v.channel && v.channel.id != null && !map.has(v.channel.id)) {
-        map.set(v.channel.id, {
-          id: v.channel.id,
-          name: v.channel.name,
-          image: v.channel.image,
-        });
+      if (v.channel && v.channel.id != null) {
+        const c = v.channel;
+        const isPrimary = c.is_primary !== false && (c.is_primary as unknown) !== 'false';
+        
+        if (isPrimary) {
+          if (!primaryChannelsMap.has(c.id)) {
+            primaryChannelsMap.set(c.id, {
+              id: c.id,
+              name: c.name,
+              image: c.image,
+              vtuber_id: c.vtuber_id,
+            });
+          }
+          if (c.vtuber_id) {
+            vtuberToPrimaryIdMap.set(c.vtuber_id, c.id);
+          }
+        }
       }
     });
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    // 2. サブチャンネルからメインチャンネル ID へのマッピング
+    initialVideos.forEach((v) => {
+      if (v.channel && v.channel.id != null) {
+        const c = v.channel;
+        const isPrimary = c.is_primary !== false && (c.is_primary as unknown) !== 'false';
+        
+        if (isPrimary) {
+          channelToPrimaryIdMap.set(c.id, c.id);
+        } else if (c.vtuber_id && vtuberToPrimaryIdMap.has(c.vtuber_id)) {
+          const primaryId = vtuberToPrimaryIdMap.get(c.vtuber_id)!;
+          channelToPrimaryIdMap.set(c.id, primaryId);
+        } else {
+          // メインチャンネルが見つからない場合のフォールバック
+          channelToPrimaryIdMap.set(c.id, c.id);
+          if (!primaryChannelsMap.has(c.id)) {
+            primaryChannelsMap.set(c.id, {
+              id: c.id,
+              name: c.name,
+              image: c.image,
+              vtuber_id: c.vtuber_id,
+            });
+          }
+        }
+      }
+    });
+
+    const sortedChannels = Array.from(primaryChannelsMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'ja')
+    );
+
+    return { channels: sortedChannels, channelToPrimaryIdMap };
   }, [initialVideos]);
 
   // チャンネルクリック時のハンドラー
@@ -67,12 +114,17 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
     setSelectedChannelIds(new Set());
   };
 
-  // 選択中のチャンネルに基づくフィルタリング
+  // 選択中のメインチャンネルに基づくフィルタリング (サブチャンネルの動画も統合抽出)
   const filteredVideos = useMemo(() => {
     if (!initialVideos) return [];
     if (selectedChannelIds.size === 0) return initialVideos;
-    return initialVideos.filter((v) => v.channel && selectedChannelIds.has(v.channel.id));
-  }, [initialVideos, selectedChannelIds]);
+
+    return initialVideos.filter((v) => {
+      if (!v.channel || v.channel.id == null) return false;
+      const primaryId = channelToPrimaryIdMap.get(v.channel.id) ?? v.channel.id;
+      return selectedChannelIds.has(primaryId);
+    });
+  }, [initialVideos, selectedChannelIds, channelToPrimaryIdMap]);
 
   const isAllSelected = selectedChannelIds.size === 0;
 
