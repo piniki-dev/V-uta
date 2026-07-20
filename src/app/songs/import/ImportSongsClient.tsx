@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction } from '../new/actions';
-import type { ITunesSearchResult } from '../new/actions';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction, searchVtubers, checkDuplicateVtuber } from '../new/actions';
+import type { ITunesSearchResult, VtuberWithChannels } from '../new/actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime, formatTimeFull } from '@/lib/utils';
 import { 
   Search, X, Music, Info, Save, Trash2, AlertCircle, 
   UserPlus, Building2, FileUp, Table, ChevronRight,
   CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw,
-  Youtube
+  Youtube, Check, AlertTriangle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
@@ -158,6 +158,17 @@ export default function ImportSongsClient() {
   const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
   const [isRegisteringVtuber, setIsRegisteringVtuber] = useState(false);
   const [productions, setProductions] = useState<Production[]>([]);
+  const [vtuberRegMode, setVtuberRegMode] = useState<'new' | 'link'>('new');
+  const [vtuberSearchQuery, setVtuberSearchQuery] = useState('');
+  const [vtuberSearchResults, setVtuberSearchResults] = useState<VtuberWithChannels[]>([]);
+  const [isSearchingVtubers, setIsSearchingVtubers] = useState(false);
+  const [selectedExistingVtuber, setSelectedExistingVtuber] = useState<VtuberWithChannels | null>(null);
+  const [isPrimaryChannel, setIsPrimaryChannel] = useState(true);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    exactMatch: VtuberWithChannels | null;
+    similarMatches: VtuberWithChannels[];
+  }>({ exactMatch: null, similarMatches: [] });
+
   const [vtuberForm, setVtuberForm] = useState<{
     name: string;
     gender: '男性' | '女性' | 'その他' | '不明';
@@ -487,11 +498,49 @@ export default function ImportSongsClient() {
           setCurrentBatchIndex(index);
           const channelData = result.data.channelData as unknown as YouTubeChannelData;
           setChannelDataForReg(channelData);
+
+          const rawChannelName = channelData.name || '';
+          const isTopic = /(?:[-–—\s]\s*|\s+)(Topic|トピック)\s*$/i.test(rawChannelName);
+          const cleanName = rawChannelName.replace(/(?:[-–—\s]\s*|\s+)(Topic|トピック)\s*$/i, '').trim();
+
           setVtuberForm(prev => ({
             ...prev,
-            name: channelData.name,
+            name: cleanName || rawChannelName,
             link: channelData.officialLink || ''
           }));
+
+          setIsPrimaryChannel(!isTopic);
+          setSelectedExistingVtuber(null);
+          setDuplicateWarning({ exactMatch: null, similarMatches: [] });
+
+          const prods = await getProductions();
+          if (prods.success) setProductions(prods.data);
+
+          if (isTopic && cleanName) {
+            const vtSearch = await searchVtubers(cleanName);
+            if (vtSearch.success && vtSearch.data.length > 0) {
+              setVtuberRegMode('link');
+              setVtuberSearchQuery(cleanName);
+              setVtuberSearchResults(vtSearch.data);
+
+              const normClean = cleanName.toLowerCase().replace(/[\s\-_・/@]/g, '');
+              const match = vtSearch.data.find(v => {
+                const normVtName = v.name.toLowerCase().replace(/[\s\-_・/@]/g, '');
+                return normVtName.includes(normClean) || normClean.includes(normVtName);
+              }) || vtSearch.data[0];
+
+              if (match) setSelectedExistingVtuber(match);
+            } else {
+              setVtuberRegMode('new');
+            }
+          } else {
+            setVtuberRegMode('new');
+            if (cleanName) {
+              const dupCheck = await checkDuplicateVtuber(cleanName);
+              if (dupCheck.success) setDuplicateWarning(dupCheck.data);
+            }
+          }
+
           setIsVtuberModalOpen(true);
         } else {
           const videoResult = await registerVideo(result.data.metadata);
@@ -923,15 +972,24 @@ export default function ImportSongsClient() {
 
   const handleRegisterVtuber = async () => {
     if (!channelDataForReg) return;
+    const isLinkMode = vtuberRegMode === 'link';
+    if (isLinkMode && !selectedExistingVtuber) {
+      setError('紐づけるVTuberを選択してください');
+      return;
+    }
+
     setIsRegisteringVtuber(true);
     setError('');
     try {
+      const regVtuberName = isLinkMode ? selectedExistingVtuber!.name : vtuberForm.name;
       const result = await registerVtuberAndChannel({
-        vtuberName: vtuberForm.name,
+        existingVtuberId: isLinkMode ? selectedExistingVtuber!.id : undefined,
+        isPrimary: isPrimaryChannel,
+        vtuberName: regVtuberName,
         gender: vtuberForm.gender,
         vtuberLink: vtuberForm.link,
-        productionId: (vtuberForm.productionId && vtuberForm.productionId !== 'new') ? Number(vtuberForm.productionId) : undefined,
-        newProductionName: vtuberForm.productionId === 'new' ? vtuberForm.newProductionName : undefined,
+        productionId: (!isLinkMode && vtuberForm.productionId && vtuberForm.productionId !== 'new') ? Number(vtuberForm.productionId) : undefined,
+        newProductionName: (!isLinkMode && vtuberForm.productionId === 'new') ? vtuberForm.newProductionName : undefined,
         channelData: channelDataForReg,
       });
       if (result.success) {
@@ -950,35 +1008,8 @@ export default function ImportSongsClient() {
     }
   };
 
-  const resetImportState = () => {
-    setBatchArchives([]);
-    setProgress({});
-    setCurrentBatchIndex(-1);
-    setGsUrl('');
-    setMetadata(null);
-    setVideo(null);
-    setAllSongs([]);
-    setError('');
-    setSuccess('');
-  };
 
-  const handleCancelVtuberRegister = () => {
-    setIsVtuberModalOpen(false);
-    setModalConfig({
-      title: T('vtuber.cancelConfirmTitle'),
-      message: T('vtuber.cancelConfirmMessage'),
-      confirmText: T('vtuber.cancelConfirmButton'),
-      cancelText: T('vtuber.cancelBackButton'),
-      type: 'danger',
-    });
-    setOnConfirmAction(() => () => {
-      resetImportState();
-    });
-    setOnCancelAction(() => () => {
-      setIsVtuberModalOpen(true);
-    });
-    setIsModalOpen(true);
-  };
+
 
   const handleToggleCoverVideo = (checked: boolean) => {
     if (!metadata || currentBatchIndex === -1) return;
@@ -1940,85 +1971,236 @@ export default function ImportSongsClient() {
       {/* VTuber登録モーダル */}
       {isVtuberModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-container" style={{ maxWidth: '500px' }}>
+          <div className="modal-container" style={{ maxWidth: '540px' }}>
             <div className="modal-body" style={{ alignItems: 'flex-start', textAlign: 'left' }}>
-                <div className="modal-icon" style={{ alignSelf: 'center' }}>
-                  <UserPlus size={32} />
-                </div>
-                <h3 className="modal-title" style={{ alignSelf: 'center' }}>{T('vtuber.registerTitle')}</h3>
-                <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
-                  {T('vtuber.description')}
-                </p>
+              <div className="modal-icon" style={{ alignSelf: 'center' }}>
+                <UserPlus size={32} />
+              </div>
+              <h3 className="modal-title" style={{ alignSelf: 'center' }}>{T('vtuber.registerTitle')}</h3>
+              <p className="modal-text" style={{ alignSelf: 'center', marginBottom: '16px' }}>
+                {T('vtuber.description')}
+              </p>
+
+              {/* モード切り替えタブ */}
+              <div className="flex w-full bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border)] mb-4">
+                <button
+                  type="button"
+                  onClick={() => setVtuberRegMode('new')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${vtuberRegMode === 'new' ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                >
+                  新規VTuberとして登録
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVtuberRegMode('link')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${vtuberRegMode === 'link' ? 'bg-[var(--bg-secondary)] text-[var(--accent)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                >
+                  既存のVTuberに紐づけ
+                </button>
+              </div>
 
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">{T('vtuber.name')} <span className="form-required">*</span></label>
-                  <input
-                    type="text"
-                    value={vtuberForm.name}
-                    onChange={e => setVtuberForm(p => ({ ...p, name: e.target.value }))}
-                    className="form-input"
-                    placeholder={T('vtuber.name')}
-                  />
-                </div>
+                {vtuberRegMode === 'link' ? (
+                  /* 既存VTuberへの紐づけ */
+                  <div className="flex flex-col gap-3">
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">VTuberを検索 <span className="form-required">*</span></label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={vtuberSearchQuery}
+                          onChange={async (e) => {
+                            const val = e.target.value;
+                            setVtuberSearchQuery(val);
+                            if (val.trim()) {
+                              setIsSearchingVtubers(true);
+                              const res = await searchVtubers(val);
+                              setIsSearchingVtubers(false);
+                              if (res.success) setVtuberSearchResults(res.data);
+                            } else {
+                              setVtuberSearchResults([]);
+                            }
+                          }}
+                          className="form-input"
+                          placeholder="VTuber名で検索..."
+                        />
+                        {isSearchingVtubers && (
+                          <Loader2 size={16} className="absolute right-3 top-3 animate-spin text-[var(--text-tertiary)]" />
+                        )}
+                      </div>
+                    </div>
 
-                <div className="form-row">
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">{T('vtuber.gender')}</label>
-                    <select
-                      value={vtuberForm.gender}
-                      onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as '男性' | '女性' | 'その他' | '不明' }))}
-                      className="form-input"
-                    >
-                      <option value="女性">{T('vtuber.genders.female')}</option>
-                      <option value="男性">{T('vtuber.genders.male')}</option>
-                      <option value="その他">{T('vtuber.genders.other')}</option>
-                      <option value="不明">{T('vtuber.genders.unknown')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">{T('vtuber.production')}</label>
-                    <select
-                      value={vtuberForm.productionId}
-                      onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
-                      className="form-input"
-                    >
-                      <option value="">{T('vtuber.noProduction')}</option>
-                      {productions.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                      <option value="new">+ {T('vtuber.createNew')}...</option>
-                    </select>
-                  </div>
-                </div>
+                    {/* 検索結果リスト */}
+                    {vtuberSearchResults.length > 0 && (
+                      <div className="max-h-40 overflow-y-auto border border-[var(--border)] rounded-xl bg-[var(--bg-secondary)] divide-y divide-[var(--border)]">
+                        {vtuberSearchResults.map((vt) => {
+                          const isSelected = selectedExistingVtuber?.id === vt.id;
+                          return (
+                            <div
+                              key={vt.id}
+                              onClick={() => setSelectedExistingVtuber(vt)}
+                              className={`p-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected ? 'bg-[var(--accent-subtle)]/40 border-l-4 border-[var(--accent)]' : 'hover:bg-[var(--bg-hover)]'}`}
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-[var(--text-primary)]">{vt.name}</p>
+                                <p className="text-[11px] text-[var(--text-tertiary)]">
+                                  登録済みチャンネル: {vt.channels.map(c => c.name).join(', ') || 'なし'}
+                                </p>
+                              </div>
+                              {isSelected && <Check size={16} className="text-[var(--accent)]" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                {vtuberForm.productionId === 'new' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">{T('vtuber.newProduction')}</label>
-                    <div className="form-input-group">
-                      <Building2 size={18} className="form-input-icon" />
+                    {selectedExistingVtuber && (
+                      <div className="p-3 bg-[var(--accent-subtle)]/30 border border-[var(--accent)]/30 rounded-xl flex items-center justify-between text-xs">
+                        <span className="font-bold text-[var(--accent)]">選択中: {selectedExistingVtuber.name}</span>
+                        <button type="button" onClick={() => setSelectedExistingVtuber(null)} className="text-[var(--text-tertiary)] hover:text-white">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* 新規VTuber登録 */
+                  <>
+                    {/* 重複警告バナー */}
+                    {duplicateWarning.exactMatch && (
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col gap-2 text-xs text-amber-300">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <AlertTriangle size={16} />
+                          <span>「{duplicateWarning.exactMatch.name}」は既に登録されています</span>
+                        </div>
+                        <p className="text-[11px] opacity-90">
+                          新しいVTuberとして別で作成しますか？それとも既存のVTuberに紐づけますか？
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVtuberRegMode('link');
+                            setSelectedExistingVtuber(duplicateWarning.exactMatch);
+                          }}
+                          className="px-3 py-1.5 bg-amber-500 text-black font-bold rounded-lg w-fit text-[11px]"
+                        >
+                          既存の「{duplicateWarning.exactMatch.name}」に紐づける
+                        </button>
+                      </div>
+                    )}
+
+                    {!duplicateWarning.exactMatch && duplicateWarning.similarMatches.length > 0 && (
+                      <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Info size={14} /> 似た名前のVTuberが見つかりました: {duplicateWarning.similarMatches.map(m => m.name).join(', ')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setVtuberRegMode('link')}
+                          className="text-[11px] underline font-bold"
+                        >
+                          確認する
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">{T('vtuber.name')} <span className="form-required">*</span></label>
                       <input
                         type="text"
-                        value={vtuberForm.newProductionName}
-                        onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
+                        value={vtuberForm.name}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setVtuberForm(p => ({ ...p, name: val }));
+                          if (val.trim()) {
+                            const check = await checkDuplicateVtuber(val);
+                            if (check.success) setDuplicateWarning(check.data);
+                          } else {
+                            setDuplicateWarning({ exactMatch: null, similarMatches: [] });
+                          }
+                        }}
                         className="form-input"
-                        placeholder={T('vtuber.newProduction')}
+                        placeholder={T('vtuber.name')}
                       />
                     </div>
-                  </div>
+
+                    <div className="form-row">
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">{T('vtuber.gender')}</label>
+                        <select
+                          value={vtuberForm.gender}
+                          onChange={e => setVtuberForm(p => ({ ...p, gender: e.target.value as '男性' | '女性' | 'その他' | '不明' }))}
+                          className="form-input"
+                        >
+                          <option value="女性">{T('vtuber.genders.female')}</option>
+                          <option value="男性">{T('vtuber.genders.male')}</option>
+                          <option value="その他">{T('vtuber.genders.other')}</option>
+                          <option value="不明">{T('vtuber.genders.unknown')}</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">{T('vtuber.production')}</label>
+                        <select
+                          value={vtuberForm.productionId}
+                          onChange={e => setVtuberForm(p => ({ ...p, productionId: e.target.value, newProductionName: '' }))}
+                          className="form-input"
+                        >
+                          <option value="">{T('vtuber.noProduction')}</option>
+                          {productions.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                          <option value="new">+ {T('vtuber.createNew')}...</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {vtuberForm.productionId === 'new' && (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">{T('vtuber.newProduction')}</label>
+                        <div className="form-input-group">
+                          <Building2 size={18} className="form-input-icon" />
+                          <input
+                            type="text"
+                            value={vtuberForm.newProductionName}
+                            onChange={e => setVtuberForm(p => ({ ...p, newProductionName: e.target.value }))}
+                            className="form-input"
+                            placeholder={T('vtuber.newProduction')}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">{tl('Twitter', 'X (Twitter)')}</label>
+                      <input
+                        type="text"
+                        value={vtuberForm.link}
+                        onChange={e => setVtuberForm(p => ({ ...p, link: e.target.value }))}
+                        className="form-input"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </>
                 )}
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">{tl('Twitter', 'X (Twitter)')}</label>
+                {/* メインチャンネル設定チェックボックス */}
+                <div className="p-3 bg-[var(--bg-tertiary)]/50 rounded-xl border border-[var(--border)] flex items-start gap-2.5">
                   <input
-                    type="text"
-                    value={vtuberForm.link}
-                    onChange={e => setVtuberForm(p => ({ ...p, link: e.target.value }))}
-                    className="form-input"
-                    placeholder="https://..."
+                    type="checkbox"
+                    id="isPrimaryCheckboxImport"
+                    checked={isPrimaryChannel}
+                    onChange={(e) => setIsPrimaryChannel(e.target.checked)}
+                    className="mt-0.5 accent-[var(--accent)]"
                   />
+                  <label htmlFor="isPrimaryCheckboxImport" className="text-xs cursor-pointer select-none">
+                    <span className="font-bold text-[var(--text-primary)] block">このチャンネルをメインチャンネルにする</span>
+                    <span className="text-[11px] text-[var(--text-tertiary)] block mt-0.5">
+                      チェックを入れると、このチャンネルがVTuberのメインページとして使用されます。
+                    </span>
+                  </label>
                 </div>
 
+                {/* 紐づくチャンネルプレビュー */}
                 <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {channelDataForReg?.image && (
                     <Image src={channelDataForReg.image} width={40} height={40} style={{ borderRadius: '50%' }} alt="" />
@@ -2031,11 +2213,17 @@ export default function ImportSongsClient() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn--secondary" onClick={handleCancelVtuberRegister} disabled={isRegisteringVtuber}>{T('common.cancel')}</button>
+              <button className="btn btn--secondary" onClick={() => {
+                setIsVtuberModalOpen(false);
+              }} disabled={isRegisteringVtuber}>{T('common.cancel')}</button>
               <button
                 className="btn btn--primary"
                 onClick={handleRegisterVtuber}
-                disabled={isRegisteringVtuber || !vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())}
+                disabled={
+                  isRegisteringVtuber ||
+                  (vtuberRegMode === 'link' && !selectedExistingVtuber) ||
+                  (vtuberRegMode === 'new' && (!vtuberForm.name.trim() || (vtuberForm.productionId === 'new' && !vtuberForm.newProductionName.trim())))
+                }
               >
                 {isRegisteringVtuber ? T('newSong.adding') : T('vtuber.registerAndProceed')}
               </button>

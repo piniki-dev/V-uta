@@ -1,13 +1,13 @@
 import { getChannelWithVideos, getChannelMetadata } from '@/app/songs/new/actions';
-import { getChannelsForStatic } from '@/app/channels/actions';
+import { getAllChannelsForStatic } from '@/app/channels/actions';
 import ChannelView from './ChannelView';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
 import type { Metadata } from 'next';
 
 export async function generateStaticParams() {
-  const result = await getChannelsForStatic();
+  const result = await getAllChannelsForStatic();
   if (!result.success || !result.data) {
     return [];
   }
@@ -100,6 +100,10 @@ export default async function ChannelPage({ params }: PageProps) {
   if (!channel) {
     notFound();
     return null;
+  }
+
+  if (channel.redirectTo) {
+    redirect(channel.redirectTo);
   }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
   const t = translations[locale];

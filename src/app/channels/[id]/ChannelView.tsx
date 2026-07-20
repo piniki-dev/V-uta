@@ -1,27 +1,23 @@
 import React from 'react';
 import ChannelHero from '@/components/channel/ChannelHero';
 import ChannelVideoGrid from '@/components/channel/ChannelVideoGrid';
-import type { Channel, Video, Song, Vtuber, Production } from '@/types';
-
-interface ChannelWithVideos extends Channel {
-  vtuber?: Vtuber & { production?: Production };
-  videos: (Video & { songs: Song[] })[];
-}
+import type { ChannelWithVideosResult } from '@/app/songs/new/actions';
 
 interface ChannelViewProps {
-  initialData: ChannelWithVideos;
+  initialData: ChannelWithVideosResult;
 }
 
 export default function ChannelView({ initialData }: ChannelViewProps) {
   return (
     <div className="min-h-screen">
       {/* チャンネルヘッダー (Client Component for animations/links) */}
-      <ChannelHero channel={initialData} />
+      <ChannelHero channel={initialData} subChannels={initialData.subChannels} />
 
       {/* 動画アーカイブ一覧 (Client Component for interactive grid) */}
       <ChannelVideoGrid 
         channel={initialData} 
         videos={initialData.videos} 
+        subChannels={initialData.subChannels}
       />
     </div>
   );

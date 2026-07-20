@@ -28,9 +28,34 @@ export async function getChannels(): Promise<ActionResult<Channel[]>> {
 }
 
 /**
- * すべての登録済みチャンネルを取得する（ビルド・SSG用、クッキーなし）
+ * メインチャンネルの一覧を取得する（ビルド・SSG用、クッキーなし）
  */
 export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  );
+
+  const { data, error } = await supabase
+    .from('channels')
+    .select('*, videos!inner(id, songs!inner(id))')
+    .eq('is_primary', true)
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('getChannelsForStatic error:', error);
+    return { success: false, error: 'Failed to fetch channels for static rendering' };
+  }
+
+  const channels: Channel[] = (data || []).map(({ videos: _videos, ...channel }) => channel as unknown as Channel);
+
+  return { success: true, data: channels };
+}
+
+/**
+ * すべての登録済みチャンネル（サブ含む）を取得する（generateStaticParams用）
+ */
+export async function getAllChannelsForStatic(): Promise<ActionResult<Channel[]>> {
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
@@ -42,8 +67,8 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
     .order('name', { ascending: true });
 
   if (error) {
-    console.error('getChannelsForStatic error:', error);
-    return { success: false, error: 'Failed to fetch channels for static rendering' };
+    console.error('getAllChannelsForStatic error:', error);
+    return { success: false, error: 'Failed to fetch all channels for static params' };
   }
 
   const channels: Channel[] = (data || []).map(({ videos: _videos, ...channel }) => channel as unknown as Channel);

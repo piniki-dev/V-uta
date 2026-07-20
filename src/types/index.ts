@@ -31,6 +31,7 @@ export interface Channel {
   description: string | null;
   image: string | null;
   vtuber_id: number | null;
+  is_primary: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;

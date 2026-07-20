@@ -170,10 +170,148 @@ export async function getProductions(): Promise<ActionResult<Production[]>> {
   return { success: true, data };
 }
 
+export interface VtuberWithChannels extends Vtuber {
+  channels: Pick<Channel, 'id' | 'name' | 'image' | 'handle' | 'is_primary'>[];
+}
+
+function normalizeName(str: string): string {
+  return str.toLowerCase().replace(/[\s\-_・/@]/g, '');
+}
+
+/**
+ * VTuber 名で検索（紐づくチャンネル一覧含む）
+ */
+export async function searchVtubers(
+  query: string
+): Promise<ActionResult<VtuberWithChannels[]>> {
+  const clean = query.trim();
+  if (!clean) {
+    return { success: true, data: [] };
+  }
+  try {
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    );
+    const spacedFromCamel = clean.replace(/([a-z])([A-Z])/g, '$1 $2');
+    const noSpace = clean.replace(/\s+/g, '');
+
+    // 1. vtubers.name での検索
+    const { data: vtList, error: vtErr } = await supabase
+      .from('vtubers')
+      .select(`
+        *,
+        channels (
+          id,
+          name,
+          image,
+          handle,
+          is_primary
+        )
+      `)
+      .or(`name.ilike.%${clean}%,name.ilike.%${spacedFromCamel}%`)
+      .limit(10);
+
+    if (vtErr) throw vtErr;
+
+    // 2. チャンネル名・ハンドル名からの逆引き検索
+    const { data: chanList } = await supabase
+      .from('channels')
+      .select('vtuber_id')
+      .or(`name.ilike.%${clean}%,handle.ilike.%${clean}%,name.ilike.%${noSpace}%,handle.ilike.%${noSpace}%`)
+      .not('vtuber_id', 'is', null)
+      .limit(10);
+
+    const channelVtuberIds = (chanList || []).map((c) => c.vtuber_id).filter(Boolean) as number[];
+
+    let extraVtList: (Vtuber & { channels: Pick<Channel, 'id' | 'name' | 'image' | 'handle' | 'is_primary'>[] })[] = [];
+    if (channelVtuberIds.length > 0) {
+      const { data: vtFromChan } = await supabase
+        .from('vtubers')
+        .select(`
+          *,
+          channels (
+            id,
+            name,
+            image,
+            handle,
+            is_primary
+          )
+        `)
+        .in('id', channelVtuberIds);
+      extraVtList = (vtFromChan || []) as (Vtuber & { channels: Pick<Channel, 'id' | 'name' | 'image' | 'handle' | 'is_primary'>[] })[];
+    }
+
+    const vtuberMap = new Map<number, VtuberWithChannels>();
+    [...(vtList || []), ...extraVtList].forEach((vt) => {
+      vtuberMap.set(vt.id, {
+        ...vt,
+        channels: (vt.channels || []) as Pick<Channel, 'id' | 'name' | 'image' | 'handle' | 'is_primary'>[],
+      });
+    });
+
+    return { success: true, data: Array.from(vtuberMap.values()) };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'VTuber検索に失敗しました';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * 新規登録時のVTuber名重複チェック（完全一致 / 類似一致）
+ */
+export async function checkDuplicateVtuber(
+  name: string
+): Promise<ActionResult<{
+  exactMatch: VtuberWithChannels | null;
+  similarMatches: VtuberWithChannels[];
+}>> {
+  const cleanName = name.trim();
+  if (!cleanName) {
+    return { success: true, data: { exactMatch: null, similarMatches: [] } };
+  }
+  try {
+    const searchRes = await searchVtubers(cleanName);
+    if (!searchRes.success || !searchRes.data) {
+      return { success: true, data: { exactMatch: null, similarMatches: [] } };
+    }
+
+    const formatted = searchRes.data;
+    const normClean = normalizeName(cleanName);
+
+    // 完全一致判定 (名前そのもの、または正規化一致、またはチャンネル名/ハンドル完全一致)
+    const exactMatch = formatted.find((vt) => {
+      const normVtName = normalizeName(vt.name);
+      if (normVtName === normClean || normVtName.includes(normClean) && normClean.length >= 4) {
+        return true;
+      }
+      return vt.channels.some((c) => {
+        const normCName = normalizeName(c.name);
+        const normCHandle = normalizeName(c.handle || '');
+        return normCName === normClean || normCHandle === normClean;
+      });
+    }) || null;
+
+    const similarMatches = formatted.filter(
+      (vt) => !exactMatch || vt.id !== exactMatch.id
+    );
+
+    return {
+      success: true,
+      data: { exactMatch, similarMatches },
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'VTuber重複チェックに失敗しました';
+    return { success: false, error: message };
+  }
+}
+
 /**
  * VTuber とチャンネルを一括で登録する
  */
 export async function registerVtuberAndChannel(params: {
+  existingVtuberId?: number;
+  isPrimary?: boolean;
   vtuberName: string;
   gender: string;
   vtuberLink?: string;
@@ -195,44 +333,60 @@ export async function registerVtuberAndChannel(params: {
   }
 
   try {
-    let productionId = params.productionId;
+    let vtuberId = params.existingVtuberId;
 
-    // 新規事務所の登録
-    if (!productionId && params.newProductionName) {
-      console.log('Registering new production:', params.newProductionName);
-      const { data: newProd, error: prodErr } = await supabase
-        .from('productions')
-        .insert({ name: params.newProductionName, created_by: user.id })
+    if (!vtuberId) {
+      let productionId = params.productionId;
+
+      // 新規事務所の登録
+      if (!productionId && params.newProductionName) {
+        console.log('Registering new production:', params.newProductionName);
+        const { data: newProd, error: prodErr } = await supabase
+          .from('productions')
+          .insert({ name: params.newProductionName, created_by: user.id })
+          .select('id')
+          .single();
+        
+        if (prodErr) {
+          console.error('Production insert error:', prodErr);
+          throw prodErr;
+        }
+        productionId = newProd.id;
+        console.log('Production registered with ID:', productionId);
+      }
+
+      // VTuber の登録
+      console.log('Registering vtuber:', params.vtuberName);
+      const { data: vtuber, error: vtErr } = await supabase
+        .from('vtubers')
+        .insert({
+          name: params.vtuberName,
+          gender: params.gender,
+          link: params.vtuberLink,
+          production_id: productionId || null,
+          created_by: user.id,
+        })
         .select('id')
         .single();
       
-      if (prodErr) {
-        console.error('Production insert error:', prodErr);
-        throw prodErr;
+      if (vtErr) {
+        console.error('VTuber insert error:', vtErr);
+        throw vtErr;
       }
-      productionId = newProd.id;
-      console.log('Production registered with ID:', productionId);
+      vtuberId = vtuber.id;
+      console.log('VTuber registered with ID:', vtuberId);
     }
 
-    // VTuber の登録
-    console.log('Registering vtuber:', params.vtuberName);
-    const { data: vtuber, error: vtErr } = await supabase
-      .from('vtubers')
-      .insert({
-        name: params.vtuberName,
-        gender: params.gender,
-        link: params.vtuberLink,
-        production_id: productionId || null,
-        created_by: user.id,
-      })
-      .select('id')
-      .single();
-    
-    if (vtErr) {
-      console.error('VTuber insert error:', vtErr);
-      throw vtErr;
+    const isPrimary = params.isPrimary ?? true;
+
+    // もし isPrimary が true で既存VTuber紐づけの場合、同じ vtuber_id の旧メインチャンネルを is_primary = false に更新
+    if (isPrimary && vtuberId) {
+      await supabase
+        .from('channels')
+        .update({ is_primary: false })
+        .eq('vtuber_id', vtuberId)
+        .eq('is_primary', true);
     }
-    console.log('VTuber registered with ID:', vtuber.id);
 
     // チャンネルの登録
     console.log('Registering channel:', params.channelData.name);
@@ -244,7 +398,8 @@ export async function registerVtuberAndChannel(params: {
         handle: params.channelData.handle,
         description: params.channelData.description,
         image: params.channelData.image,
-        vtuber_id: vtuber.id,
+        vtuber_id: vtuberId,
+        is_primary: isPrimary,
         created_by: user.id,
       })
       .select('id')
@@ -256,7 +411,7 @@ export async function registerVtuberAndChannel(params: {
     }
     console.log('Channel registered with ID:', channel.id);
 
-    return { success: true, data: { vtuberId: vtuber.id, channelId: channel.id } };
+    return { success: true, data: { vtuberId: vtuberId!, channelId: channel.id } };
   } catch (e) {
     const message = e instanceof Error ? e.message : t.common.saveError;
     return { success: false, error: message };
@@ -588,10 +743,23 @@ function safeDecode(str: string): string {
   }
 }
 
+export interface SubChannelInfo {
+  id: number;
+  name: string;
+  videoCount: number;
+}
+
+export type ChannelWithVideosResult = Channel & {
+  vtuber?: Vtuber & { production?: Production };
+  videos: (Video & { songs: Song[]; sourceChannelName?: string })[];
+  subChannels?: SubChannelInfo[];
+  redirectTo?: string;
+};
+
 /**
  * チャンネル詳細と紐付く動画・曲リストを取得する (ID またはハンドルに対応)
  */
-async function fetchChannelWithVideosFromDb(identifier: string | number): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
+export async function fetchChannelWithVideosFromDb(identifier: string | number): Promise<ActionResult<ChannelWithVideosResult>> {
   console.log('fetchChannelWithVideosFromDb called with identifier:', identifier);
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -642,13 +810,13 @@ async function fetchChannelWithVideosFromDb(identifier: string | number): Promis
         .single();
       
       if (retryChannel) {
-        return fetchVideosForChannel(retryChannel, supabase);
+        return fetchVideosForChannel(retryChannel as Channel, supabase);
       }
     }
     return { success: false, error: t.archive.notFound };
   }
 
-  return fetchVideosForChannel(channel, supabase);
+  return fetchVideosForChannel(channel as Channel, supabase);
 }
 
 export const getChannelWithVideos = unstable_cache(
@@ -854,10 +1022,50 @@ export async function getVideosForStatic(): Promise<ActionResult<{ video_id: str
 }
 
 /**
- * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする
+ * 内部補助関数: チャンネルに紐付く動画と曲をまとめて取得・マッピングする (サブ/トピック含む)
  */
-async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient): Promise<ActionResult<Channel & { videos: (Video & { songs: Song[] })[] }>> {
+async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient): Promise<ActionResult<ChannelWithVideosResult>> {
   const t = translations['ja'];
+
+  // 1. is_primary === false の場合、メインチャンネルへのリダイレクト確認
+  if (channel.is_primary === false && channel.vtuber_id) {
+    const { data: primaryChan } = await supabase
+      .from('channels')
+      .select('id, handle')
+      .eq('vtuber_id', channel.vtuber_id)
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    if (primaryChan) {
+      const targetIdentifier = primaryChan.handle ? encodeURIComponent(primaryChan.handle) : String(primaryChan.id);
+      return {
+        success: true,
+        data: {
+          ...channel,
+          videos: [],
+          redirectTo: `/channels/${targetIdentifier}`
+        }
+      };
+    }
+  }
+
+  // 2. 関連する全チャンネル（同じ vtuber_id）を取得
+  let relatedChannels: Channel[] = [channel];
+  if (channel.vtuber_id) {
+    const { data: rels } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('vtuber_id', channel.vtuber_id);
+
+    if (rels && rels.length > 0) {
+      relatedChannels = rels as Channel[];
+    }
+  }
+
+  const channelMap = new Map<number, Channel>();
+  relatedChannels.forEach((c) => channelMap.set(c.id, c));
+  const channelIds = relatedChannels.map((c) => c.id);
+
   const { data: videos, error: vidErr } = await supabase
     .from('videos')
     .select(`
@@ -867,7 +1075,7 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
         master_song:master_songs (*)
       )
     `)
-    .eq('channel_record_id', channel.id)
+    .in('channel_record_id', channelIds)
     .order('published_at', { ascending: false });
 
   if (vidErr) {
@@ -875,22 +1083,47 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
     return { success: false, error: `${t.common.errorOccurred} (videos)` };
   }
 
+  // サブチャンネルごとの動画件数をカウント
+  const subChannelCountMap = new Map<number, number>();
+
   // songs のうち is_active なもののみを抽出し、開始時間 (start_sec) の昇順でソートする
   const processedVideos = (videos || []).map((video) => {
     const activeSongs = (video.songs || [])
       .filter((song: Song) => song.is_active)
       .sort((a: Song, b: Song) => a.start_sec - b.start_sec);
+
+    const sourceChan = channelMap.get(video.channel_record_id);
+    const isMainChannel = video.channel_record_id === channel.id;
+
+    if (!isMainChannel && video.channel_record_id) {
+      subChannelCountMap.set(
+        video.channel_record_id,
+        (subChannelCountMap.get(video.channel_record_id) || 0) + 1
+      );
+    }
+
     return {
       ...video,
       songs: activeSongs,
+      sourceChannelName: !isMainChannel && sourceChan ? sourceChan.name : undefined,
     };
   });
+
+  // サブチャンネル情報の作成
+  const subChannelsInfo: SubChannelInfo[] = relatedChannels
+    .filter((c) => c.id !== channel.id)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      videoCount: subChannelCountMap.get(c.id) || 0,
+    }));
 
   return {
     success: true,
     data: {
       ...channel,
-      videos: processedVideos as (Video & { songs: Song[] })[]
+      videos: processedVideos as (Video & { songs: Song[]; sourceChannelName?: string })[],
+      subChannels: subChannelsInfo.length > 0 ? subChannelsInfo : undefined,
     }
   };
 }

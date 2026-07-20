@@ -6,25 +6,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Music, ChevronDown, ChevronUp, X, ExternalLink } from 'lucide-react';
 import type { Video, Song, Channel } from '@/types';
+import type { SubChannelInfo } from '@/app/songs/new/actions';
 import { useLocale } from '@/components/LocaleProvider';
 import SongList from '@/components/song/SongList';
+import { Tv } from 'lucide-react';
 
 interface VideoWithSongs extends Video {
   songs: Song[];
+  sourceChannelName?: string;
 }
 
 interface ChannelVideoGridProps {
   channel: Channel;
   videos: VideoWithSongs[];
+  subChannels?: SubChannelInfo[];
 }
 
-export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridProps) {
+export default function ChannelVideoGrid({ channel, videos, subChannels }: ChannelVideoGridProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'cover' | 'stream'>('all');
+  const [selectedSource, setSelectedSource] = useState<'all' | number>('all');
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
   const { T, locale, isMounted } = useLocale();
 
   // 曲が1件以上登録されているアーカイブのみ表示する
-  const allVideos = videos.filter((v) => v.songs.length > 0);
+  const registeredVideos = videos.filter((v) => v.songs.length > 0);
+
+  // ソースフィルター適用
+  const sourceFilteredVideos = selectedSource === 'all'
+    ? registeredVideos
+    : registeredVideos.filter((v) => v.channel_record_id === selectedSource);
+
+  const allVideos = sourceFilteredVideos;
   const coverVideos = allVideos.filter((v) => !v.is_stream);
   const streamVideos = allVideos.filter((v) => v.is_stream);
 
@@ -75,6 +87,21 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
     }
   } as const;
 
+  // 全ソース選択肢のリスト
+  const sourceOptions = [
+    { id: 'all' as const, name: '全チャンネル', count: registeredVideos.length },
+    { 
+      id: channel.id, 
+      name: channel.name, 
+      count: registeredVideos.filter(v => v.channel_record_id === channel.id).length 
+    },
+    ...(subChannels || []).map(sc => ({
+      id: sc.id,
+      name: sc.name,
+      count: registeredVideos.filter(v => v.channel_record_id === sc.id).length
+    }))
+  ];
+
   return (
     <section className="py-20 pb-48">
       <div className="container">
@@ -92,6 +119,42 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
             </span>
           </h2>
         </motion.div>
+
+        {/* ソースチャンネルフィルター (サブチャンネルが存在する場合) */}
+        {subChannels && subChannels.length > 0 && (
+          <motion.div
+            className="flex flex-wrap items-center gap-2 mb-6 p-3 bg-[var(--bg-secondary)]/60 border border-[var(--border)] rounded-2xl"
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <span className="text-xs font-bold text-[var(--text-tertiary)] px-2 flex items-center gap-1.5">
+              <Tv size={14} /> チャンネル選択:
+            </span>
+            {sourceOptions.map((opt) => {
+              const isActive = selectedSource === opt.id;
+              return (
+                <button
+                  key={String(opt.id)}
+                  onClick={() => {
+                    setSelectedSource(opt.id);
+                    setExpandedVideoId(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 border select-none
+                    ${isActive
+                      ? 'bg-[var(--accent)] text-white border-transparent shadow-md shadow-[var(--accent-glow)]/30'
+                      : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]/40 hover:text-[var(--text-primary)]'
+                    }`}
+                >
+                  <span>{opt.name}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-black/10 dark:bg-white/10 text-[var(--text-tertiary)]'}`}>
+                    {opt.count}
+                  </span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
 
         {/* タブ切り替えUI */}
         <motion.div
@@ -183,6 +246,11 @@ export default function ChannelVideoGrid({ channel, videos }: ChannelVideoGridPr
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover transition-transform duration-700 group-hover/card:scale-105"
                       />
+                      {video.sourceChannelName && (
+                        <span className="absolute top-2.5 left-2.5 z-10 bg-black/80 backdrop-blur-md text-[var(--accent)] border border-[var(--accent)]/30 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                          <Tv size={11} /> {video.sourceChannelName}
+                        </span>
+                      )}
                       <div className="absolute inset-0 bg-black/20 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center translate-y-2 group-hover/card:translate-y-0 transition-transform duration-300">
                           <ExternalLink size={20} className="text-white" />
