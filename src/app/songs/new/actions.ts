@@ -774,9 +774,10 @@ export async function revalidateChannel(channelRecordId: number | null): Promise
       }
     }
 
-    // 3. トップページのキャッシュを再検証
-    console.log(`[ISR] Revalidating Home path and tag`);
+    // 3. トップページおよび最近追加ページ（/recently）のキャッシュを再検証
+    console.log(`[ISR] Revalidating Home and Recently paths, and home-videos tag`);
     revalidatePath('/');
+    revalidatePath('/recently');
     revalidateTag('home-videos', 'max');
 
     // 4. チャンネル一覧ページのキャッシュを再検証
