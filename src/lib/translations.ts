@@ -344,6 +344,8 @@ export const translations = {
       searchPlaceholder: '曲名で検索...',
     },
     home: {
+      betaNoticeTitle: 'ベータ版運用中のお知らせ',
+      betaNoticeMessage: '現在ベータ版のため、頻繁に修正・機能更新を行っております。そのため、ご利用中に画面の強制リロードが入る場合がございます。あらかじめご容赦いただけますと幸いです。',
       heroTitle1: 'VTuber の歌を、',
       heroTitle2: 'もっと手軽に。',
       heroSub1: '歌枠アーカイブから歌区間だけを抽出して連続再生。',
@@ -805,6 +807,8 @@ export const translations = {
       searchPlaceholder: 'Search by song title...',
     },
     home: {
+      betaNoticeTitle: 'Notice: Currently in Beta',
+      betaNoticeMessage: 'We are frequently updating and fixing features in this beta version. Forced reloads may occur during your session. Thank you for your understanding.',
       heroTitle1: 'VTuber Songs',
       heroTitle2: 'Made Easier.',
       heroSub1: 'Extract and play song segments from stream archives.',

@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import HomeVideoGrid from '@/components/home/HomeVideoGrid';
 import HomeRankingSection from '@/components/home/HomeRankingSection';
 import HomeChannelSection from '@/components/home/HomeChannelSection';
+import BetaNoticeBanner from '@/components/home/BetaNoticeBanner';
 import { getSongRankings } from '@/app/history/actions';
 import { getHomeVideosCached } from '@/app/videos/actions';
 
@@ -50,19 +51,26 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-6 space-y-24 py-12 pb-48">
-        
-        {/* 楽曲ランキング (リスト形式) */}
-        <HomeRankingSection initialSongs={initialRanking.slice(0, 10)} />
+      <div className="container mx-auto px-6 py-8 pb-48">
+        {/* ベータ版お知らせバナー */}
+        <div className="mb-12">
+          <BetaNoticeBanner />
+        </div>
 
-        {/* 人気のチャンネル */}
-        {popularChannels.length > 0 && (
-          <HomeChannelSection channels={popularChannels.slice(0, 10)} />
-        )}
+        <div className="space-y-24">
+          {/* 楽曲ランキング (リスト形式) */}
+          <HomeRankingSection initialSongs={initialRanking.slice(0, 10)} />
 
-        {/* 最近追加されたアーカイブ */}
-        <HomeVideoGrid initialVideos={videos} limit={12} />
+          {/* 人気のチャンネル */}
+          {popularChannels.length > 0 && (
+            <HomeChannelSection channels={popularChannels.slice(0, 10)} />
+          )}
+
+          {/* 最近追加されたアーカイブ */}
+          <HomeVideoGrid initialVideos={videos} limit={12} />
+        </div>
       </div>
     </div>
   );
 }
+
