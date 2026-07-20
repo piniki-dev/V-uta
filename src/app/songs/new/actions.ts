@@ -9,6 +9,7 @@ import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { convertGSheetUrlToCsv } from '@/utils/batch-parser';
+import { getChannelUrl } from '@/lib/utils';
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -1109,13 +1110,11 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
     const primaryChan = primaryChans?.[0];
 
     if (primaryChan && primaryChan.id !== channel.id) {
-      const isPureAsciiHandle = primaryChan.handle && /^@[a-zA-Z0-9_-]+$/.test(primaryChan.handle);
-      const targetIdentifier = isPureAsciiHandle ? encodeURIComponent(primaryChan.handle!) : String(primaryChan.id);
-      const redirectToPath = `/channels/${targetIdentifier}`;
+      const redirectToPath = getChannelUrl(primaryChan);
 
       // 自分自身への循環リダイレクトを防御
       const currentNumericPath = `/channels/${channel.id}`;
-      const currentHandlePath = channel.handle ? `/channels/${encodeURIComponent(channel.handle)}` : null;
+      const currentHandlePath = channel.handle ? `/channels/${channel.handle.startsWith('@') ? channel.handle : `@${channel.handle}`}` : null;
 
       if (redirectToPath !== currentNumericPath && (currentHandlePath ? redirectToPath !== currentHandlePath : true)) {
         return {
