@@ -16,9 +16,9 @@ export default function ChannelView({ initialData }: ChannelViewProps) {
       const targetHandle = initialData.handle.startsWith('@') 
         ? initialData.handle 
         : `@${initialData.handle}`;
-      const prettyPath = `/channels/${encodeURIComponent(targetHandle)}`;
+      const prettyPath = `/channels/${targetHandle}`;
       
-      if (window.location.pathname !== prettyPath && window.location.pathname !== `/channels/${targetHandle}`) {
+      if (window.location.pathname !== prettyPath && decodeURIComponent(window.location.pathname) !== prettyPath) {
         window.history.replaceState(null, '', prettyPath);
       }
     }
