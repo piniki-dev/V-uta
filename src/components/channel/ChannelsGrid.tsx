@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Channel } from '@/types';
 import { useLocale } from '@/components/LocaleProvider';
+import { getChannelUrl } from '@/lib/utils';
 
 interface ChannelsGridProps {
   channels: Channel[];
@@ -59,7 +60,7 @@ export default function ChannelsGrid({ channels }: ChannelsGridProps) {
           {channels.map((channel) => (
             <motion.div key={channel.id} variants={itemVariants}>
               <Link
-                href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
+                href={getChannelUrl(channel)}
                 className="group flex flex-col items-center gap-4 transition-all duration-300 active:scale-95"
               >
                 <div className="relative w-full aspect-square">

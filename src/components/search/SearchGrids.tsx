@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
+import { getChannelUrl } from '@/lib/utils';
 
 import type { Video, Channel } from '@/types';
 
@@ -76,6 +77,7 @@ export function ArchivesGrid({ videos }: ArchivesGridProps) {
   );
 }
 
+
 interface ChannelsGridProps {
   channels: Channel[];
 }
@@ -92,7 +94,7 @@ export function ChannelsGrid({ channels }: ChannelsGridProps) {
       {channels.map(channel => (
         <motion.div key={channel.id} variants={itemVariants}>
           <Link 
-            href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
+            href={getChannelUrl(channel)}
             className="flex items-center gap-6 p-6 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-3xl hover:border-[var(--accent)]/30 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1 transition-all duration-500 group"
           >
             <div className="relative">

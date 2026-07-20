@@ -1,4 +1,4 @@
-import { getChannelWithVideos, getChannelMetadata } from '@/app/songs/new/actions';
+import { getChannelWithVideos, getChannelMetadata, fetchChannelMetadataFromDb } from '@/app/songs/new/actions';
 import { getAllChannelsForStatic } from '@/app/channels/actions';
 import ChannelView from './ChannelView';
 import { notFound, redirect } from 'next/navigation';
@@ -20,7 +20,7 @@ export async function generateStaticParams() {
   result.data.forEach((channel) => {
     // ID パターン (100% ASCII)
     params.push({ id: String(channel.id) });
-    // 英数字ハンドルの場合のみ static params に登録 (非ASCII日本語ハンドルは数値IDでレンダリング)
+    // 英数字ハンドルの場合のみ static params に登録
     if (channel.handle && /^@[a-zA-Z0-9_-]+$/.test(channel.handle)) {
       params.push({ id: encodeURIComponent(channel.handle) });
       const cleanHandle = channel.handle.replace('@', '');
@@ -43,7 +43,12 @@ function safeDecode(str: string): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const result = await getChannelMetadata(id);
+  const decodedId = safeDecode(id);
+
+  // 非 ASCII ハンドル等でのメタデータ生成時の例外を予防
+  const result = (!isPureAscii(id) || !isPureAscii(decodedId))
+    ? await fetchChannelMetadataFromDb(id)
+    : await getChannelMetadata(id);
   
   const locale = 'ja';
   const t = translations[locale];
@@ -85,6 +90,19 @@ export default async function ChannelPage({ params }: PageProps) {
   const decodedId = safeDecode(id);
   const locale = 'ja';
 
+  // 1. 非 ASCII 文字（日本語など）を含むハンドルで直接アクセスされた場合、
+  // unstable_cache や Next.js のタグヘッダー注入で ERR_INVALID_CHAR が発生する前に
+  // 非キャッシュ関数で安全にチャンネル ID を検索して数値 ID パス (/channels/15) へリダイレクト
+  if (!isPureAscii(id) || !isPureAscii(decodedId)) {
+    const metaRes = await fetchChannelMetadataFromDb(id);
+    if (metaRes.success && metaRes.data) {
+      redirect(`/channels/${metaRes.data.id}`);
+    } else {
+      notFound();
+    }
+  }
+
+  // 2. 100% ASCII パス（数値 ID や英数字ハンドル）での正常データ取得
   const result = await getChannelWithVideos(id);
 
   if (!result.success) {
@@ -105,14 +123,9 @@ export default async function ChannelPage({ params }: PageProps) {
     return null;
   }
 
-  // 1. サブ/トピックチャンネルからのリダイレクト優先
+  // 3. サブ/トピックチャンネルからのリダイレクト優先
   if (channel.redirectTo) {
     redirect(channel.redirectTo);
-  }
-
-  // 2. 非 ASCII 文字（日本語など）を含むハンドルでアクセスされた場合、x-next-cache-tags の ERR_INVALID_CHAR エラーを防ぐため数値 ID パスへリダイレクト
-  if (!isPureAscii(id) || !isPureAscii(decodedId)) {
-    redirect(`/channels/${channel.id}`);
   }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://v-uta.app';
   const t = translations[locale];

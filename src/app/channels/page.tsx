@@ -2,6 +2,7 @@ import { getChannels } from './actions';
 import ChannelsView from './ChannelsView';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
+import { getChannelUrl } from '@/lib/utils';
 
 export function generateMetadata() {
   const t = translations['ja'];
@@ -39,7 +40,7 @@ export default async function ChannelsPage() {
       "@type": "ListItem",
       "position": index + 1,
       "name": channel.name,
-      "url": `${baseUrl}/channels/${encodeURIComponent(channel.handle || channel.id)}`
+      "url": `${baseUrl}${getChannelUrl(channel)}`
     }))
   };
 

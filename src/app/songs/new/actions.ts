@@ -795,10 +795,11 @@ export async function fetchChannelWithVideosFromDb(identifier: string | number):
   const channel = channels?.[0];
 
   if (chanErr || !channel) {
-    // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
     if (!isNumeric) {
-      const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
-      const { data: retryChannels } = await supabase
+      const cleanSearchName = decodedStr.replace(/^@/, '').trim();
+      
+      // 1. チャンネル名・ハンドル名でのフォールバック検索
+      const { data: fallbackChannels } = await supabase
         .from('channels')
         .select(`
           *,
@@ -807,12 +808,38 @@ export async function fetchChannelWithVideosFromDb(identifier: string | number):
             production:productions (*)
           )
         `)
-        .ilike('handle', altHandle)
+        .or(`name.ilike.%${cleanSearchName}%,handle.ilike.%${cleanSearchName}%`)
         .limit(1);
-      
-      const retryChannel = retryChannels?.[0];
-      if (retryChannel) {
-        return fetchVideosForChannel(retryChannel as Channel, supabase);
+
+      let fallbackChannel = fallbackChannels?.[0];
+
+      // 2. VTuber 名からの逆引き検索
+      if (!fallbackChannel && cleanSearchName) {
+        const { data: vtList } = await supabase
+          .from('vtubers')
+          .select('id')
+          .ilike('name', `%${cleanSearchName}%`)
+          .limit(1);
+
+        if (vtList && vtList.length > 0) {
+          const { data: vtChanList } = await supabase
+            .from('channels')
+            .select(`
+              *,
+              vtuber:vtubers (
+                *,
+                production:productions (*)
+              )
+            `)
+            .eq('vtuber_id', vtList[0].id)
+            .or('is_primary.eq.true,is_primary.is.null')
+            .limit(1);
+          fallbackChannel = vtChanList?.[0];
+        }
+      }
+
+      if (fallbackChannel) {
+        return fetchVideosForChannel(fallbackChannel as Channel, supabase);
       }
     }
     return { success: false, error: t.archive.notFound };
@@ -844,7 +871,7 @@ export async function getChannelWithVideos(identifier: string | number) {
 /**
  * チャンネルの基本情報（メタデータ生成用）のみを取得する (ID またはハンドルに対応)
  */
-async function fetchChannelMetadataFromDb(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
+export async function fetchChannelMetadataFromDb(identifier: string | number): Promise<ActionResult<Channel & { vtuber?: Vtuber & { production?: Production } | null }>> {
   console.log('fetchChannelMetadataFromDb called with identifier:', identifier);
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -880,10 +907,10 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
   const channel = channels?.[0];
 
   if (chanErr || !channel) {
-    // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
     if (!isNumeric) {
-      const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
-      const { data: retryChannels } = await supabase
+      const cleanSearchName = decodedStr.replace(/^@/, '').trim();
+      
+      const { data: fallbackChannels } = await supabase
         .from('channels')
         .select(`
           *,
@@ -892,12 +919,37 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
             production:productions (*)
           )
         `)
-        .ilike('handle', altHandle)
+        .or(`name.ilike.%${cleanSearchName}%,handle.ilike.%${cleanSearchName}%`)
         .limit(1);
-      
-      const retryChannel = retryChannels?.[0];
-      if (retryChannel) {
-        return { success: true, data: retryChannel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
+
+      let fallbackChannel = fallbackChannels?.[0];
+
+      if (!fallbackChannel && cleanSearchName) {
+        const { data: vtList } = await supabase
+          .from('vtubers')
+          .select('id')
+          .ilike('name', `%${cleanSearchName}%`)
+          .limit(1);
+
+        if (vtList && vtList.length > 0) {
+          const { data: vtChanList } = await supabase
+            .from('channels')
+            .select(`
+              *,
+              vtuber:vtubers (
+                *,
+                production:productions (*)
+              )
+            `)
+            .eq('vtuber_id', vtList[0].id)
+            .or('is_primary.eq.true,is_primary.is.null')
+            .limit(1);
+          fallbackChannel = vtChanList?.[0];
+        }
+      }
+
+      if (fallbackChannel) {
+        return { success: true, data: fallbackChannel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
       }
     }
     return { success: false, error: t.archive.notFound };

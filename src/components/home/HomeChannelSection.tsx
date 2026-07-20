@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useLocale } from '@/components/LocaleProvider';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getChannelUrl } from '@/lib/utils';
 
 interface Channel {
   id: number;
@@ -45,7 +46,7 @@ export default function HomeChannelSection({ channels }: HomeChannelSectionProps
             viewport={{ once: true }}
           >
             <Link 
-              href={`/channels/${encodeURIComponent(channel.handle || channel.id)}`}
+              href={getChannelUrl(channel)}
               className="flex flex-col items-center gap-3 group"
             >
               <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-transparent group-hover:border-[var(--accent)] transition-all duration-300 shadow-lg">

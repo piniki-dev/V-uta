@@ -51,3 +51,18 @@ export function parseTime(time: string): number | null {
 
   return null;
 }
+
+/**
+ * チャンネルの安全かつ綺麗な URL パスを取得する
+ * - 英数字ハンドルの場合は /channels/@handle (生の @ 表記)
+ * - 日本語/非ASCIIハンドルの場合は /channels/ID (数値 ID パス)
+ */
+export function getChannelUrl(channel: { id: number; handle?: string | null }): string {
+  if (channel.handle) {
+    const handleWithAt = channel.handle.startsWith('@') ? channel.handle : `@${channel.handle}`;
+    if (/^@[a-zA-Z0-9_-]+$/.test(handleWithAt)) {
+      return `/channels/${handleWithAt}`;
+    }
+  }
+  return `/channels/${channel.id}`;
+}
