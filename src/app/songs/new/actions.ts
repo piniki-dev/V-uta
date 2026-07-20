@@ -1097,8 +1097,8 @@ export async function getVideosForStatic(): Promise<ActionResult<{ video_id: str
 async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient): Promise<ActionResult<ChannelWithVideosResult>> {
   const t = translations['ja'];
 
-  // 1. is_primary === false の場合、メインチャンネルへのリダイレクト確認
-  if (channel.is_primary === false && channel.vtuber_id) {
+  // 1. is_primary が false (サブ/トピックチャンネル) の場合、メインチャンネルへのリダイレクト確認
+  if ((channel.is_primary === false || (channel.is_primary as unknown) === 'false') && channel.vtuber_id) {
     const { data: primaryChans } = await supabase
       .from('channels')
       .select('id, handle')
