@@ -252,6 +252,11 @@ export const translations = {
       validationDurationError: '曲の区間は10秒以上にしてください。',
       validationTitleRequired: '曲名を入力してください。',
       missingEndTime: '終了時間未入力',
+      draftFoundTitle: '保存されていない下書きがあります',
+      draftFoundDesc: '前回の編集内容（{title}）を復元しますか？',
+      draftFoundDescImport: '前回のインポート途中の下書き（{count}件の動画）があります。復元しますか？',
+      restoreDraft: '下書きを復元',
+      discardDraft: '下書きを破棄',
     },
     songMenu: {
       playNext: '次に再生',
@@ -707,6 +712,11 @@ export const translations = {
       validationDurationError: 'Duration must be 10 seconds or longer.',
       validationTitleRequired: 'Song title is required.',
       missingEndTime: 'MISSING END TIME',
+      draftFoundTitle: 'Unsaved draft found',
+      draftFoundDesc: 'Would you like to restore your previous edits for "{title}"?',
+      draftFoundDescImport: 'Would you like to restore your previous import draft ({count} video(s))?',
+      restoreDraft: 'Restore Draft',
+      discardDraft: 'Discard Draft',
     },
     songMenu: {
       playNext: 'Play Next',

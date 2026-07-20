@@ -51,6 +51,15 @@ interface BatchProgress {
   isNotEmbeddable?: boolean;
 }
 
+interface ImportSongDraft {
+  batchArchives: BatchArchive[];
+  progress: Record<string, BatchProgress>;
+  currentBatchIndex: number;
+  gsUrl: string;
+  coverVideos: Record<string, boolean>;
+  updatedAt: number;
+}
+
 export default function ImportSongsClient() {
   const { locale, t: tl, T } = useLocale();
   const router = useRouter();
@@ -66,6 +75,28 @@ export default function ImportSongsClient() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
 
+  // Draft States
+  const [pendingDraft, setPendingDraft] = useState<ImportSongDraft | null>(null);
+
+  // 初回マウント時の下書き検出
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('vuta_draft_song_import');
+      if (raw) {
+        const parsed: ImportSongDraft = JSON.parse(raw);
+        const isValidTime = parsed.updatedAt && (Date.now() - parsed.updatedAt < 7 * 24 * 60 * 60 * 1000);
+        const hasContent = (Array.isArray(parsed.batchArchives) && parsed.batchArchives.length > 0) || !!parsed.gsUrl;
+        if (isValidTime && hasContent) {
+          setPendingDraft(parsed);
+        } else {
+          localStorage.removeItem('vuta_draft_song_import');
+        }
+      }
+    } catch {
+      localStorage.removeItem('vuta_draft_song_import');
+    }
+  }, []);
+
   // Current Video States (similar to NewSongClient)
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -73,6 +104,55 @@ export default function ImportSongsClient() {
   const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
   const [isAutoNext, setIsAutoNext] = useState(true);
   const [coverVideos, setCoverVideos] = useState<Record<string, boolean>>({});
+
+  // 変更時に自動下書き保存
+  useEffect(() => {
+    if (batchArchives.length > 0 || gsUrl) {
+      try {
+        const draftObj: ImportSongDraft = {
+          batchArchives,
+          progress,
+          currentBatchIndex,
+          gsUrl,
+          coverVideos,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem('vuta_draft_song_import', JSON.stringify(draftObj));
+      } catch {}
+    }
+  }, [batchArchives, progress, currentBatchIndex, gsUrl, coverVideos]);
+
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    const restoredArchives = pendingDraft.batchArchives || [];
+    const restoredProgress = pendingDraft.progress || {};
+    const restoredIndex = pendingDraft.currentBatchIndex ?? -1;
+    const restoredGsUrl = pendingDraft.gsUrl || '';
+    const restoredCovers = pendingDraft.coverVideos || {};
+
+    setBatchArchives(restoredArchives);
+    setProgress(restoredProgress);
+    setGsUrl(restoredGsUrl);
+    setCoverVideos(restoredCovers);
+    setPendingDraft(null);
+
+    // 編集中だったアーカイブ（または有効な最初のアーカイブ）を自動で選択して処理を開始
+    const targetIndex = (restoredIndex >= 0 && restoredIndex < restoredArchives.length) 
+      ? restoredIndex 
+      : (restoredArchives.length > 0 ? 0 : -1);
+
+    if (targetIndex >= 0) {
+      setCurrentBatchIndex(targetIndex);
+      startProcessingItem(targetIndex, restoredArchives, true);
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem('vuta_draft_song_import');
+    } catch {}
+    setPendingDraft(null);
+  };
 
   // VTuber登録モーダル等（NewSongClientから流用）
   const [isVtuberModalOpen, setIsVtuberModalOpen] = useState(false);
@@ -821,6 +901,10 @@ export default function ImportSongsClient() {
             setSaveStatus('idle');
             startProcessingItem(nextIndex);
           }, 2000);
+        } else {
+          try {
+            localStorage.removeItem('vuta_draft_song_import');
+          } catch {}
         }
       }
     } catch (e) {
@@ -1065,6 +1149,46 @@ export default function ImportSongsClient() {
         description={T('newSong.importDescription')} 
         icon={<FileUp size={64} />} 
       />
+
+      {/* 下書き復元通知バナー */}
+      {pendingDraft && (
+        <div className="container max-w-6xl mx-auto pt-6 px-6">
+          <div className="bg-[var(--accent-subtle)] border border-[var(--accent)]/30 rounded-2xl p-4 md:p-5 shadow-lg backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center shrink-0">
+                <Info size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-[var(--text-primary)] text-sm md:text-base">
+                  {T('newSong.draftFoundTitle')}
+                </h4>
+                <p className="text-xs md:text-sm text-[var(--text-secondary)]">
+                  {T('newSong.draftFoundDescImport', {
+                    count: pendingDraft.batchArchives?.length || 0
+                  })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+              >
+                {T('newSong.discardDraft')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-4 py-2 rounded-xl text-xs md:text-sm font-bold bg-[var(--accent)] text-white hover:opacity-90 shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw size={15} />
+                {T('newSong.restoreDraft')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div ref={contentRef} style={{ scrollMarginTop: '80px' }} className="container py-8 px-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
         

@@ -8,7 +8,7 @@ import { formatTime, parseTime } from '@/lib/utils';
 import Link from 'next/link';
 import { 
   Search, X, Music, Info, Pencil, Save, Trash2, 
-  AlertCircle, UserPlus, Building2, FileUp, Loader2
+  AlertCircle, UserPlus, Building2, FileUp, Loader2, RotateCcw
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from '@/components/LocaleProvider';
@@ -29,6 +29,16 @@ interface EditableSong {
   isDeleted?: boolean; // 削除フラグ（一括保存時に反映）
   isConfirmed: boolean; // ユーザーが曲名・アーティスト名を確定させたか
   searchLocale?: 'ja' | 'en'; // 検索時のロケール
+}
+
+interface NewSongDraft {
+  url: string;
+  metadata: YouTubeVideoMetadata | null;
+  video: Video | null;
+  allSongs: EditableSong[];
+  isCoverVideo: boolean;
+  step: 1 | 2;
+  updatedAt: number;
 }
 
 export default function NewSongClient() {
@@ -106,6 +116,27 @@ export default function NewSongClient() {
     newProductionName: '',
   });
   const [channelDataForReg, setChannelDataForReg] = useState<YouTubeChannelData | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<NewSongDraft | null>(null);
+
+  // 初回マウント時の下書き検出
+  useEffect(() => {
+    if (initialUrl) return; // URLクエリがある場合は初期読み込みが優先
+    try {
+      const raw = localStorage.getItem('vuta_draft_song_new');
+      if (raw) {
+        const parsed: NewSongDraft = JSON.parse(raw);
+        const isValidTime = parsed.updatedAt && (Date.now() - parsed.updatedAt < 7 * 24 * 60 * 60 * 1000);
+        const hasContent = !!parsed.url || (Array.isArray(parsed.allSongs) && parsed.allSongs.length > 0) || !!parsed.metadata;
+        if (isValidTime && hasContent) {
+          setPendingDraft(parsed);
+        } else {
+          localStorage.removeItem('vuta_draft_song_new');
+        }
+      }
+    } catch {
+      localStorage.removeItem('vuta_draft_song_new');
+    }
+  }, [initialUrl]);
 
   // 変更があるかどうか
   const hasChanges = useMemo(() => {
@@ -119,6 +150,49 @@ export default function NewSongClient() {
   }, [allSongs, selectedSong, startTime, endTime, searchQuery, saveStatus]);
 
   const [isCoverVideo, setIsCoverVideo] = useState(false);
+
+  // 変更時に自動下書き保存
+  useEffect(() => {
+    if (saveStatus === 'success') {
+      try {
+        localStorage.removeItem('vuta_draft_song_new');
+      } catch {}
+      return;
+    }
+
+    if (url || metadata || allSongs.length > 0) {
+      try {
+        const draftObj: NewSongDraft = {
+          url,
+          metadata,
+          video,
+          allSongs,
+          isCoverVideo,
+          step,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem('vuta_draft_song_new', JSON.stringify(draftObj));
+      } catch {}
+    }
+  }, [url, metadata, video, allSongs, isCoverVideo, step, saveStatus]);
+
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    setUrl(pendingDraft.url || '');
+    setMetadata(pendingDraft.metadata || null);
+    setVideo(pendingDraft.video || null);
+    setAllSongs(pendingDraft.allSongs || []);
+    setIsCoverVideo(!!pendingDraft.isCoverVideo);
+    setStep(pendingDraft.step || 1);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem('vuta_draft_song_new');
+    } catch {}
+    setPendingDraft(null);
+  };
 
   // ブラウザのナビゲーション（タブ閉じ、戻る等）に対しても警告
   useEffect(() => {
@@ -717,6 +791,9 @@ export default function NewSongClient() {
 
   const handleReset = () => {
     const resetAction = () => {
+      try {
+        localStorage.removeItem('vuta_draft_song_new');
+      } catch {}
       setUrl('');
       setMetadata(null);
       setVideo(null);
@@ -777,6 +854,44 @@ export default function NewSongClient() {
       />
 
       <div className="container py-12 pb-48 px-6 max-w-5xl mx-auto">
+
+        {/* 下書き復元通知バナー */}
+        {pendingDraft && (
+          <div className="bg-[var(--accent-subtle)] border border-[var(--accent)]/30 rounded-2xl p-4 md:p-5 mb-8 shadow-lg backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center shrink-0">
+                <Info size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-[var(--text-primary)] text-sm md:text-base">
+                  {T('newSong.draftFoundTitle')}
+                </h4>
+                <p className="text-xs md:text-sm text-[var(--text-secondary)]">
+                  {T('newSong.draftFoundDesc', {
+                    title: pendingDraft.metadata?.title || pendingDraft.url || '入力途中のデータ'
+                  })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+              >
+                {T('newSong.discardDraft')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-4 py-2 rounded-xl text-xs md:text-sm font-bold bg-[var(--accent)] text-white hover:opacity-90 shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw size={15} />
+                {T('newSong.restoreDraft')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* エラー・成功メッセージ */}
         {error && <div className="alert alert--error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
