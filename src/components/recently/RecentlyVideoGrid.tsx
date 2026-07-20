@@ -30,80 +30,48 @@ const SkeletonGrid = () => (
 
 export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridProps) {
   const { T } = useLocale();
-  // 選択されたチャンネルIDのセット（空の場合はALL扱い）
-  const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
+  // 選択された VTuber キー (例: "vtuber_33" または "chan_15") のセット
+  const [selectedVtuberKeys, setSelectedVtuberKeys] = useState<Set<string>>(new Set());
 
-  // 動画データからメインチャンネルリストおよびサブチャンネルマッピングを抽出
-  const { channels, channelToPrimaryIdMap } = useMemo(() => {
-    if (!initialVideos) return { channels: [], channelToPrimaryIdMap: new Map<number, number>() };
+  // 動画データから VTuber（またはフォールバックチャンネル）一覧とマッピングを抽出
+  const { vtubers, videoToVtuberKeyMap } = useMemo(() => {
+    if (!initialVideos) return { vtubers: [], videoToVtuberKeyMap: new Map<number, string>() };
 
-    const primaryChannelsMap = new Map<number, { id: number; name: string; image?: string | null; vtuber_id?: number | null }>();
-    const vtuberToPrimaryIdMap = new Map<number, number>();
-    const channelToPrimaryIdMap = new Map<number, number>();
+    const vtuberMap = new Map<string, { key: string; name: string; image?: string | null }>();
+    const videoToKeyMap = new Map<number, string>();
 
-    // 1. メインチャンネル(is_primary !== false)の収集と vtuber_id マッピング
     initialVideos.forEach((v) => {
-      if (v.channel && v.channel.id != null) {
-        const c = v.channel;
-        const isPrimary = c.is_primary !== false && (c.is_primary as unknown) !== 'false';
-        
-        if (isPrimary) {
-          if (!primaryChannelsMap.has(c.id)) {
-            primaryChannelsMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              image: c.image,
-              vtuber_id: c.vtuber_id,
-            });
-          }
-          if (c.vtuber_id) {
-            vtuberToPrimaryIdMap.set(c.vtuber_id, c.id);
-          }
-        }
+      if (!v.channel) return;
+      const c = v.channel;
+      const vtuber = (c as unknown as { vtuber?: { id: number; name: string; image?: string | null } }).vtuber;
+      const vtuberId = vtuber?.id || c.vtuber_id;
+
+      const key = vtuberId ? `vtuber_${vtuberId}` : `chan_${c.id}`;
+      const name = vtuber?.name || c.name;
+      const image = vtuber?.image || c.image;
+
+      if (!vtuberMap.has(key)) {
+        vtuberMap.set(key, { key, name, image });
       }
+
+      videoToKeyMap.set(v.id, key);
     });
 
-    // 2. サブチャンネルからメインチャンネル ID へのマッピング
-    initialVideos.forEach((v) => {
-      if (v.channel && v.channel.id != null) {
-        const c = v.channel;
-        const isPrimary = c.is_primary !== false && (c.is_primary as unknown) !== 'false';
-        
-        if (isPrimary) {
-          channelToPrimaryIdMap.set(c.id, c.id);
-        } else if (c.vtuber_id && vtuberToPrimaryIdMap.has(c.vtuber_id)) {
-          const primaryId = vtuberToPrimaryIdMap.get(c.vtuber_id)!;
-          channelToPrimaryIdMap.set(c.id, primaryId);
-        } else {
-          // メインチャンネルが見つからない場合のフォールバック
-          channelToPrimaryIdMap.set(c.id, c.id);
-          if (!primaryChannelsMap.has(c.id)) {
-            primaryChannelsMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              image: c.image,
-              vtuber_id: c.vtuber_id,
-            });
-          }
-        }
-      }
-    });
-
-    const sortedChannels = Array.from(primaryChannelsMap.values()).sort((a, b) =>
+    const sortedVtubers = Array.from(vtuberMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'ja')
     );
 
-    return { channels: sortedChannels, channelToPrimaryIdMap };
+    return { vtubers: sortedVtubers, videoToVtuberKeyMap: videoToKeyMap };
   }, [initialVideos]);
 
-  // チャンネルクリック時のハンドラー
-  const handleToggleChannel = (channelId: number) => {
-    setSelectedChannelIds((prev) => {
+  // VTuber クリック時のハンドラー
+  const handleToggleVtuber = (key: string) => {
+    setSelectedVtuberKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(channelId)) {
-        next.delete(channelId);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(channelId);
+        next.add(key);
       }
       return next;
     });
@@ -111,22 +79,21 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
 
   // ALL クリック時のハンドラー
   const handleSelectAll = () => {
-    setSelectedChannelIds(new Set());
+    setSelectedVtuberKeys(new Set());
   };
 
-  // 選択中のメインチャンネルに基づくフィルタリング (サブチャンネルの動画も統合抽出)
+  // 選択中の VTuber に基づくフィルタリング (メイン・サブ・トピック全動画を統合抽出)
   const filteredVideos = useMemo(() => {
     if (!initialVideos) return [];
-    if (selectedChannelIds.size === 0) return initialVideos;
+    if (selectedVtuberKeys.size === 0) return initialVideos;
 
     return initialVideos.filter((v) => {
-      if (!v.channel || v.channel.id == null) return false;
-      const primaryId = channelToPrimaryIdMap.get(v.channel.id) ?? v.channel.id;
-      return selectedChannelIds.has(primaryId);
+      const key = videoToVtuberKeyMap.get(v.id);
+      return key ? selectedVtuberKeys.has(key) : false;
     });
-  }, [initialVideos, selectedChannelIds, channelToPrimaryIdMap]);
+  }, [initialVideos, selectedVtuberKeys, videoToVtuberKeyMap]);
 
-  const isAllSelected = selectedChannelIds.size === 0;
+  const isAllSelected = selectedVtuberKeys.size === 0;
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -143,8 +110,8 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
 
   return (
     <section className="space-y-8">
-      {/* チャンネル絞り込みアイコンエリア */}
-      {channels.length > 0 && (
+      {/* VTuber 絞り込みアイコンエリア */}
+      {vtubers.length > 0 && (
         <div className="bg-[var(--bg-secondary)]/60 backdrop-blur-md border border-[var(--border)] rounded-3xl p-6 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-2">
@@ -191,15 +158,15 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
               </span>
             </button>
 
-            {/* 各チャンネル アイコンボタン */}
-            {channels.map((channel) => {
-              const isSelected = selectedChannelIds.has(channel.id);
+            {/* 各 VTuber アイコンボタン */}
+            {vtubers.map((vtuber) => {
+              const isSelected = selectedVtuberKeys.has(vtuber.key);
               return (
                 <button
-                  key={channel.id}
-                  onClick={() => handleToggleChannel(channel.id)}
+                  key={vtuber.key}
+                  onClick={() => handleToggleVtuber(vtuber.key)}
                   className="group flex flex-col items-center gap-2 flex-shrink-0 focus:outline-none"
-                  title={channel.name}
+                  title={vtuber.name}
                 >
                   <div className="relative">
                     <div
@@ -209,17 +176,17 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
                           : 'opacity-60 hover:opacity-100 grayscale-[30%] hover:grayscale-0 border border-[var(--border)] hover:border-[var(--accent)]/50'
                       }`}
                     >
-                      {channel.image ? (
+                      {vtuber.image ? (
                         <Image
-                          src={channel.image}
-                          alt={channel.name}
+                          src={vtuber.image}
+                          alt={vtuber.name}
                           fill
                           sizes="56px"
                           className="object-cover"
                         />
                       ) : (
                         <div className="w-full h-full bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-secondary)] font-bold text-lg">
-                          {channel.name.charAt(0)}
+                          {vtuber.name.charAt(0)}
                         </div>
                       )}
                     </div>
@@ -229,8 +196,8 @@ export default function RecentlyVideoGrid({ initialVideos }: RecentlyVideoGridPr
                       </span>
                     )}
                   </div>
-                  <span className={`text-[11px] font-medium transition-colors max-w-[72px] truncate ${isSelected ? 'text-[var(--accent)] font-bold' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]'}`}>
-                    {channel.name}
+                  <span className={`text-[11px] font-bold transition-colors max-w-[64px] truncate ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'}`}>
+                    {vtuber.name}
                   </span>
                 </button>
               );
