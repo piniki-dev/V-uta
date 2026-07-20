@@ -985,13 +985,33 @@ export async function revalidateChannel(channelRecordId: number | null): Promise
     const supabase = await createClient();
     const { data: channel } = await supabase
       .from('channels')
-      .select('handle')
+      .select('handle, vtuber_id, is_primary')
       .eq('id', channelRecordId)
       .single();
 
     // 1. ID でのパスを再検証
     console.log(`[ISR] Revalidating ID path: /channels/${channelRecordId}`);
     revalidatePath(`/channels/${channelRecordId}`);
+
+    // もしサブ/トピックチャンネルの場合、統合先のメインチャンネルのページも連動再検証
+    if (channel && channel.is_primary === false && channel.vtuber_id) {
+      const { data: primaryChan } = await supabase
+        .from('channels')
+        .select('id, handle')
+        .eq('vtuber_id', channel.vtuber_id)
+        .or('is_primary.eq.true,is_primary.is.null')
+        .neq('id', channelRecordId)
+        .limit(1)
+        .maybeSingle();
+
+      if (primaryChan) {
+        console.log(`[ISR] Revalidating Primary channel path for sub-channel: /channels/${primaryChan.id}`);
+        revalidatePath(`/channels/${primaryChan.id}`);
+        if (primaryChan.handle) {
+          revalidatePath(`/channels/${primaryChan.handle}`);
+        }
+      }
+    }
 
     // 2. ハンドルでのパスを再検証 (存在する場合)
     if (channel?.handle) {
