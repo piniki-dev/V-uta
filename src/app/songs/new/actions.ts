@@ -791,13 +791,14 @@ export async function fetchChannelWithVideosFromDb(identifier: string | number):
     query = query.ilike('handle', handleWithAt);
   }
 
-  const { data: channel, error: chanErr } = await query.single();
+  const { data: channels, error: chanErr } = await query.limit(1);
+  const channel = channels?.[0];
 
   if (chanErr || !channel) {
     // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
     if (!isNumeric) {
       const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
-      const { data: retryChannel } = await supabase
+      const { data: retryChannels } = await supabase
         .from('channels')
         .select(`
           *,
@@ -807,8 +808,9 @@ export async function fetchChannelWithVideosFromDb(identifier: string | number):
           )
         `)
         .ilike('handle', altHandle)
-        .single();
+        .limit(1);
       
+      const retryChannel = retryChannels?.[0];
       if (retryChannel) {
         return fetchVideosForChannel(retryChannel as Channel, supabase);
       }
@@ -1029,23 +1031,34 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
 
   // 1. is_primary === false の場合、メインチャンネルへのリダイレクト確認
   if (channel.is_primary === false && channel.vtuber_id) {
-    const { data: primaryChan } = await supabase
+    const { data: primaryChans } = await supabase
       .from('channels')
       .select('id, handle')
       .eq('vtuber_id', channel.vtuber_id)
-      .eq('is_primary', true)
-      .maybeSingle();
+      .or('is_primary.eq.true,is_primary.is.null')
+      .neq('id', channel.id)
+      .limit(1);
 
-    if (primaryChan) {
+    const primaryChan = primaryChans?.[0];
+
+    if (primaryChan && primaryChan.id !== channel.id) {
       const targetIdentifier = primaryChan.handle ? encodeURIComponent(primaryChan.handle) : String(primaryChan.id);
-      return {
-        success: true,
-        data: {
-          ...channel,
-          videos: [],
-          redirectTo: `/channels/${targetIdentifier}`
-        }
-      };
+      const redirectToPath = `/channels/${targetIdentifier}`;
+
+      // 自分自身への循環リダイレクトを防御
+      const currentNumericPath = `/channels/${channel.id}`;
+      const currentHandlePath = channel.handle ? `/channels/${encodeURIComponent(channel.handle)}` : null;
+
+      if (redirectToPath !== currentNumericPath && (currentHandlePath ? redirectToPath !== currentHandlePath : true)) {
+        return {
+          success: true,
+          data: {
+            ...channel,
+            videos: [],
+            redirectTo: redirectToPath
+          }
+        };
+      }
     }
   }
 

@@ -39,7 +39,7 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
   const { data, error } = await supabase
     .from('channels')
     .select('*, videos!inner(id, songs!inner(id))')
-    .eq('is_primary', true)
+    .or('is_primary.eq.true,is_primary.is.null')
     .order('name', { ascending: true });
 
   if (error) {
