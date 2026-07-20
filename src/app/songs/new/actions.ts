@@ -647,6 +647,15 @@ export async function registerFullArchive(input: {
   }
 
   try {
+    const videoDuration = input.videoMetadata.duration || 0;
+    if (videoDuration > 0) {
+      for (const s of input.songs) {
+        if (!s.isDeleted && s.endSec > videoDuration) {
+          return { success: false, error: t.newSong.endTimeExceedsDuration };
+        }
+      }
+    }
+
     const songsToRegister = [];
 
     // 1. 各曲について、事前に必要な外部API（iTunes）のデータを取得して整形

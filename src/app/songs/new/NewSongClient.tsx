@@ -534,6 +534,7 @@ export default function NewSongClient() {
     
     const startSec = startVal.trim() ? parseTime(startVal) : null;
     const endSec = endVal.trim() ? parseTime(endVal) : null;
+    const maxDuration = video?.duration || metadata?.duration || 0;
 
     if (!endVal.trim()) {
       endErr = T('newSong.endTimeRequired');
@@ -541,6 +542,8 @@ export default function NewSongClient() {
       endErr = T('newSong.timeFormatError');
     } else if (startVal.trim() && startSec !== null && startSec >= endSec) {
       endErr = T('newSong.timeRangeError');
+    } else if (maxDuration > 0 && endSec !== null && endSec > maxDuration) {
+      endErr = T('newSong.endTimeExceedsDuration');
     }
 
     setFieldErrors(prev => ({
@@ -552,7 +555,7 @@ export default function NewSongClient() {
     }));
 
     return !endErr;
-  }, [T]);
+  }, [T, video, metadata]);
 
   const validateSong = useCallback((song: ITunesSearchResult | null, isSubmitting = false) => {
     let err = '';
@@ -584,6 +587,12 @@ export default function NewSongClient() {
     const endSec = parseTime(endTime);
     if (startSec === null || endSec === null || startSec >= endSec) {
       setError(T('newSong.timeError'));
+      return;
+    }
+
+    const maxDuration = video?.duration || metadata?.duration || 0;
+    if (maxDuration > 0 && endSec > maxDuration) {
+      setError(T('newSong.endTimeExceedsDuration'));
       return;
     }
 
@@ -652,6 +661,18 @@ export default function NewSongClient() {
             searchLocale: item.searchLocale || locale,
           }));
 
+        const maxDuration = video?.duration || metadata?.duration || 0;
+        if (maxDuration > 0) {
+          const invalidSong = songsToRegister.find(s => !s.isDeleted && s.endSec > maxDuration);
+          if (invalidSong) {
+            const msg = T('newSong.endTimeExceedsDuration');
+            setError(msg);
+            setSaveErrorMsg(msg);
+            setSaveStatus('error');
+            return;
+          }
+        }
+
         const result = await registerFullArchive({
           videoMetadata: metadata,
           songs: songsToRegister,
@@ -688,7 +709,7 @@ export default function NewSongClient() {
         setSaveStatus('error');
       }
     });
-  }, [allSongs, metadata, locale, T]);
+  }, [allSongs, metadata, video, locale, T]);
 
   const handleSaveAll = () => {
     if (!metadata) return;
@@ -744,6 +765,12 @@ export default function NewSongClient() {
 
     if (s === null || e === null || s >= e) {
       setError(T('newSong.timeFormatError'));
+      return;
+    }
+
+    const maxDuration = video?.duration || metadata?.duration || 0;
+    if (maxDuration > 0 && e > maxDuration) {
+      setError(T('newSong.endTimeExceedsDuration'));
       return;
     }
 

@@ -847,6 +847,7 @@ export default function ImportSongsClient() {
       const endSec = parseTime(item.endTime);
       let validationError: string | undefined = undefined;
 
+      const maxDuration = metadata?.duration || 0;
       if (!item.song.master_song?.title?.trim()) {
         validationError = T('newSong.validationTitleRequired');
       } else if (startSec === null) {
@@ -857,6 +858,8 @@ export default function ImportSongsClient() {
         validationError = T('newSong.validationTimeRangeError');
       } else if (endSec - startSec < 10) {
         validationError = T('newSong.validationDurationError');
+      } else if (maxDuration > 0 && endSec > maxDuration) {
+        validationError = T('newSong.endTimeExceedsDuration');
       }
 
       if (validationError && firstErrorIndex === -1) {
