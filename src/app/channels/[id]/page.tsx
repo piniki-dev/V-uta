@@ -39,8 +39,8 @@ function safeDecode(str: string): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const decodedId = safeDecode(id);
-  const result = await getChannelMetadata(decodedId);
+  // unstable_cache のキャッシュタグに日本語が含まれるのを防ぐため、エンコード済みの ASCII 文字列 id を渡す
+  const result = await getChannelMetadata(id);
   
   const locale = 'ja';
   const t = translations[locale];
@@ -79,8 +79,9 @@ interface PageProps {
 
 export default async function ChannelPage({ params }: PageProps) {
   const { id } = await params;
+  // unstable_cache のキャッシュタグに日本語が含まれるのを防ぐため、エンコード済みの ASCII 文字列 id を渡す
+  const result = await getChannelWithVideos(id);
   const decodedId = safeDecode(id);
-  const result = await getChannelWithVideos(decodedId);
   const locale = 'ja';
 
   if (!result.success) {
