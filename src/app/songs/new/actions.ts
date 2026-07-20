@@ -821,16 +821,25 @@ export async function fetchChannelWithVideosFromDb(identifier: string | number):
   return fetchVideosForChannel(channel as Channel, supabase);
 }
 
-export const getChannelWithVideos = unstable_cache(
-  async (identifier: string | number) => {
-    return fetchChannelWithVideosFromDb(identifier);
+function toSafeCacheKey(identifier: string | number): string {
+  return Buffer.from(String(identifier)).toString('hex');
+}
+
+const getChannelWithVideosCached = unstable_cache(
+  async (_safeKey: string, rawIdentifier: string | number) => {
+    return fetchChannelWithVideosFromDb(rawIdentifier);
   },
-  ['channel-with-videos-cached'],
+  ['channel-with-videos-safe-cached'],
   {
     revalidate: 3600, // 1時間キャッシュ
     tags: ['channel-details']
   }
 );
+
+export async function getChannelWithVideos(identifier: string | number) {
+  const safeKey = toSafeCacheKey(identifier);
+  return getChannelWithVideosCached(safeKey, identifier);
+}
 
 /**
  * チャンネルの基本情報（メタデータ生成用）のみを取得する (ID またはハンドルに対応)
@@ -867,13 +876,14 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
     query = query.ilike('handle', handleWithAt);
   }
 
-  const { data: channel, error: chanErr } = await query.single();
+  const { data: channels, error: chanErr } = await query.limit(1);
+  const channel = channels?.[0];
 
   if (chanErr || !channel) {
     // 数値でないハンドル検索でヒットしなかった場合の再試行（@ の有無を反転して ilike 検索）
     if (!isNumeric) {
       const altHandle = decodedStr.startsWith('@') ? decodedStr.substring(1) : decodedStr;
-      const { data: retryChannel } = await supabase
+      const { data: retryChannels } = await supabase
         .from('channels')
         .select(`
           *,
@@ -883,8 +893,9 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
           )
         `)
         .ilike('handle', altHandle)
-        .single();
+        .limit(1);
       
+      const retryChannel = retryChannels?.[0];
       if (retryChannel) {
         return { success: true, data: retryChannel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
       }
@@ -895,16 +906,21 @@ async function fetchChannelMetadataFromDb(identifier: string | number): Promise<
   return { success: true, data: channel as unknown as Channel & { vtuber?: Vtuber & { production?: Production } | null } };
 }
 
-export const getChannelMetadata = unstable_cache(
-  async (identifier: string | number) => {
-    return fetchChannelMetadataFromDb(identifier);
+const getChannelMetadataCached = unstable_cache(
+  async (_safeKey: string, rawIdentifier: string | number) => {
+    return fetchChannelMetadataFromDb(rawIdentifier);
   },
-  ['channel-metadata-cached'],
+  ['channel-metadata-safe-cached'],
   {
     revalidate: 3600, // 1時間キャッシュ
     tags: ['channel-details']
   }
 );
+
+export async function getChannelMetadata(identifier: string | number) {
+  const safeKey = toSafeCacheKey(identifier);
+  return getChannelMetadataCached(safeKey, identifier);
+}
 
 /**
  * チャンネルのキャッシュを再検証（パージ）する
