@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction, searchVtubers, checkDuplicateVtuber } from '../new/actions';
 import type { ITunesSearchResult, VtuberWithChannels } from '../new/actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
-import { formatTime, parseTime, formatTimeFull } from '@/lib/utils';
+import { formatTime, parseTime, formatTimeFull, calculateAutoEndTimeSec } from '@/lib/utils';
 import { 
   Search, X, Music, Info, Save, Trash2, AlertCircle, 
   UserPlus, Building2, FileUp, Table, ChevronRight,
@@ -669,9 +669,10 @@ export default function ImportSongsClient() {
             const startSec = parseTime(song.startTime) || 0;
             let endSec = parseTime(song.endTime) || 0;
             
-            // 終了時間が未入力(0)なら、iTunesの曲の長さから計算する
+            // 終了時間が未入力(0)なら、iTunesの曲の長さから計算する（動画再生時間を超えないよう補正）
             if (endSec === 0 || endSec === startSec) {
-              endSec = startSec + track.durationSec;
+              const maxDuration = result.data.metadata.duration || 0;
+              endSec = calculateAutoEndTimeSec(startSec, track.durationSec, maxDuration);
             }
 
             return {
@@ -1143,7 +1144,8 @@ export default function ImportSongsClient() {
             updatedEndSec = 0;
             updatedEndTime = '';
           } else {
-            updatedEndSec = track.durationSec > 0 ? startSec + track.durationSec : updatedEndSec;
+            const maxDuration = metadata?.duration || 0;
+            updatedEndSec = track.durationSec > 0 ? calculateAutoEndTimeSec(startSec, track.durationSec, maxDuration) : updatedEndSec;
             updatedEndTime = formatTimeFull(updatedEndSec);
           }
           // 開始時間も整形

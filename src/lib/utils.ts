@@ -66,3 +66,20 @@ export function getChannelUrl(channel: { id: number; handle?: string | null }): 
   }
   return `/channels/${channel.id}`;
 }
+
+/**
+ * 開始時間と曲の長さ(ITunes)から自動計算される終了時間を算出する。
+ * アーカイブ(動画)の最大再生時間が指定されている場合、それを超えないようにクランプする。
+ */
+export function calculateAutoEndTimeSec(
+  startSec: number,
+  trackDurationSec: number,
+  maxVideoDurationSec?: number
+): number {
+  const rawEndSec = startSec + trackDurationSec;
+  if (maxVideoDurationSec && maxVideoDurationSec > 0 && rawEndSec > maxVideoDurationSec) {
+    return maxVideoDurationSec;
+  }
+  return rawEndSec;
+}
+

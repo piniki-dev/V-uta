@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from
 import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, searchVtubers, checkDuplicateVtuber } from './actions';
 import type { ITunesSearchResult, VtuberWithChannels } from './actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
-import { formatTime, parseTime } from '@/lib/utils';
+import { formatTime, parseTime, calculateAutoEndTimeSec } from '@/lib/utils';
 import Link from 'next/link';
 import { 
   Search, X, Music, Info, Pencil, Save, Trash2, 
@@ -473,11 +473,13 @@ export default function NewSongClient() {
     setSearchQuery('');
     setIsManualInput(false);
 
-    // 開始時間があり、曲に長さがある場合は終了時間を自動計算
-    if (startTime && track.durationSec > 0) {
+    // 終了時間が未入力であり、開始時間と曲の長さがある場合は終了時間を自動計算（動画再生時間を超えないよう補正）
+    if (!endTime && startTime && track.durationSec > 0) {
       const startSec = parseTime(startTime);
       if (startSec !== null) {
-        setEndTime(formatTime(startSec + track.durationSec));
+        const maxDuration = video?.duration || metadata?.duration || 0;
+        const endSec = calculateAutoEndTimeSec(startSec, track.durationSec, maxDuration);
+        setEndTime(formatTime(endSec));
       }
     }
   };
@@ -845,12 +847,13 @@ export default function NewSongClient() {
   };
 
   const handleSelectNewSongInPlaceLocal = (index: number, track: ITunesSearchResult) => {
+    const maxDuration = video?.duration || metadata?.duration || 0;
     setAllSongs((prev) =>
       prev.map((it, i) => {
         if (i === index) {
           const startSec = parseTime(it.startTime);
           const newEndTime = (!it.endTime && startSec !== null && track.durationSec > 0)
-            ? formatTime(startSec + track.durationSec)
+            ? formatTime(calculateAutoEndTimeSec(startSec, track.durationSec, maxDuration))
             : it.endTime;
 
           return {
@@ -1275,7 +1278,9 @@ export default function NewSongClient() {
                         if (selectedSong && selectedSong.durationSec > 0) {
                           const s = parseTime(val);
                           if (s !== null) {
-                            setEndTime(formatTime(s + selectedSong.durationSec));
+                            const maxDuration = video?.duration || metadata?.duration || 0;
+                            const endSec = calculateAutoEndTimeSec(s, selectedSong.durationSec, maxDuration);
+                            setEndTime(formatTime(endSec));
                           }
                         }
                       }}
