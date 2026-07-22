@@ -1,4 +1,4 @@
-import type { Video, Song } from '@/types';
+import type { Video, Song, Channel } from '@/types';
 import ArchiveHeader from './ArchiveHeader';
 import ArchiveSongList from './ArchiveSongList';
 import { translations } from '@/lib/translations';
@@ -9,9 +9,10 @@ interface Props {
   video: Video;
   songs: Song[];
   songId?: string | null;
+  collaboratorChannels?: (Channel & { isOriginal?: boolean })[];
 }
 
-export default function ArchiveView({ video, songs, songId }: Props) {
+export default function ArchiveView({ video, songs, songId, collaboratorChannels }: Props) {
   const t = translations['ja'];
 
   return (
@@ -24,7 +25,7 @@ export default function ArchiveView({ video, songs, songId }: Props) {
       />
 
       {/* 動画情報ヘッダー */}
-      <ArchiveHeader video={video} songs={songs} />
+      <ArchiveHeader video={video} songs={songs} collaboratorChannels={collaboratorChannels} />
 
       {/* 曲リスト */}
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-both">

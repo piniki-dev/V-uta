@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import type { Video, Song } from '@/types';
+import type { Video, Song, Channel } from '@/types';
 import ArchiveView from './ArchiveView';
 import { translations } from '@/lib/translations';
 import JsonLd from '@/components/JsonLd';
@@ -23,7 +23,33 @@ const getCachedVideoDetails = (videoId: string) =>
         .single();
 
       if (!video) {
-        return { video: null, songs: [] };
+        return { video: null, songs: [], collaboratorChannels: [] };
+      }
+
+      // video_channels レコードから関連チャンネルを検索
+      const { data: videoChanRecords } = await supabase
+        .from('video_channels')
+        .select('channel_id, is_original')
+        .eq('video_id', video.id);
+
+      let collaboratorChannels: (Channel & { isOriginal: boolean })[] = [];
+
+      if (videoChanRecords && videoChanRecords.length > 0) {
+        const channelIds = videoChanRecords.map(r => r.channel_id);
+        const originalMap = new Map<number, boolean>();
+        videoChanRecords.forEach(r => originalMap.set(r.channel_id, r.is_original));
+
+        const { data: chanData } = await supabase
+          .from('channels')
+          .select('*')
+          .in('id', channelIds);
+
+        if (chanData) {
+          collaboratorChannels = chanData.map(c => ({
+            ...(c as Channel),
+            isOriginal: originalMap.get(c.id) ?? false
+          }));
+        }
       }
 
       const { data: songs } = await supabase
@@ -33,7 +59,7 @@ const getCachedVideoDetails = (videoId: string) =>
         .eq('is_active', true)
         .order('start_sec', { ascending: true });
 
-      return { video, songs: songs || [] };
+      return { video, songs: songs || [], collaboratorChannels };
     },
     ['video-details', videoId],
     {
@@ -107,7 +133,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
   const sParams = await searchParams;
   const songId = typeof sParams.songId === 'string' ? sParams.songId : null;
   
-  const { video, songs } = await getCachedVideoDetails(videoId);
+  const { video, songs, collaboratorChannels } = await getCachedVideoDetails(videoId);
 
   const locale = 'ja';
   const t = translations[locale];
@@ -177,6 +203,7 @@ export default async function ArchivePage({ params, searchParams }: Props) {
         video={typedVideo}
         songs={typedSongs}
         songId={resolvedSongId}
+        collaboratorChannels={collaboratorChannels}
       />
     </>
   );

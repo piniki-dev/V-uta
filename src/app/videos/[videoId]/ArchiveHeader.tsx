@@ -1,20 +1,21 @@
 'use client';
 
-import type { Video, Song, PlayerSong } from '@/types';
+import type { Video, Song, PlayerSong, Channel } from '@/types';
 import { usePlayer } from '@/components/player/PlayerContext';
 import { useLocale } from '@/components/LocaleProvider';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Pencil, Music, Youtube, Play } from 'lucide-react';
+import { Pencil, Music, Youtube, Play, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getChannelUrl } from '@/lib/utils';
 
 interface Props {
   video: Video;
   songs: Song[];
+  collaboratorChannels?: (Channel & { isOriginal?: boolean })[];
 }
 
-export default function ArchiveHeader({ video, songs }: Props) {
+export default function ArchiveHeader({ video, songs, collaboratorChannels }: Props) {
   const { playWithSource } = usePlayer();
   const { T } = useLocale();
 
@@ -95,9 +96,9 @@ export default function ArchiveHeader({ video, songs }: Props) {
           {video.title}
         </h1>
         
-        <div className="mb-8">
+        <div className="mb-8 flex flex-wrap items-center gap-3">
           {video.channel ? (
-            <Link href={getChannelUrl(video.channel)} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-3 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-4">
+            <Link href={getChannelUrl(video.channel)} className="text-[var(--text-secondary)] text-sm font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-2.5 group/ch p-1 -ml-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-3">
               <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)] group-hover/ch:scale-110 transition-transform overflow-hidden border border-[var(--border)] group-hover/ch:border-[var(--accent)]">
                 {video.channel.image ? (
                   <Image src={video.channel.image} alt="" width={32} height={32} className="w-full h-full object-cover" />
@@ -109,6 +110,33 @@ export default function ArchiveHeader({ video, songs }: Props) {
             </Link>
           ) : (
             <p className="text-[var(--text-secondary)] text-sm font-medium">{T('common.unknown')}</p>
+          )}
+
+          {/* コラボ参加チャンネルの一覧 */}
+          {collaboratorChannels && collaboratorChannels.filter(c => !c.isOriginal && c.id !== video.channel?.id).length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap pl-2 border-l border-[var(--border)]">
+              <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-sm">
+                <Users size={11} /> 🤝 {T('newSong.collabBadge')}
+              </span>
+              {collaboratorChannels
+                .filter(c => !c.isOriginal && c.id !== video.channel?.id)
+                .map((collabChan) => (
+                  <Link 
+                    key={collabChan.id}
+                    href={getChannelUrl(collabChan)} 
+                    className="text-[var(--text-secondary)] text-xs font-bold hover:text-[var(--accent)] transition-all inline-flex items-center gap-2 group/collab p-1 rounded-xl hover:bg-[var(--accent-subtle)] pr-3"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-[10px] font-bold text-[var(--text-tertiary)] group-hover/collab:scale-110 transition-transform overflow-hidden border border-[var(--border)] group-hover/collab:border-[var(--accent)]">
+                      {collabChan.image ? (
+                        <Image src={collabChan.image} alt="" width={24} height={24} className="w-full h-full object-cover" />
+                      ) : (
+                        collabChan.name[0]
+                      )}
+                    </div>
+                    <span className="truncate">{collabChan.name}</span>
+                  </Link>
+                ))}
+            </div>
           )}
         </div>
 
