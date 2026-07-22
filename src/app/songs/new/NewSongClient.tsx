@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, searchVtubers, checkDuplicateVtuber } from './actions';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, registerQuickCollabChannel, searchVtubers, checkDuplicateVtuber, fetchChannelMetadataAction, type CollaboratorChannelPreview } from './actions';
 import type { ITunesSearchResult, VtuberWithChannels } from './actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime, calculateAutoEndTimeSec } from '@/lib/utils';
@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { 
   Search, X, Music, Info, Pencil, Save, Trash2, 
   AlertCircle, UserPlus, Building2, FileUp, Loader2, RotateCcw,
-  Check, AlertTriangle
+  Check, AlertTriangle, Users
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from '@/components/LocaleProvider';
@@ -36,6 +36,7 @@ interface NewSongDraft {
   url: string;
   metadata: YouTubeVideoMetadata | null;
   video: Video | null;
+  collaborators?: CollaboratorChannelPreview[];
   allSongs: EditableSong[];
   isCoverVideo: boolean;
   step: 1 | 2;
@@ -51,6 +52,73 @@ export default function NewSongClient() {
   const [url, setUrl] = useState('');
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
   const [video, setVideo] = useState<Video | null>(null);
+  const [collaborators, setCollaborators] = useState<CollaboratorChannelPreview[]>([]);
+  const [quickRegisteringId, setQuickRegisteringId] = useState<string | null>(null);
+
+  const handleQuickRegisterCollab = useCallback(async (collab: CollaboratorChannelPreview) => {
+    setQuickRegisteringId(collab.ytChannelId);
+    try {
+      const res = await registerQuickCollabChannel({
+        ytChannelId: collab.ytChannelId,
+        name: collab.name,
+        handle: collab.handle,
+        image: collab.avatarUrl,
+      });
+      if (res.success && res.data) {
+        setCollaborators(prev => prev.map(c => 
+          c.ytChannelId === collab.ytChannelId 
+            ? { ...c, isRegistered: true, channelRecordId: res.data.channelId }
+            : c
+        ));
+      } else if (!res.success) {
+        setError(res.error);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setQuickRegisteringId(null);
+    }
+  }, []);
+
+  const handleOpenVtuberModalForCollab = useCallback((collab: CollaboratorChannelPreview) => {
+    getProductions().then((res) => {
+      if (res.success && res.data) setProductions(res.data);
+    });
+
+    setChannelDataForReg({
+      ytChannelId: collab.ytChannelId,
+      name: collab.name,
+      handle: collab.handle || '',
+      description: collab.description || '',
+      image: collab.avatarUrl || '',
+    });
+
+    if (!collab.avatarUrl) {
+      fetchChannelMetadataAction(collab.ytChannelId).then((res) => {
+        if (res.success && res.data?.image) {
+          setChannelDataForReg((prev) => (prev ? { ...prev, image: res.data.image || '' } : prev));
+        }
+      });
+    }
+
+    setVtuberForm({
+      name: collab.name,
+      gender: '不明',
+      link: '',
+      productionId: '',
+      newProductionName: '',
+    });
+
+    setVtuberRegMode('new');
+    setSelectedExistingVtuber(null);
+    setIsPrimaryChannel(true);
+
+    checkDuplicateVtuber(collab.name).then((res) => {
+      if (res.success) setDuplicateWarning(res.data);
+    });
+
+    setIsVtuberModalOpen(true);
+  }, []);
 
   // Step 2: 曲検索・選択
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,6 +229,10 @@ export default function NewSongClient() {
     return hasUnsavedInList || hasActiveInput;
   }, [allSongs, selectedSong, startTime, endTime, searchQuery, saveStatus]);
 
+  const hasUnregisteredCollabs = useMemo(() => {
+    return collaborators.some(c => !c.isOriginalUploader && !c.isRegistered);
+  }, [collaborators]);
+
   const [isCoverVideo, setIsCoverVideo] = useState(false);
 
   // 変更時に自動下書き保存
@@ -178,6 +250,7 @@ export default function NewSongClient() {
           url,
           metadata,
           video,
+          collaborators,
           allSongs,
           isCoverVideo,
           step,
@@ -186,13 +259,14 @@ export default function NewSongClient() {
         localStorage.setItem('vuta_draft_song_new', JSON.stringify(draftObj));
       } catch {}
     }
-  }, [url, metadata, video, allSongs, isCoverVideo, step, saveStatus]);
+  }, [url, metadata, video, collaborators, allSongs, isCoverVideo, step, saveStatus]);
 
   const handleRestoreDraft = () => {
     if (!pendingDraft) return;
     setUrl(pendingDraft.url || '');
     setMetadata(pendingDraft.metadata || null);
     setVideo(pendingDraft.video || null);
+    setCollaborators(pendingDraft.collaborators || []);
     setAllSongs(pendingDraft.allSongs || []);
     setIsCoverVideo(!!pendingDraft.isCoverVideo);
     setStep(pendingDraft.step || 1);
@@ -293,6 +367,7 @@ export default function NewSongClient() {
       }
 
       setMetadata(result.data.metadata);
+      setCollaborators(result.data.collaboratorChannels || []);
       const isActuallyCover = !result.data.metadata.isStream;
       setIsCoverVideo(isActuallyCover); // 自動判定
 
@@ -430,6 +505,14 @@ export default function NewSongClient() {
 
       setIsVtuberModalOpen(false);
       setSuccess(T('vtuber.registerSuccess', { name: regVtuberName }));
+
+      if (channelDataForReg) {
+        setCollaborators(prev => prev.map(c => 
+          c.ytChannelId === channelDataForReg.ytChannelId 
+            ? { ...c, isRegistered: true, channelRecordId: result.data.channelId }
+            : c
+        ));
+      }
 
       // 改めて動画を登録
       if (metadata) {
@@ -642,6 +725,16 @@ export default function NewSongClient() {
     setSaveStatus('saving');
     setSaveErrorMsg('');
 
+    // 未登録のコラボチャンネルが存在する場合は保存をブロック
+    const unregisteredCollabs = collaborators.filter(c => !c.isOriginalUploader && !c.isRegistered);
+    if (unregisteredCollabs.length > 0) {
+      const msg = T('newSong.unregisteredCollabsError', { count: unregisteredCollabs.length });
+      setError(msg);
+      setSaveErrorMsg(msg);
+      setSaveStatus('error');
+      return;
+    }
+
     // 未確定（未検索・未入力）の楽曲があるかチェック
     const unconfirmedCount = allSongs.filter(s => !s.isConfirmed && !s.isDeleted).length;
 
@@ -675,9 +768,14 @@ export default function NewSongClient() {
           }
         }
 
+        const collabIds = collaborators
+          .filter(c => c.isRegistered && c.channelRecordId)
+          .map(c => c.channelRecordId!);
+
         const result = await registerFullArchive({
           videoMetadata: metadata,
           songs: songsToRegister,
+          collaboratorChannelIds: collabIds,
         });
 
         if (!result.success) {
@@ -711,7 +809,7 @@ export default function NewSongClient() {
         setSaveStatus('error');
       }
     });
-  }, [allSongs, metadata, video, locale, T]);
+  }, [allSongs, metadata, video, collaborators, locale, T]);
 
   const handleSaveAll = () => {
     if (!metadata) return;
@@ -1058,6 +1156,68 @@ export default function NewSongClient() {
                     <p className="video-preview__channel">{metadata.channelName}</p>
                   </div>
                 </div>
+
+                {collaborators.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <div className="flex items-center gap-2 mb-3 text-xs font-bold text-[var(--text-secondary)]">
+                      <Users size={14} className="text-[var(--accent)]" />
+                      <span>{T('newSong.detectedCollaborators')} ({collaborators.length})</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {collaborators.map((collab) => (
+                        <div 
+                          key={collab.ytChannelId} 
+                          className="flex items-center justify-between p-2.5 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {collab.avatarUrl ? (
+                              <Image 
+                                src={collab.avatarUrl} 
+                                alt={collab.name} 
+                                width={28} 
+                                height={28} 
+                                className="rounded-full flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
+                                {collab.name.substring(0, 1)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-bold truncate text-[var(--text-primary)]">{collab.name}</p>
+                              {collab.handle && <p className="text-[10px] text-[var(--text-tertiary)] truncate">{collab.handle}</p>}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            {collab.isOriginalUploader ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--accent-alpha-10)] text-[var(--accent)] border border-[var(--accent-alpha-20)]">
+                                {T('newSong.originalUploader')}
+                              </span>
+                            ) : collab.isRegistered ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <Check size={10} /> {T('newSong.registered')}
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+                                  <AlertTriangle size={10} /> {T('newSong.unregistered')}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenVtuberModalForCollab(collab)}
+                                  className="btn btn--primary text-[10px] py-1 px-2 h-auto rounded-lg flex items-center gap-1"
+                                >
+                                  <UserPlus size={10} /> {T('newSong.register')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           )}
@@ -1078,7 +1238,17 @@ export default function NewSongClient() {
               </div>
 
               <div className="card__body">
-                {/* 歌ってみた動画トグル */}
+                {hasUnregisteredCollabs ? (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 flex items-start gap-3.5 animate-in fade-in duration-300">
+                    <AlertTriangle size={24} className="flex-shrink-0 text-amber-400 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-bold text-amber-200 text-sm mb-1">{T('newSong.unregisteredCollabsWarning')}</p>
+                      <p className="text-[var(--text-secondary)]">{T('newSong.unregisteredCollabsGuide')}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* 歌ってみた動画トグル */}
                 <div className="mb-6 flex items-center gap-2 bg-[var(--bg-tertiary)] p-3 rounded-xl border border-[var(--border)]">
                   <label className="flex items-center gap-3 cursor-pointer select-none">
                     <div className="relative">
@@ -1330,6 +1500,8 @@ export default function NewSongClient() {
                 >
                   {isPending ? T('newSong.adding') : T('newSong.addToList')}
                 </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1785,7 +1957,6 @@ export default function NewSongClient() {
             <div className="modal-footer">
               <button className="btn btn--secondary" onClick={() => {
                 setIsVtuberModalOpen(false);
-                setStep(1);
               }} disabled={isPending}>{T('common.cancel')}</button>
               <button
                 className="btn btn--primary"

@@ -165,3 +165,59 @@ export async function fetchChannelMetadata(
     officialLink: officialLink || undefined,
   };
 }
+
+/**
+ * YouTube Data API v3 で複数チャンネルの詳細情報を一括取得する
+ */
+export async function fetchMultipleChannelsMetadata(
+  channelIds: string[]
+): Promise<Map<string, {
+  ytChannelId: string;
+  name: string;
+  handle: string;
+  description: string;
+  image: string;
+  officialLink?: string;
+}>> {
+  const result = new Map<string, {
+    ytChannelId: string;
+    name: string;
+    handle: string;
+    description: string;
+    image: string;
+    officialLink?: string;
+  }>();
+
+  if (!channelIds || channelIds.length === 0) return result;
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return result;
+
+  try {
+    const idsParam = channelIds.join(',');
+    const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${idsParam}&key=${apiKey}`;
+    const res = await fetch(url, { next: { revalidate: 86400 } });
+    if (!res.ok) return result;
+
+    const data = await res.json();
+    if (data.items && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        const snippet = item.snippet;
+        const description = snippet.description || '';
+        const officialLink = extractLinksFromText(description);
+        result.set(item.id, {
+          ytChannelId: item.id,
+          name: snippet.title,
+          handle: snippet.customUrl ? (snippet.customUrl.startsWith('@') ? snippet.customUrl : `@${snippet.customUrl}`) : '',
+          description,
+          image: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || '',
+          officialLink: officialLink || undefined,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[YouTube API] Failed to fetch multiple channels metadata:', err);
+  }
+
+  return result;
+}

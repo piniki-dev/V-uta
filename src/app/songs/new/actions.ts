@@ -1,7 +1,8 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata } from '@/lib/youtube';
+import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata, fetchMultipleChannelsMetadata } from '@/lib/youtube';
+import { fetchCollaboratorChannels } from '@/lib/youtube-collab';
 import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@/lib/itunes';
 import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } from '@/types';
 import { translations } from '@/lib/translations';
@@ -10,6 +11,17 @@ import { createClient as createSupabaseClient, type SupabaseClient } from '@supa
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { convertGSheetUrlToCsv } from '@/utils/batch-parser';
 import { getChannelUrl } from '@/lib/utils';
+
+export interface CollaboratorChannelPreview {
+  ytChannelId: string;
+  name: string;
+  handle?: string;
+  avatarUrl?: string;
+  description?: string;
+  isRegistered: boolean;
+  channelRecordId?: number;
+  isOriginalUploader: boolean;
+}
 
 async function getLocaleT() {
   const cookieStore = await cookies();
@@ -46,6 +58,32 @@ export interface ITunesSearchResult {
   albumName: string;
   artworkUrl: string; // 高解像度に変換済み
   durationSec: number; // 曲の長さ（秒）
+}
+
+/**
+ * 指定した YouTube チャンネルIDのメタデータ（アイコン画像など）を取得する
+ */
+export async function fetchChannelMetadataAction(
+  ytChannelId: string
+): Promise<ActionResult<{ name: string; handle?: string; image?: string; description?: string }>> {
+  try {
+    const meta = await fetchChannelMetadata(ytChannelId);
+    if (!meta) {
+      return { success: false, error: 'Channel metadata not found' };
+    }
+    return {
+      success: true,
+      data: {
+        name: meta.name,
+        handle: meta.handle,
+        image: meta.image,
+        description: meta.description,
+      },
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Failed to fetch channel metadata';
+    return { success: false, error: message };
+  }
 }
 
 // ===== Server Actions =====
@@ -91,6 +129,7 @@ export async function fetchVideoPreview(
   existingSongs: Song[];
   isChannelRegistered: boolean;
   channelData?: Record<string, unknown> | null;
+  collaboratorChannels: CollaboratorChannelPreview[];
 }>> {
   const videoId = extractVideoId(url);
   const t = await getLocaleT();
@@ -121,6 +160,62 @@ export async function fetchVideoPreview(
       channelData = await fetchChannelMetadata(metadata.channelId);
     }
 
+    // InnerTube API を叩いてコラボレーター情報を並行取得
+    const rawCollaborators = await fetchCollaboratorChannels(videoId);
+
+    // YouTube チャンネル ID リストを作成（メタデータのチャンネル + コラボチャンネル）
+    const allYtIds = Array.from(new Set([metadata.channelId, ...rawCollaborators.map(c => c.ytChannelId)]));
+
+    // DB 内の全対象チャンネルを一括検索
+    const { data: registeredChannels } = await supabase
+      .from('channels')
+      .select('id, yt_channel_id, name, handle, image')
+      .in('yt_channel_id', allYtIds);
+
+    const regMap = new Map<string, { id: number; name: string; handle: string | null; image: string | null }>();
+    (registeredChannels || []).forEach(c => regMap.set(c.yt_channel_id, c));
+
+    // DB未登録のコラボチャンネルについて、YouTube Data API v3 で常に最新フル情報（概要欄 description, image, handle）を一括取得
+    const unregisteredYtIds = rawCollaborators
+      .map(c => c.ytChannelId)
+      .filter(id => id !== metadata.channelId && !regMap.has(id));
+
+    const ytMetaMap = await fetchMultipleChannelsMetadata(unregisteredYtIds);
+
+    // コラボレーターリストを構築
+    const collaboratorChannels: CollaboratorChannelPreview[] = [];
+
+    // メインアップローダー
+    const mainReg = regMap.get(metadata.channelId);
+    collaboratorChannels.push({
+      ytChannelId: metadata.channelId,
+      name: mainReg?.name || metadata.channelName,
+      handle: mainReg?.handle || undefined,
+      avatarUrl: mainReg?.image || metadata.thumbnailUrl,
+      description: channelData?.description || '',
+      isRegistered: !!mainReg,
+      channelRecordId: mainReg?.id,
+      isOriginalUploader: true,
+    });
+
+    // コラボ先のチャンネル
+    for (const collab of rawCollaborators) {
+      if (collab.ytChannelId === metadata.channelId) continue;
+      const reg = regMap.get(collab.ytChannelId);
+      const ytMeta = ytMetaMap.get(collab.ytChannelId);
+
+      collaboratorChannels.push({
+        ytChannelId: collab.ytChannelId,
+        name: reg?.name || ytMeta?.name || collab.name,
+        handle: reg?.handle || ytMeta?.handle || collab.handle,
+        avatarUrl: reg?.image || ytMeta?.image || collab.avatarUrl,
+        description: ytMeta?.description || '',
+        isRegistered: !!reg,
+        channelRecordId: reg?.id,
+        isOriginalUploader: false,
+      });
+    }
+
     // DB に動画が登録済みかチェック
     const { data: videoData } = await supabase
       .from('videos')
@@ -148,7 +243,8 @@ export async function fetchVideoPreview(
         metadata, 
         existingSongs,
         isChannelRegistered,
-        channelData
+        channelData,
+        collaboratorChannels,
       } 
     };
   } catch (e) {
@@ -420,10 +516,76 @@ export async function registerVtuberAndChannel(params: {
 }
 
 /**
+ * 未登録コラボチャンネルをワンタップで自動登録する（同名 VTuber + チャンネル）
+ */
+export async function registerQuickCollabChannel(params: {
+  ytChannelId: string;
+  name: string;
+  handle?: string;
+  image?: string;
+}): Promise<ActionResult<{ vtuberId: number; channelId: number }>> {
+  const supabase = await createClient();
+  const t = await getLocaleT();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: t.common.loginRequired };
+  }
+
+  try {
+    // 既存の同 ytChannelId チェック
+    const { data: existingChan } = await supabase
+      .from('channels')
+      .select('id, vtuber_id')
+      .eq('yt_channel_id', params.ytChannelId)
+      .maybeSingle();
+
+    if (existingChan) {
+      return { success: true, data: { vtuberId: existingChan.vtuber_id || 0, channelId: existingChan.id } };
+    }
+
+    // VTuber 登録
+    const { data: vtuber, error: vtErr } = await supabase
+      .from('vtubers')
+      .insert({
+        name: params.name,
+        gender: '不明',
+        created_by: user.id,
+      })
+      .select('id')
+      .single();
+
+    if (vtErr) throw vtErr;
+
+    // チャンネル登録
+    const { data: channel, error: chanErr } = await supabase
+      .from('channels')
+      .insert({
+        yt_channel_id: params.ytChannelId,
+        name: params.name,
+        handle: params.handle || null,
+        image: params.image || null,
+        vtuber_id: vtuber.id,
+        is_primary: true,
+        created_by: user.id,
+      })
+      .select('id')
+      .single();
+
+    if (chanErr) throw chanErr;
+
+    return { success: true, data: { vtuberId: vtuber.id, channelId: channel.id } };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : t.common.saveError;
+    return { success: false, error: message };
+  }
+}
+
+/**
  * 動画を videos テーブルに登録（既に存在する場合はそのまま返す）
  */
 export async function registerVideo(
-  metadata: YouTubeVideoMetadata
+  metadata: YouTubeVideoMetadata,
+  collaboratorChannelIds?: number[]
 ): Promise<ActionResult<Video>> {
   const supabase = await createClient();
   const t = await getLocaleT();
@@ -431,17 +593,6 @@ export async function registerVideo(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: t.common.loginRequired };
-  }
-
-  // 既存チェック
-  const { data: existing } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('video_id', metadata.videoId)
-    .single();
-
-  if (existing) {
-    return { success: true, data: existing as Video };
   }
 
   // チャンネルの内部 ID を取得
@@ -452,31 +603,65 @@ export async function registerVideo(
     .single();
 
   if (!channelRecord) {
-    return { success: false, error: `${t.vtuber.linkedChannel} (ID: ${metadata.channelId}) ${t.archive.noArchives}` }; // 暫定
+    return { success: false, error: `${t.vtuber.linkedChannel} (ID: ${metadata.channelId}) ${t.archive.noArchives}` };
   }
 
-  const { data, error } = await supabase
+  let videoDbId: number;
+  let videoData: Video;
+
+  // 既存チェック
+  const { data: existing } = await supabase
     .from('videos')
-    .insert({
-      video_id: metadata.videoId,
-      title: metadata.title,
-      description: metadata.description,
-      thumbnail_url: metadata.thumbnailUrl,
-      published_at: metadata.publishedAt,
-      duration: metadata.duration,
-      channel_record_id: channelRecord.id,
-      is_stream: metadata.isStream,
-      is_publish: true,
-      created_by: user.id,
-    })
-    .select()
+    .select('*')
+    .eq('video_id', metadata.videoId)
     .single();
 
-  if (error) {
-    return { success: false, error: `${t.common.saveError}: ${error.message}` };
+  if (existing) {
+    videoDbId = existing.id;
+    videoData = existing as Video;
+  } else {
+    const { data, error } = await supabase
+      .from('videos')
+      .insert({
+        video_id: metadata.videoId,
+        title: metadata.title,
+        description: metadata.description,
+        thumbnail_url: metadata.thumbnailUrl,
+        published_at: metadata.publishedAt,
+        duration: metadata.duration,
+        channel_record_id: channelRecord.id,
+        is_stream: metadata.isStream,
+        is_publish: true,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: `${t.common.saveError}: ${error.message}` };
+    }
+    videoDbId = data.id;
+    videoData = data as Video;
   }
 
-  return { success: true, data: data as Video };
+  // video_channels に紐づけ（投稿元 + コラボ先）
+  const vcInserts = [
+    { video_id: videoDbId, channel_id: channelRecord.id, is_original: true }
+  ];
+
+  if (collaboratorChannelIds && collaboratorChannelIds.length > 0) {
+    for (const cid of collaboratorChannelIds) {
+      if (cid !== channelRecord.id) {
+        vcInserts.push({ video_id: videoDbId, channel_id: cid, is_original: false });
+      }
+    }
+  }
+
+  await supabase
+    .from('video_channels')
+    .upsert(vcInserts, { onConflict: 'video_id,channel_id' });
+
+  return { success: true, data: videoData };
 }
 
 /**
@@ -637,6 +822,7 @@ export async function registerFullArchive(input: {
     isDeleted?: boolean;
     searchLocale?: 'ja' | 'en';
   }[];
+  collaboratorChannelIds?: number[];
 }): Promise<ActionResult<{ video: Video; songs: Song[] }>> {
   const supabase = await createClient();
   const t = await getLocaleT();
@@ -724,6 +910,7 @@ export async function registerFullArchive(input: {
       p_video_is_stream: input.videoMetadata.isStream,
       p_channel_yt_id: input.videoMetadata.channelId,
       p_songs: songsToRegister,
+      p_collaborator_channel_ids: input.collaboratorChannelIds || [],
     });
 
     if (error) {
@@ -734,6 +921,12 @@ export async function registerFullArchive(input: {
     const result = data as { video: Video; songs: Song[] };
     if (result.video) {
       await revalidateChannelByVideo(result.video.id);
+      // コラボチャンネルのページキャッシュも個別に再検証
+      if (input.collaboratorChannelIds && input.collaboratorChannelIds.length > 0) {
+        for (const collabId of input.collaboratorChannelIds) {
+          await revalidateChannel(collabId);
+        }
+      }
     }
     return { success: true, data: result };
   } catch (e) {
@@ -761,7 +954,7 @@ export interface SubChannelInfo {
 
 export type ChannelWithVideosResult = Channel & {
   vtuber?: Vtuber & { production?: Production };
-  videos: (Video & { songs: Song[]; sourceChannelName?: string })[];
+  videos: (Video & { songs: Song[]; sourceChannelName?: string; isCollab?: boolean; originalChannelName?: string })[];
   subChannels?: SubChannelInfo[];
   redirectTo?: string;
 };
@@ -1175,40 +1368,77 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
   relatedChannels.forEach((c) => channelMap.set(c.id, c));
   const channelIds = relatedChannels.map((c) => c.id);
 
-  const { data: videos, error: vidErr } = await supabase
+  // 1. 本人が投稿した動画のIDを取得
+  const { data: ownVideos } = await supabase
     .from('videos')
-    .select(`
-      id,
-      video_id,
-      title,
-      thumbnail_url,
-      published_at,
-      duration,
-      is_stream,
-      channel_record_id,
-      songs (
+    .select('id')
+    .in('channel_record_id', channelIds);
+
+  const ownVideoIds = (ownVideos || []).map(v => v.id);
+
+  // 2. video_channels からコラボ動画IDを取得
+  const { data: videoChanRecords } = await supabase
+    .from('video_channels')
+    .select('video_id, channel_id, is_original')
+    .in('channel_id', channelIds);
+
+  const collabVideoMap = new Map<number, boolean>();
+  const collabVideoIds: number[] = [];
+
+  if (videoChanRecords && videoChanRecords.length > 0) {
+    videoChanRecords.forEach(r => {
+      collabVideoIds.push(r.video_id);
+      if (!r.is_original) {
+        collabVideoMap.set(r.video_id, true);
+      }
+    });
+  }
+
+  // 3. 投稿動画IDとコラボ動画IDを合算
+  const allTargetVideoIds = Array.from(new Set([...ownVideoIds, ...collabVideoIds]));
+
+  let videos: any[] = [];
+  if (allTargetVideoIds.length > 0) {
+    const { data: vidData, error: vidErr } = await supabase
+      .from('videos')
+      .select(`
         id,
         video_id,
-        start_sec,
-        end_sec,
-        is_active,
-        master_song_id,
-        master_song:master_songs (
+        title,
+        thumbnail_url,
+        published_at,
+        duration,
+        is_stream,
+        channel_record_id,
+        channel:channels (
           id,
-          title,
-          artist,
-          title_en,
-          artist_en,
-          artwork_url
+          name
+        ),
+        songs (
+          id,
+          video_id,
+          start_sec,
+          end_sec,
+          is_active,
+          master_song_id,
+          master_song:master_songs (
+            id,
+            title,
+            artist,
+            title_en,
+            artist_en,
+            artwork_url
+          )
         )
-      )
-    `)
-    .in('channel_record_id', channelIds)
-    .order('published_at', { ascending: false });
+      `)
+      .in('id', allTargetVideoIds)
+      .order('published_at', { ascending: false });
 
-  if (vidErr) {
-    console.error('fetchVideosForChannel error:', vidErr);
-    return { success: false, error: `${t.common.errorOccurred} (videos)` };
+    if (vidErr) {
+      console.error('fetchVideosForChannel error:', vidErr);
+      return { success: false, error: `${t.common.errorOccurred} (videos)` };
+    }
+    videos = vidData || [];
   }
 
   // サブチャンネルごとの動画件数をカウント
@@ -1223,17 +1453,23 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
 
     const sourceChan = channelMap.get(video.channel_record_id);
     const isMainChannel = video.channel_record_id === channel.id;
+    const isCollab = collabVideoMap.has(video.id) || (!isMainChannel && !sourceChan);
 
-    if (!isMainChannel && video.channel_record_id) {
+    if (!isMainChannel && video.channel_record_id && sourceChan) {
       subChannelCountMap.set(
         video.channel_record_id,
         (subChannelCountMap.get(video.channel_record_id) || 0) + 1
       );
     }
 
+    // 動画の投稿元チャンネル名（コラボ動画の表示用）
+    const originalChannelName = (video.channel as unknown as { name: string } | null)?.name || sourceChan?.name;
+
     return {
       ...video,
       songs: activeSongs,
+      isCollab,
+      originalChannelName: isCollab ? originalChannelName : undefined,
       sourceChannelName: !isMainChannel && sourceChan ? sourceChan.name : undefined,
     };
   });

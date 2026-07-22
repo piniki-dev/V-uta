@@ -4,16 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Music, ChevronDown, ChevronUp, X, ExternalLink } from 'lucide-react';
+import { Calendar, Music, ChevronDown, ChevronUp, X, ExternalLink, Tv, Users } from 'lucide-react';
 import type { Video, Song, Channel } from '@/types';
 import type { SubChannelInfo } from '@/app/songs/new/actions';
 import { useLocale } from '@/components/LocaleProvider';
 import SongList from '@/components/song/SongList';
-import { Tv } from 'lucide-react';
 
 interface VideoWithSongs extends Video {
   songs: Song[];
   sourceChannelName?: string;
+  isCollab?: boolean;
+  originalChannelName?: string;
 }
 
 interface ChannelVideoGridProps {
@@ -246,11 +247,15 @@ export default function ChannelVideoGrid({ channel, videos, subChannels }: Chann
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover transition-transform duration-700 group-hover/card:scale-105"
                       />
-                      {video.sourceChannelName && (
+                      {video.isCollab ? (
+                        <span className="absolute top-2.5 left-2.5 z-10 bg-amber-950/80 backdrop-blur-md text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                          <Users size={11} /> 🤝 {T('newSong.collabBadge')} {video.originalChannelName ? `(${video.originalChannelName})` : ''}
+                        </span>
+                      ) : video.sourceChannelName ? (
                         <span className="absolute top-2.5 left-2.5 z-10 bg-black/80 backdrop-blur-md text-[var(--accent)] border border-[var(--accent)]/30 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1 shadow-md">
                           <Tv size={11} /> {video.sourceChannelName}
                         </span>
-                      )}
+                      ) : null}
                       <div className="absolute inset-0 bg-black/20 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center translate-y-2 group-hover/card:translate-y-0 transition-transform duration-300">
                           <ExternalLink size={20} className="text-white" />
