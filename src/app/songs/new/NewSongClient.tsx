@@ -17,6 +17,7 @@ import Image from 'next/image';
 import Hero from '@/components/Hero';
 import CollabAddModal from './CollabAddModal';
 import CollaboratorList from './CollaboratorList';
+import SongMemberSelector from './SongMemberSelector';
 
 interface EditableSong {
   id?: number; // DB 登録済みの場合は ID がある
@@ -32,6 +33,12 @@ interface EditableSong {
   isDeleted?: boolean; // 削除フラグ（一括保存時に反映）
   isConfirmed: boolean; // ユーザーが曲名・アーティスト名を確定させたか
   searchLocale?: 'ja' | 'en'; // 検索時のロケール
+  channelIds?: number[]; // 曲に紐づくチャンネルIDリスト
+  // 編集中の下書きステート
+  draftStartTime?: string;
+  draftEndTime?: string;
+  draftChannelIds?: number[];
+  draftSong?: Partial<Song> & { master_song?: Partial<MasterSong> };
 }
 
 interface NewSongDraft {
@@ -121,6 +128,7 @@ export default function NewSongClient() {
   // Step 3: 区間入力
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [addFormChannelIds, setAddFormChannelIds] = useState<number[]>([]);
 
   // 統合された曲リスト（既存 + 新規）
   const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
@@ -377,6 +385,7 @@ export default function NewSongClient() {
         isSearching: false,
         isPersisted: true,
         isConfirmed: true,
+        channelIds: (song as Song & { channelIds?: number[] }).channelIds,
       }));
 
       setAllSongs(convertedSongs);
@@ -696,6 +705,16 @@ export default function NewSongClient() {
     // クライアント側での管理用に検索時のロケールを保存
     newSong.searchLocale = locale;
 
+    const selectedCids = addFormChannelIds.length > 0
+      ? addFormChannelIds
+      : (isCoverVideo
+          ? collaborators.filter((c) => c.isRegistered && c.channelRecordId).map((c) => c.channelRecordId!)
+          : collaborators.filter((c) => c.isOriginalUploader && c.channelRecordId).map((c) => c.channelRecordId!));
+
+    if (selectedCids.length > 0) {
+      newSong.channelIds = selectedCids;
+    }
+
     setAllSongs((prev) => [...prev, newSong]);
     setSuccess(T('newSong.addToListSuccess'));
 
@@ -706,6 +725,14 @@ export default function NewSongClient() {
     setManualTitle('');
     setManualArtist('');
   };
+
+  // コラボレーターまたは歌ってみた状態が更新されたらフォームの歌唱メンバー選択初期値を設定
+  useEffect(() => {
+    const defaultCids = isCoverVideo
+      ? collaborators.filter((c) => c.isRegistered && c.channelRecordId).map((c) => c.channelRecordId!)
+      : collaborators.filter((c) => c.isOriginalUploader && c.channelRecordId).map((c) => c.channelRecordId!);
+    setAddFormChannelIds(defaultCids);
+  }, [collaborators, isCoverVideo]);
 
   const performSave = useCallback(async () => {
     if (!metadata) return;
@@ -729,6 +756,10 @@ export default function NewSongClient() {
 
     startTransition(async () => {
       try {
+        const collabIds = collaborators
+          .filter(c => c.isRegistered && c.channelRecordId)
+          .map(c => c.channelRecordId!);
+
         // 確定済みのものだけを対象にする
         const songsToRegister = allSongs
           .filter(s => s.isConfirmed || s.id) // 既存曲(idあり)または確定済み
@@ -743,6 +774,9 @@ export default function NewSongClient() {
             endSec: parseTime(item.endTime) || 0,
             isDeleted: item.isDeleted,
             searchLocale: item.searchLocale || locale,
+            channelIds: isCoverVideo
+              ? collabIds
+              : (item.channelIds && item.channelIds.length > 0 ? item.channelIds : undefined),
           }));
 
         const maxDuration = video?.duration || metadata?.duration || 0;
@@ -756,10 +790,6 @@ export default function NewSongClient() {
             return;
           }
         }
-
-        const collabIds = collaborators
-          .filter(c => c.isRegistered && c.channelRecordId)
-          .map(c => c.channelRecordId!);
 
         const result = await registerFullArchive({
           videoMetadata: metadata,
@@ -798,7 +828,7 @@ export default function NewSongClient() {
         setSaveStatus('error');
       }
     });
-  }, [allSongs, metadata, video, collaborators, locale, T]);
+  }, [allSongs, metadata, video, collaborators, locale, T, isCoverVideo]);
 
   const handleSaveAll = () => {
     if (!metadata) return;
@@ -827,21 +857,31 @@ export default function NewSongClient() {
 
   const toggleEdit = (index: number) => {
     setAllSongs((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? {
+      prev.map((item, i) => {
+        if (i === index) {
+          const willEdit = !item.isEditing;
+          const defaultCids = collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)?.channelRecordId
+            ? [collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)!.channelRecordId!]
+            : [];
+          return {
             ...item,
-            isEditing: !item.isEditing,
+            isEditing: willEdit,
             isChangingSong: false,
             searchQuery: '',
             searchResults: [],
-          }
-          : item
-      )
+            // 編集開始時に現在の値をドラフト（下書き）としてコピー
+            draftStartTime: willEdit ? item.startTime : undefined,
+            draftEndTime: willEdit ? item.endTime : undefined,
+            draftChannelIds: willEdit ? [...(item.channelIds ?? defaultCids)] : undefined,
+            draftSong: willEdit ? item.song : undefined,
+          };
+        }
+        return item;
+      })
     );
   };
 
-  const updateSongField = (index: number, field: 'startTime' | 'endTime', value: string) => {
+  const updateSongField = <K extends keyof EditableSong>(index: number, field: K, value: EditableSong[K]) => {
     setAllSongs((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     );
@@ -849,8 +889,11 @@ export default function NewSongClient() {
 
   const handleSaveSongLocal = (index: number) => {
     const item = allSongs[index];
-    const s = parseTime(item.startTime);
-    const e = parseTime(item.endTime);
+    const targetStartTime = item.draftStartTime ?? item.startTime;
+    const targetEndTime = item.draftEndTime ?? item.endTime;
+
+    const s = parseTime(targetStartTime);
+    const e = parseTime(targetEndTime);
 
     if (s === null || e === null || s >= e) {
       setError(T('newSong.timeFormatError'));
@@ -863,15 +906,25 @@ export default function NewSongClient() {
       return;
     }
 
+    const targetSong = item.draftSong ?? item.song;
+    const targetChannelIds = item.draftChannelIds ?? item.channelIds;
+
     setAllSongs((prev) =>
       prev.map((it, i) =>
         i === index
           ? {
-            ...it,
-            song: { ...it.song, start_sec: s, end_sec: e },
-            isEditing: false,
-            isPersisted: false
-          }
+              ...it,
+              startTime: targetStartTime,
+              endTime: targetEndTime,
+              channelIds: targetChannelIds,
+              song: { ...targetSong, start_sec: s, end_sec: e },
+              isEditing: false,
+              isPersisted: false,
+              draftStartTime: undefined,
+              draftEndTime: undefined,
+              draftChannelIds: undefined,
+              draftSong: undefined,
+            }
           : it
       )
     );
@@ -914,10 +967,10 @@ export default function NewSongClient() {
       prev.map((it, i) =>
         i === index
           ? {
-            ...it,
-            isSearching: false,
-            searchResults: result.success ? result.data : [],
-          }
+              ...it,
+              isSearching: false,
+              searchResults: result.success ? result.data : [],
+            }
           : it
       )
     );
@@ -938,27 +991,27 @@ export default function NewSongClient() {
     setAllSongs((prev) =>
       prev.map((it, i) => {
         if (i === index) {
-          const startSec = parseTime(it.startTime);
-          const newEndTime = (!it.endTime && startSec !== null && track.durationSec > 0)
+          const currentStart = it.draftStartTime ?? it.startTime;
+          const currentEnd = it.draftEndTime ?? it.endTime;
+          const startSec = parseTime(currentStart);
+          const newEndTime = (!currentEnd && startSec !== null && track.durationSec > 0)
             ? formatTime(calculateAutoEndTimeSec(startSec, track.durationSec, maxDuration))
-            : it.endTime;
+            : currentEnd;
 
           return {
             ...it,
-            song: {
+            draftEndTime: newEndTime,
+            draftSong: {
               ...it.song,
               master_song: {
                 title: track.title,
                 artist: track.artist,
-                artwork_url: track.artworkUrl || '',
+                artwork_url: track.artworkUrl,
                 itunes_id: track.trackId === -1 ? null : String(track.trackId),
                 duration_sec: track.durationSec,
-              } as unknown as Partial<MasterSong>
+              } as unknown as Partial<MasterSong>,
             } as unknown as Partial<Song> & { master_song?: Partial<MasterSong> },
-            endTime: newEndTime,
-            isConfirmed: true,
             isChangingSong: false,
-            isPersisted: false,
             searchQuery: '',
             searchResults: [],
           };
@@ -1427,10 +1480,17 @@ export default function NewSongClient() {
                   </div>
                 </div>
 
+                <SongMemberSelector
+                  collaborators={collaborators}
+                  selectedChannelIds={addFormChannelIds}
+                  onChange={setAddFormChannelIds}
+                  isCoverVideo={isCoverVideo}
+                />
+
                 <button
                   onClick={handleRegisterSong}
                   disabled={isPending || hasErrors}
-                  className="btn btn--primary btn--full mt-8 shadow-lg shadow-[var(--accent)]/20"
+                  className="btn btn--primary btn--full mt-6 shadow-lg shadow-[var(--accent)]/20"
                 >
                   {isPending ? T('newSong.adding') : T('newSong.addToList')}
                 </button>
@@ -1465,10 +1525,10 @@ export default function NewSongClient() {
                       >
                         <div className="edit-songs__info-row" style={{ padding: '12px 16px' }}>
                           <span className="edit-songs__num" style={{ width: '24px' }}>{index + 1}</span>
-                          {item.song.master_song?.artwork_url ? (
+                          {((item.isEditing && item.draftSong?.master_song?.artwork_url) || item.song.master_song?.artwork_url) ? (
                             <Image
-                              src={item.song.master_song.artwork_url}
-                              alt={item.song.master_song.title}
+                              src={(item.isEditing && item.draftSong?.master_song?.artwork_url) || item.song.master_song!.artwork_url!}
+                              alt={((item.isEditing && item.draftSong?.master_song?.title) || item.song.master_song?.title) || ''}
                               width={40}
                               height={40}
                               className="edit-songs__artwork"
@@ -1480,10 +1540,16 @@ export default function NewSongClient() {
                           )}
                           <div className="edit-songs__info" style={{ flex: 1 }}>
                             <span className="edit-songs__title" style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                              {tl(item.song.master_song?.title || '(不明)', item.song.master_song?.title_en || item.song.master_song?.title || '(Unknown)')}
+                              {tl(
+                                (item.isEditing && item.draftSong?.master_song?.title) || item.song.master_song?.title || '(不明)',
+                                (item.isEditing && (item.draftSong?.master_song?.title_en || item.draftSong?.master_song?.title)) || item.song.master_song?.title_en || item.song.master_song?.title || '(Unknown)'
+                              )}
                             </span>
                             <span className="edit-songs__artist" style={{ fontSize: '12px' }}>
-                              {tl(item.song.master_song?.artist || '-', item.song.master_song?.artist_en || item.song.master_song?.artist || '-')}
+                              {tl(
+                                (item.isEditing && item.draftSong?.master_song?.artist) || item.song.master_song?.artist || '-',
+                                (item.isEditing && (item.draftSong?.master_song?.artist_en || item.draftSong?.master_song?.artist)) || item.song.master_song?.artist_en || item.song.master_song?.artist || '-'
+                              )}
                             </span>
                           </div>
                           <div className="edit-songs__actions">
@@ -1573,52 +1639,105 @@ export default function NewSongClient() {
                               </div>
                             )}
 
-                            <div className="form-row" style={{ gap: '8px', marginBottom: 0 }}>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div className="form-row" style={{ gap: '12px', marginBottom: 0 }}>
+                              <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
                                 <label className="form-label" style={{ fontSize: '12px' }}>{T('common.start')}</label>
                                 <input
                                   type="text"
-                                  value={item.startTime}
-                                  onChange={(e) => updateSongField(index, 'startTime', e.target.value)}
+                                  value={item.draftStartTime ?? item.startTime}
+                                  onChange={(e) => updateSongField(index, 'draftStartTime', e.target.value)}
                                   placeholder="m:ss or h:mm:ss"
                                   className="form-input form-input--sm"
                                   disabled={isPending}
                                 />
                               </div>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
                                 <label className="form-label" style={{ fontSize: '12px' }}>{T('common.end')}</label>
                                 <input
                                   type="text"
-                                  value={item.endTime}
-                                  onChange={(e) => updateSongField(index, 'endTime', e.target.value)}
+                                  value={item.draftEndTime ?? item.endTime}
+                                  onChange={(e) => updateSongField(index, 'draftEndTime', e.target.value)}
                                   placeholder="m:ss or h:mm:ss"
                                   className="form-input form-input--sm"
                                   disabled={isPending}
                                 />
                               </div>
-                              <div style={{ alignSelf: 'flex-end', flex: 1 }}>
-                                <button
-                                  onClick={() => handleSaveSongLocal(index)}
-                                  disabled={isPending}
-                                  className="btn btn--primary btn--full btn--sm"
-                                  style={{ height: '36px' }}
-                                >
-                                  <Music size={14} />
-                                  {T('common.save')}
-                                </button>
-                              </div>
+                            </div>
+
+                            <SongMemberSelector
+                              collaborators={collaborators}
+                              selectedChannelIds={
+                                item.draftChannelIds ?? item.channelIds ?? (
+                                  collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)?.channelRecordId
+                                    ? [collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)!.channelRecordId!]
+                                    : []
+                                )
+                              }
+                              onChange={(newCids) => updateSongField(index, 'draftChannelIds', newCids)}
+                              isCoverVideo={isCoverVideo}
+                            />
+
+                            <div className="mt-3 pt-3 border-t border-[var(--border)]/40 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSongLocal(index)}
+                                disabled={isPending}
+                                className="btn btn--primary btn--sm px-5 flex items-center gap-1.5 font-bold"
+                              >
+                                <Check size={14} />
+                                {T('common.save')}
+                              </button>
                             </div>
                           </div>
                         )}
 
                         {!item.isEditing && (
-                          <div className="edit-songs__time-info" style={{ paddingLeft: '40px', marginLeft: '24px', paddingBottom: '12px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                              {formatTime(item.song.start_sec ?? 0)} - {formatTime(item.song.end_sec ?? 0)}
-                            </span>
-                            <span className="edit-songs__duration" style={{ fontSize: '11px', marginLeft: '8px' }}>
-                              ({formatTime((item.song.end_sec ?? 0) - (item.song.start_sec ?? 0))})
-                            </span>
+                          <div className="edit-songs__time-info flex flex-wrap items-center justify-between gap-2 px-4 pb-3 pl-14">
+                            <div className="flex items-center gap-2">
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                {formatTime(item.song.start_sec ?? parseTime(item.startTime) ?? 0)} - {formatTime(item.song.end_sec ?? parseTime(item.endTime) ?? 0)}
+                              </span>
+                              <span className="edit-songs__duration" style={{ fontSize: '11px' }}>
+                                ({formatTime((item.song.end_sec ?? parseTime(item.endTime) ?? 0) - (item.song.start_sec ?? parseTime(item.startTime) ?? 0))})
+                              </span>
+                            </div>
+
+                            {/* 歌唱メンバーバッジ一覧 */}
+                            {!isCoverVideo && collaborators.filter((c) => c.isRegistered && c.channelRecordId).length > 1 && (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {(
+                                  item.channelIds ?? (
+                                    collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)?.channelRecordId
+                                      ? [collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)!.channelRecordId!]
+                                      : []
+                                  )
+                                ).map((cid) => {
+                                  const collab = collaborators.find((c) => c.channelRecordId === cid);
+                                  if (!collab) return null;
+                                  return (
+                                    <div
+                                      key={collab.ytChannelId}
+                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border)] text-[11px] font-semibold text-[var(--text-secondary)]"
+                                    >
+                                      {collab.avatarUrl ? (
+                                        <Image
+                                          src={collab.avatarUrl}
+                                          alt={collab.name}
+                                          width={14}
+                                          height={14}
+                                          className="rounded-full shrink-0"
+                                        />
+                                      ) : (
+                                        <div className="w-3.5 h-3.5 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[8px] font-bold shrink-0">
+                                          {collab.name.substring(0, 1)}
+                                        </div>
+                                      )}
+                                      <span className="truncate max-w-[110px]">{collab.name}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

@@ -126,7 +126,7 @@ export async function fetchVideoPreview(
   url: string
 ): Promise<ActionResult<{ 
   metadata: YouTubeVideoMetadata; 
-  existingSongs: Song[];
+  existingSongs: (Song & { channelIds?: number[] })[];
   isChannelRegistered: boolean;
   channelData?: Record<string, unknown> | null;
   collaboratorChannels: CollaboratorChannelPreview[];
@@ -223,17 +223,65 @@ export async function fetchVideoPreview(
       .eq('video_id', videoId)
       .single();
 
-    let existingSongs: Song[] = [];
+    let existingSongs: (Song & { channelIds?: number[] })[] = [];
     if (videoData) {
-      // 登録済みの曲を取得
+      // 登録済みの video_channels を DB から取得して collaboratorChannels に反映
+      const { data: dbVcData } = await supabase
+        .from('video_channels')
+        .select('channel_id, is_original, channel:channels(id, yt_channel_id, name, handle, image)')
+        .eq('video_id', videoData.id);
+
+      if (dbVcData) {
+        for (const item of dbVcData) {
+          const ch = item.channel as unknown as { id: number; yt_channel_id: string; name: string; handle: string | null; image: string | null } | null;
+          if (!ch) continue;
+
+          const target = collaboratorChannels.find((c) => c.ytChannelId === ch.yt_channel_id || c.channelRecordId === ch.id);
+          if (target) {
+            target.isRegistered = true;
+            target.channelRecordId = ch.id;
+          } else {
+            collaboratorChannels.push({
+              ytChannelId: ch.yt_channel_id,
+              name: ch.name,
+              handle: ch.handle || undefined,
+              avatarUrl: ch.image || undefined,
+              description: '',
+              isRegistered: true,
+              channelRecordId: ch.id,
+              isOriginalUploader: item.is_original ?? false,
+            });
+          }
+        }
+      }
+
+      // 登録済みの曲と song_channels を取得
       const { data: songsData } = await supabase
         .from('songs')
         .select('*, master_song:master_songs(*)')
         .eq('video_id', videoData.id)
         .order('start_sec', { ascending: true });
       
-      if (songsData) {
-        existingSongs = songsData as Song[];
+      if (songsData && songsData.length > 0) {
+        const songIds = songsData.map((s) => s.id);
+        const { data: scData } = await supabase
+          .from('song_channels')
+          .select('song_id, channel_id')
+          .in('song_id', songIds);
+
+        const scMap = new Map<number, number[]>();
+        if (scData) {
+          for (const sc of scData) {
+            const list = scMap.get(sc.song_id) || [];
+            list.push(sc.channel_id);
+            scMap.set(sc.song_id, list);
+          }
+        }
+
+        existingSongs = songsData.map((s) => ({
+          ...s,
+          channelIds: scMap.get(s.id) || [],
+        })) as (Song & { channelIds?: number[] })[];
       }
     }
 
@@ -678,6 +726,7 @@ export async function registerSong(input: {
   startTime: string;
   endTime: string;
   searchLocale?: 'ja' | 'en';
+  channelIds?: number[];
 }): Promise<ActionResult<Song>> {
   const t = await getLocaleT();
   // バリデーション
@@ -801,6 +850,28 @@ export async function registerSong(input: {
     return { success: false, error: `${t.common.saveError}: ${error.message}` };
   }
 
+  // song_channels に登録
+  if (input.channelIds && input.channelIds.length > 0) {
+    const scInserts = input.channelIds.map((cid) => ({
+      song_id: data.id,
+      channel_id: cid,
+    }));
+    await supabase.from('song_channels').insert(scInserts);
+  } else {
+    // 親動画の投稿元チャンネルをデフォルト登録
+    const { data: videoRecord } = await supabase
+      .from('videos')
+      .select('channel_record_id')
+      .eq('id', input.videoDbId)
+      .single();
+    if (videoRecord?.channel_record_id) {
+      await supabase.from('song_channels').insert({
+        song_id: data.id,
+        channel_id: videoRecord.channel_record_id,
+      });
+    }
+  }
+
   await revalidateChannelByVideo(input.videoDbId);
   return { success: true, data: data as Song };
 }
@@ -821,6 +892,7 @@ export async function registerFullArchive(input: {
     endSec: number;
     isDeleted?: boolean;
     searchLocale?: 'ja' | 'en';
+    channelIds?: number[];
   }[];
   collaboratorChannelIds?: number[];
 }): Promise<ActionResult<{ video: Video; songs: Song[] }>> {
@@ -896,6 +968,7 @@ export async function registerFullArchive(input: {
         startSec: songInput.startSec,
         endSec: songInput.endSec,
         isDeleted: false,
+        channelIds: songInput.channelIds || [],
       });
     }
 
@@ -1501,6 +1574,7 @@ export async function updateSong(input: {
   songId: number;
   startTime: string;
   endTime: string;
+  channelIds?: number[];
 }): Promise<ActionResult<Song>> {
   const supabase = await createClient();
   const t = await getLocaleT();
@@ -1535,6 +1609,17 @@ export async function updateSong(input: {
 
   if (error) {
     return { success: false, error: `${t.common.updateError}: ${error.message}` };
+  }
+
+  if (input.channelIds !== undefined) {
+    await supabase.from('song_channels').delete().eq('song_id', input.songId);
+    if (input.channelIds.length > 0) {
+      const scInserts = input.channelIds.map((cid) => ({
+        song_id: input.songId,
+        channel_id: cid,
+      }));
+      await supabase.from('song_channels').insert(scInserts);
+    }
   }
 
   await revalidateChannelByVideo(data.video_id);

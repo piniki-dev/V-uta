@@ -18,6 +18,7 @@ import Image from 'next/image';
 import Hero from '@/components/Hero';
 import CollabAddModal from '../new/CollabAddModal';
 import CollaboratorList from '../new/CollaboratorList';
+import SongMemberSelector from '../new/SongMemberSelector';
 
 interface EditableSong {
   id?: number;
@@ -33,6 +34,7 @@ interface EditableSong {
   isDeleted?: boolean;
   isConfirmed: boolean;
   searchLocale?: 'ja' | 'en';
+  channelIds?: number[];
   // インポート元のデータ（左側に表示）
   importedTitle?: string;
   importedArtist?: string;
@@ -919,6 +921,10 @@ export default function ImportSongsClient() {
     setAllSongs(prev => prev.map(s => ({ ...s, validationError: undefined })));
     setSaveStatus('saving');
 
+    const collabIds = collaborators
+      .filter(c => c.isRegistered && c.channelRecordId)
+      .map(c => c.channelRecordId!);
+
     // 保存対象
     const songsToRegister = allSongs
       .filter(s => s.isConfirmed || s.id)
@@ -933,11 +939,10 @@ export default function ImportSongsClient() {
         endSec: parseTime(item.endTime) || 0,
         isDeleted: item.isDeleted,
         searchLocale: item.searchLocale || (locale as 'ja' | 'en'),
+        channelIds: isCurrentCover
+          ? collabIds
+          : (item.channelIds && item.channelIds.length > 0 ? item.channelIds : undefined),
       }));
-
-    const collabIds = collaborators
-      .filter(c => c.isRegistered && c.channelRecordId)
-      .map(c => c.channelRecordId!);
 
     setIsLoading(true);
     try {
@@ -1149,7 +1154,7 @@ export default function ImportSongsClient() {
   };
 
   // --- Inline Helpers ---
-  const updateSongField = (index: number, field: 'startTime' | 'endTime', value: string) => {
+  const updateSongField = <K extends keyof EditableSong>(index: number, field: K, value: EditableSong[K]) => {
     setAllSongs(prev => prev.map((s, i) => i === index ? { ...s, [field]: value, validationError: undefined } : s));
   };
   const handleDeleteSong = (index: number) => {
@@ -1751,8 +1756,14 @@ export default function ImportSongsClient() {
               )}
 
               {/* Side-by-Side Comparison List */}
-              <div className="space-y-4">
-                {allSongs.map((item, index) => (
+              {(() => {
+                const isCurrentCover = batchArchives[currentBatchIndex]
+                  ? coverVideos[batchArchives[currentBatchIndex].url] || false
+                  : false;
+
+                return (
+                  <div className="space-y-4">
+                    {allSongs.map((item, index) => (
                   <div 
                     key={index} 
                     id={`song-card-${index}`}
@@ -1835,7 +1846,45 @@ export default function ImportSongsClient() {
                                 <button onClick={() => openSongEditModal(index)} className="btn btn--sm btn--secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider h-8">
                                   <Search size={12} /> {T('newSong.changeSong')}
                                 </button>
-                        {item.validationError && (
+
+                                {/* 歌唱メンバーバッジ一覧 */}
+                                {!isCurrentCover && collaborators.filter((c) => c.isRegistered && c.channelRecordId).length > 1 && (
+                                  <div className="flex flex-wrap items-center gap-1.5 ml-1">
+                                    {(
+                                      item.channelIds ?? (
+                                        collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)?.channelRecordId
+                                          ? [collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)!.channelRecordId!]
+                                          : []
+                                      )
+                                    ).map((cid) => {
+                                      const collab = collaborators.find((c) => c.channelRecordId === cid);
+                                      if (!collab) return null;
+                                      return (
+                                        <div
+                                          key={collab.ytChannelId}
+                                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border)] text-[11px] font-semibold text-[var(--text-secondary)]"
+                                        >
+                                          {collab.avatarUrl ? (
+                                            <Image
+                                              src={collab.avatarUrl}
+                                              alt={collab.name}
+                                              width={14}
+                                              height={14}
+                                              className="rounded-full shrink-0"
+                                            />
+                                          ) : (
+                                            <div className="w-3.5 h-3.5 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[8px] font-bold shrink-0">
+                                              {collab.name.substring(0, 1)}
+                                            </div>
+                                          )}
+                                          <span className="truncate max-w-[110px]">{collab.name}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {item.validationError && (
                                   <div className="text-red-500 text-xs font-bold flex items-center gap-1.5 bg-red-500/10 p-1.5 px-3 rounded-lg border border-red-500/20 shadow-sm">
                                     <AlertCircle size={14} className="flex-shrink-0" />
                                     <span>{item.validationError}</span>
@@ -1889,6 +1938,19 @@ export default function ImportSongsClient() {
                               )}
                             </div>
                           </div>
+
+                          <SongMemberSelector
+                            collaborators={collaborators}
+                            selectedChannelIds={
+                              item.channelIds ?? (
+                                collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)?.channelRecordId
+                                  ? [collaborators.find((c) => c.isOriginalUploader && c.channelRecordId)!.channelRecordId!]
+                                  : []
+                              )
+                            }
+                            onChange={(newCids) => updateSongField(index, 'channelIds', newCids)}
+                            isCoverVideo={isCurrentCover}
+                          />
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1908,7 +1970,9 @@ export default function ImportSongsClient() {
                   </div>
 
                 ))}
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* 下部保存ボタン */}
               <div className="flex justify-end pt-4">
