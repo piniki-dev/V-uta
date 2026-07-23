@@ -157,6 +157,32 @@ export default function SongRow({
           <div className="text-sm text-[var(--text-secondary)] truncate">
             {t(song.artist || '-', song.artist_en || song.artist || '-')}
           </div>
+          {/* 歌唱メンバー（コラボチャンネル）バッジ一覧 */}
+          {song.singers && song.singers.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              {song.singers.map((singer) => (
+                <div
+                  key={singer.id}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border)] text-[11px] font-semibold text-[var(--text-secondary)]"
+                >
+                  {singer.image ? (
+                    <Image
+                      src={singer.image}
+                      alt={singer.name}
+                      width={14}
+                      height={14}
+                      className="rounded-full shrink-0"
+                    />
+                  ) : (
+                    <div className="w-3.5 h-3.5 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[8px] font-bold shrink-0">
+                      {singer.name.substring(0, 1)}
+                    </div>
+                  )}
+                  <span className="truncate max-w-[110px]">{singer.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Mobile only archive info for history/playlist */}
           {(showVideoInfo && (sourceType === 'playlist' || sourceType === 'history')) && (
             <div className="md:hidden flex flex-col gap-0.5 mt-1.5 text-[10px] text-[var(--text-tertiary)] opacity-80 min-w-0">

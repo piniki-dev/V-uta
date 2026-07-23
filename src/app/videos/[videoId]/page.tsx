@@ -52,14 +52,39 @@ const getCachedVideoDetails = (videoId: string) =>
         }
       }
 
-      const { data: songs } = await supabase
+      const { data: songsData } = await supabase
         .from('songs')
         .select('*, master_song:master_songs(*)')
         .eq('video_id', video.id)
         .eq('is_active', true)
         .order('start_sec', { ascending: true });
 
-      return { video, songs: songs || [], collaboratorChannels };
+      let songs: Song[] = [];
+      if (songsData && songsData.length > 0) {
+        const songIds = songsData.map((s) => s.id);
+        const { data: scData } = await supabase
+          .from('song_channels')
+          .select('song_id, channel:channels(*)')
+          .in('song_id', songIds);
+
+        const scMap = new Map<number, Channel[]>();
+        if (scData) {
+          for (const sc of scData) {
+            const ch = sc.channel as unknown as Channel | null;
+            if (!ch) continue;
+            const list = scMap.get(sc.song_id) || [];
+            list.push(ch);
+            scMap.set(sc.song_id, list);
+          }
+        }
+
+        songs = songsData.map((s) => ({
+          ...(s as Song),
+          singers: scMap.get(s.id) || [],
+        }));
+      }
+
+      return { video, songs, collaboratorChannels };
     },
     ['video-details', videoId],
     {

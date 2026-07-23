@@ -87,6 +87,7 @@ export interface Song {
   updated_by: string | null;
   // JOINされた場合に含まれる
   master_song?: MasterSong; // 以前は master_songs
+  singers?: Channel[];
 }
 
 /** Song + 親 Video 情報を含む結合型 */
@@ -136,6 +137,7 @@ export interface PlayerSong {
   thumbnailUrl: string | null;
   videoTitle: string | null;
   playedAt?: string;    // ISO string for history
+  singers?: { id: number; name: string; image: string | null; handle: string | null }[];
 }
 
 export interface PlayerState {

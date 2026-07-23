@@ -1515,15 +1515,45 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
     videos = vidData || [];
   }
 
+  // 全動画に含まれる全曲の ID を収集して song_channels を一括フェッチ
+  const allSongIds: number[] = [];
+  (videos || []).forEach((v) => {
+    (v.songs || []).forEach((s: { id: number }) => {
+      if (s.id) allSongIds.push(s.id);
+    });
+  });
+
+  const songSingersMap = new Map<number, Channel[]>();
+  if (allSongIds.length > 0) {
+    const { data: scData } = await supabase
+      .from('song_channels')
+      .select('song_id, channel:channels(*)')
+      .in('song_id', allSongIds);
+
+    if (scData) {
+      for (const sc of scData) {
+        const ch = sc.channel as unknown as Channel | null;
+        if (!ch) continue;
+        const list = songSingersMap.get(sc.song_id) || [];
+        list.push(ch);
+        songSingersMap.set(sc.song_id, list);
+      }
+    }
+  }
+
   // サブチャンネルごとの動画件数をカウント
   const subChannelCountMap = new Map<number, number>();
 
-  // songs のうち is_active なもののみを抽出し、開始時間 (start_sec) の昇順でソートする
-  type SongItem = { is_active?: boolean; start_sec?: number };
+  // songs のうち is_active なもののみを抽出・マッピングし、開始時間の昇順でソートする
+  type SongItem = { id: number; is_active?: boolean; start_sec?: number };
   const processedVideos = (videos || []).map((video) => {
     const activeSongs = (video.songs || [])
       .filter((song: SongItem) => song.is_active !== false)
-      .sort((a: SongItem, b: SongItem) => (a.start_sec || 0) - (b.start_sec || 0));
+      .sort((a: SongItem, b: SongItem) => (a.start_sec || 0) - (b.start_sec || 0))
+      .map((song: SongItem) => ({
+        ...song,
+        singers: songSingersMap.get(song.id) || [],
+      }));
 
     const sourceChan = channelMap.get(video.channel_record_id);
     const isMainChannel = video.channel_record_id === channel.id;

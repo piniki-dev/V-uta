@@ -26,6 +26,12 @@ export default function ArchiveSongList({ video, songs }: Props) {
     channelThumbnailUrl: video.channel?.image || null,
     thumbnailUrl: video.thumbnail_url,
     videoTitle: video.title,
+    singers: song.singers?.map((s) => ({
+      id: s.id,
+      name: s.name,
+      image: s.image,
+      handle: s.handle,
+    })),
   });
 
   return (

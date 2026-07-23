@@ -356,6 +356,12 @@ export default function ChannelVideoGrid({ channel, videos, subChannels }: Chann
                                   channelThumbnailUrl: channel.image || null,
                                   thumbnailUrl: video.thumbnail_url,
                                   videoTitle: video.title,
+                                  singers: s.singers?.map((singer: Channel) => ({
+                                    id: singer.id,
+                                    name: singer.name,
+                                    image: singer.image,
+                                    handle: singer.handle,
+                                  })),
                                 })}
                                 sourceType="channel"
                                 sourceId={channel.id.toString()}
