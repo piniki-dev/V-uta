@@ -221,3 +221,51 @@ export async function fetchMultipleChannelsMetadata(
 
   return result;
 }
+
+/**
+ * YouTube Data API v3 で handle 名からチャンネル詳細情報を取得する
+ */
+export async function fetchChannelByHandle(
+  handle: string
+): Promise<{
+  ytChannelId: string;
+  name: string;
+  handle: string;
+  description: string;
+  image: string;
+  officialLink?: string;
+} | null> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    throw new Error('YOUTUBE_API_KEY が設定されていません');
+  }
+
+  const cleanHandle = handle.startsWith('@') ? handle : `@${handle}`;
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${encodeURIComponent(cleanHandle)}&key=${apiKey}`;
+
+  const res = await fetch(url, { next: { revalidate: 86400 } });
+  if (!res.ok) {
+    throw new Error(`YouTube API エラー: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+
+  if (!data.items || data.items.length === 0) {
+    return null;
+  }
+
+  const item = data.items[0];
+  const snippet = item.snippet;
+  const description = snippet.description || '';
+  const officialLink = extractLinksFromText(description);
+
+  return {
+    ytChannelId: item.id,
+    name: snippet.title,
+    handle: snippet.customUrl ? (snippet.customUrl.startsWith('@') ? snippet.customUrl : `@${snippet.customUrl}`) : cleanHandle,
+    description,
+    image: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || '',
+    officialLink: officialLink || undefined,
+  };
+}
+

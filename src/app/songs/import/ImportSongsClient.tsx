@@ -9,13 +9,15 @@ import {
   Search, X, Music, Info, Save, Trash2, AlertCircle, 
   UserPlus, Building2, FileUp, Table, ChevronRight,
   CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw,
-  Youtube, Check, AlertTriangle, Users
+  Youtube, Check, AlertTriangle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
 import { useLocale } from '@/components/LocaleProvider';
 import Image from 'next/image';
 import Hero from '@/components/Hero';
+import CollabAddModal from '../new/CollabAddModal';
+import CollaboratorList from '../new/CollaboratorList';
 
 interface EditableSong {
   id?: number;
@@ -102,6 +104,19 @@ export default function ImportSongsClient() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [video, setVideo] = useState<Video | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorChannelPreview[]>([]);
+  const [isCollabAddModalOpen, setIsCollabAddModalOpen] = useState(false);
+
+  const handleAddCollaborators = useCallback((newCollabs: CollaboratorChannelPreview[]) => {
+    setCollaborators(prev => {
+      const existingIds = new Set(prev.map(c => c.ytChannelId));
+      const uniqueNew = newCollabs.filter(c => !existingIds.has(c.ytChannelId));
+      return [...prev, ...uniqueNew];
+    });
+  }, []);
+
+  const handleRemoveCollaborator = useCallback((ytChannelId: string) => {
+    setCollaborators(prev => prev.filter(c => c.ytChannelId !== ytChannelId));
+  }, []);
   const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
   const [isAutoNext, setIsAutoNext] = useState(true);
   const [coverVideos, setCoverVideos] = useState<Record<string, boolean>>({});
@@ -989,7 +1004,7 @@ export default function ImportSongsClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [metadata, allSongs, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem, coverVideos]);
+  }, [metadata, allSongs, collaborators, locale, T, batchArchives, currentBatchIndex, isAutoNext, startProcessingItem, coverVideos]);
 
   const handleSaveBatch = () => {
     performSave();
@@ -1661,67 +1676,14 @@ export default function ImportSongsClient() {
                       </div>
 
                       {/* Middle Section: 検出されたコラボレーター・参加チャンネル */}
-                      {collaborators.length > 0 && (
-                        <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50">
-                          <div className="flex items-center gap-2 mb-3 text-xs font-bold text-[var(--text-secondary)]">
-                            <Users size={14} className="text-[var(--accent)]" />
-                            <span>{T('newSong.detectedCollaborators')} ({collaborators.length})</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {collaborators.map((collab) => (
-                              <div 
-                                key={collab.ytChannelId} 
-                                className="flex items-center justify-between p-2.5 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-xs"
-                              >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  {collab.avatarUrl ? (
-                                    <Image 
-                                      src={collab.avatarUrl} 
-                                      alt={collab.name} 
-                                      width={28} 
-                                      height={28} 
-                                      className="rounded-full flex-shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="w-7 h-7 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                                      {collab.name.substring(0, 1)}
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="font-bold truncate text-[var(--text-primary)]">{collab.name}</p>
-                                    {collab.handle && <p className="text-[10px] text-[var(--text-tertiary)] truncate">{collab.handle}</p>}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                  {collab.isOriginalUploader ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--accent-alpha-10)] text-[var(--accent)] border border-[var(--accent-alpha-20)]">
-                                      {T('newSong.originalUploader')}
-                                    </span>
-                                  ) : collab.isRegistered ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                      <Check size={10} /> {T('newSong.registered')}
-                                    </span>
-                                  ) : (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium">
-                                        <AlertTriangle size={10} /> {T('newSong.unregistered')}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenVtuberModalForCollab(collab)}
-                                        className="btn btn--primary text-[10px] py-1 px-2 h-auto rounded-lg flex items-center gap-1"
-                                      >
-                                        <UserPlus size={10} /> {T('newSong.register')}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50">
+                        <CollaboratorList
+                          collaborators={collaborators}
+                          onOpenAddModal={() => setIsCollabAddModalOpen(true)}
+                          onRemoveCollaborator={handleRemoveCollaborator}
+                          onRegisterVtuber={handleOpenVtuberModalForCollab}
+                        />
+                      </div>
 
                       {/* Bottom Section: 操作エリア (歌ってみたとして登録 | 保存後に次の動画へ自動遷移 | すべての変更を保存) */}
                       <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)]/30 flex flex-wrap items-center justify-between gap-4">
@@ -2516,6 +2478,14 @@ export default function ImportSongsClient() {
           </div>
         </div>
       )}
+      {/* コラボレーター手動追加モーダル */}
+      <CollabAddModal
+        isOpen={isCollabAddModalOpen}
+        onClose={() => setIsCollabAddModalOpen(false)}
+        onAdd={handleAddCollaborators}
+        description={metadata?.description || ''}
+        existingCollaborators={collaborators}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, registerQuickCollabChannel, searchVtubers, checkDuplicateVtuber, fetchChannelMetadataAction, type CollaboratorChannelPreview } from './actions';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, searchVtubers, checkDuplicateVtuber, fetchChannelMetadataAction, type CollaboratorChannelPreview } from './actions';
 import type { ITunesSearchResult, VtuberWithChannels } from './actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime, calculateAutoEndTimeSec } from '@/lib/utils';
@@ -9,12 +9,14 @@ import Link from 'next/link';
 import { 
   Search, X, Music, Info, Pencil, Save, Trash2, 
   AlertCircle, UserPlus, Building2, FileUp, Loader2, RotateCcw,
-  Check, AlertTriangle, Users
+  Check, AlertTriangle
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from '@/components/LocaleProvider';
 import Image from 'next/image';
 import Hero from '@/components/Hero';
+import CollabAddModal from './CollabAddModal';
+import CollaboratorList from './CollaboratorList';
 
 interface EditableSong {
   id?: number; // DB 登録済みの場合は ID がある
@@ -53,31 +55,18 @@ export default function NewSongClient() {
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
   const [video, setVideo] = useState<Video | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorChannelPreview[]>([]);
-  const [quickRegisteringId, setQuickRegisteringId] = useState<string | null>(null);
+  const [isCollabAddModalOpen, setIsCollabAddModalOpen] = useState(false);
 
-  const handleQuickRegisterCollab = useCallback(async (collab: CollaboratorChannelPreview) => {
-    setQuickRegisteringId(collab.ytChannelId);
-    try {
-      const res = await registerQuickCollabChannel({
-        ytChannelId: collab.ytChannelId,
-        name: collab.name,
-        handle: collab.handle,
-        image: collab.avatarUrl,
-      });
-      if (res.success && res.data) {
-        setCollaborators(prev => prev.map(c => 
-          c.ytChannelId === collab.ytChannelId 
-            ? { ...c, isRegistered: true, channelRecordId: res.data.channelId }
-            : c
-        ));
-      } else if (!res.success) {
-        setError(res.error);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setQuickRegisteringId(null);
-    }
+  const handleAddCollaborators = useCallback((newCollabs: CollaboratorChannelPreview[]) => {
+    setCollaborators(prev => {
+      const existingIds = new Set(prev.map(c => c.ytChannelId));
+      const uniqueNew = newCollabs.filter(c => !existingIds.has(c.ytChannelId));
+      return [...prev, ...uniqueNew];
+    });
+  }, []);
+
+  const handleRemoveCollaborator = useCallback((ytChannelId: string) => {
+    setCollaborators(prev => prev.filter(c => c.ytChannelId !== ytChannelId));
   }, []);
 
   const handleOpenVtuberModalForCollab = useCallback((collab: CollaboratorChannelPreview) => {
@@ -1157,67 +1146,12 @@ export default function NewSongClient() {
                   </div>
                 </div>
 
-                {collaborators.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                    <div className="flex items-center gap-2 mb-3 text-xs font-bold text-[var(--text-secondary)]">
-                      <Users size={14} className="text-[var(--accent)]" />
-                      <span>{T('newSong.detectedCollaborators')} ({collaborators.length})</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {collaborators.map((collab) => (
-                        <div 
-                          key={collab.ytChannelId} 
-                          className="flex items-center justify-between p-2.5 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {collab.avatarUrl ? (
-                              <Image 
-                                src={collab.avatarUrl} 
-                                alt={collab.name} 
-                                width={28} 
-                                height={28} 
-                                className="rounded-full flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                                {collab.name.substring(0, 1)}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className="font-bold truncate text-[var(--text-primary)]">{collab.name}</p>
-                              {collab.handle && <p className="text-[10px] text-[var(--text-tertiary)] truncate">{collab.handle}</p>}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                            {collab.isOriginalUploader ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--accent-alpha-10)] text-[var(--accent)] border border-[var(--accent-alpha-20)]">
-                                {T('newSong.originalUploader')}
-                              </span>
-                            ) : collab.isRegistered ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                <Check size={10} /> {T('newSong.registered')}
-                              </span>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium">
-                                  <AlertTriangle size={10} /> {T('newSong.unregistered')}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenVtuberModalForCollab(collab)}
-                                  className="btn btn--primary text-[10px] py-1 px-2 h-auto rounded-lg flex items-center gap-1"
-                                >
-                                  <UserPlus size={10} /> {T('newSong.register')}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <CollaboratorList
+                  collaborators={collaborators}
+                  onOpenAddModal={() => setIsCollabAddModalOpen(true)}
+                  onRemoveCollaborator={handleRemoveCollaborator}
+                  onRegisterVtuber={handleOpenVtuberModalForCollab}
+                />
               </div>
             )
           )}
@@ -2128,6 +2062,14 @@ export default function NewSongClient() {
           </div>
         </div>
       )}
+      {/* コラボレーター手動追加モーダル */}
+      <CollabAddModal
+        isOpen={isCollabAddModalOpen}
+        onClose={() => setIsCollabAddModalOpen(false)}
+        onAdd={handleAddCollaborators}
+        description={metadata?.description || ''}
+        existingCollaborators={collaborators}
+      />
     </div>
     </>
   );

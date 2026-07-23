@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata, fetchMultipleChannelsMetadata } from '@/lib/youtube';
+import { extractVideoId, fetchVideoMetadata, fetchChannelMetadata, fetchMultipleChannelsMetadata, fetchChannelByHandle } from '@/lib/youtube';
 import { fetchCollaboratorChannels } from '@/lib/youtube-collab';
 import { searchTracks as itunesSearch, getHighResArtwork, getTrackById } from '@/lib/itunes';
 import type { Video, Song, YouTubeVideoMetadata, Channel, Production, Vtuber } from '@/types';
@@ -1397,6 +1397,7 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
   // 3. 投稿動画IDとコラボ動画IDを合算
   const allTargetVideoIds = Array.from(new Set([...ownVideoIds, ...collabVideoIds]));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let videos: any[] = [];
   if (allTargetVideoIds.length > 0) {
     const { data: vidData, error: vidErr } = await supabase
@@ -1707,3 +1708,212 @@ export async function fetchSpreadsheetCsvAction(
     return { success: false, error: `例外が発生しました: ${message}` };
   }
 }
+
+/**
+ * 概要欄から YouTube チャンネルリンク/ハンドルを自動抽出し、メタデータとDB登録状況を返す
+ */
+export async function extractChannelsFromDescription(
+  description: string,
+  existingYtChannelIds: string[] = []
+): Promise<ActionResult<CollaboratorChannelPreview[]>> {
+  const t = await getLocaleT();
+  if (!description || !description.trim()) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    const existingSet = new Set(existingYtChannelIds);
+    const foundYtChannelIds = new Set<string>();
+    const foundHandles = new Set<string>();
+
+    // 1. YouTube チャンネル URL / ID パターン
+    // https://www.youtube.com/channel/UC...
+    const channelIdRegex = /youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/gi;
+    let match: RegExpExecArray | null;
+    while ((match = channelIdRegex.exec(description)) !== null) {
+      const id = match[1];
+      if (!existingSet.has(id)) {
+        foundYtChannelIds.add(id);
+      }
+    }
+
+    // 2. YouTube ハンドル URL / @メンション パターン
+    // https://www.youtube.com/@handle or @handle
+    const handleUrlRegex = /(?:youtube\.com\/@|@)([a-zA-Z0-9._-]{3,30})/gi;
+    while ((match = handleUrlRegex.exec(description)) !== null) {
+      const handle = `@${match[1]}`;
+      foundHandles.add(handle.toLowerCase());
+    }
+
+    // メタデータマップ
+    const channelMetaMap = new Map<string, {
+      ytChannelId: string;
+      name: string;
+      handle?: string;
+      avatarUrl?: string;
+      description?: string;
+    }>();
+
+    // チャンネルID群をメタデータ一括取得
+    if (foundYtChannelIds.size > 0) {
+      const metaMap = await fetchMultipleChannelsMetadata(Array.from(foundYtChannelIds));
+      metaMap.forEach((meta, id) => {
+        channelMetaMap.set(id, {
+          ytChannelId: id,
+          name: meta.name,
+          handle: meta.handle,
+          avatarUrl: meta.image,
+          description: meta.description,
+        });
+      });
+    }
+
+    // ハンドル群を個別取得（すでに取得済みのIDに対応するハンドルは除外）
+    const alreadyFetchedHandles = new Set(
+      Array.from(channelMetaMap.values())
+        .map((m) => m.handle?.toLowerCase())
+        .filter(Boolean)
+    );
+
+    for (const handle of Array.from(foundHandles)) {
+      if (alreadyFetchedHandles.has(handle)) continue;
+      try {
+        const meta = await fetchChannelByHandle(handle);
+        if (meta && !existingSet.has(meta.ytChannelId)) {
+          channelMetaMap.set(meta.ytChannelId, {
+            ytChannelId: meta.ytChannelId,
+            name: meta.name,
+            handle: meta.handle,
+            avatarUrl: meta.image,
+            description: meta.description,
+          });
+        }
+      } catch (_err) {
+        // ハンドルが見つからない場合はスキップ
+      }
+    }
+
+    if (channelMetaMap.size === 0) {
+      return { success: true, data: [] };
+    }
+
+    const allIds = Array.from(channelMetaMap.keys());
+    const supabase = await createClient();
+    const { data: registeredChannels } = await supabase
+      .from('channels')
+      .select('id, yt_channel_id, name, handle, image')
+      .in('yt_channel_id', allIds);
+
+    const regMap = new Map<string, { id: number; name: string; handle: string | null; image: string | null }>();
+    (registeredChannels || []).forEach((c) => regMap.set(c.yt_channel_id, c));
+
+    const result: CollaboratorChannelPreview[] = [];
+    channelMetaMap.forEach((meta, ytId) => {
+      const reg = regMap.get(ytId);
+      result.push({
+        ytChannelId: ytId,
+        name: reg?.name || meta.name,
+        handle: reg?.handle || meta.handle,
+        avatarUrl: reg?.image || meta.avatarUrl,
+        description: meta.description,
+        isRegistered: !!reg,
+        channelRecordId: reg?.id,
+        isOriginalUploader: false,
+      });
+    });
+
+    return { success: true, data: result };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : t.common.errorOccurred;
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * 手動入力された チャンネルURL / @ハンドル / チャンネルID(UC...) を解析・取得する
+ */
+export async function resolveChannelByInput(
+  input: string,
+  existingYtChannelIds: string[] = []
+): Promise<ActionResult<CollaboratorChannelPreview>> {
+  const t = await getLocaleT();
+  const cleanInput = input.trim();
+  if (!cleanInput) {
+    return { success: false, error: t.newSong.inputEmpty };
+  }
+
+  try {
+    let ytChannelId: string | null = null;
+    let handle: string | null = null;
+
+    // 1. チャンネルID判定 (UCから始まる24文字)
+    if (/^UC[a-zA-Z0-9_-]{22}$/.test(cleanInput)) {
+      ytChannelId = cleanInput;
+    } else {
+      // 2. URLからの抽出
+      const channelIdMatch = cleanInput.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/i);
+      if (channelIdMatch) {
+        ytChannelId = channelIdMatch[1];
+      } else {
+        const handleMatch = cleanInput.match(/(?:youtube\.com\/@|@)([a-zA-Z0-9._-]{3,30})/i);
+        if (handleMatch) {
+          handle = `@${handleMatch[1]}`;
+        } else if (/^[a-zA-Z0-9._-]{3,30}$/.test(cleanInput)) {
+          // 単体文字列の場合、ハンドルとして解釈
+          handle = `@${cleanInput}`;
+        }
+      }
+    }
+
+    if (existingYtChannelIds.includes(ytChannelId || '')) {
+      return { success: false, error: t.newSong.alreadyAdded };
+    }
+
+    let meta: {
+      ytChannelId: string;
+      name: string;
+      handle: string;
+      description: string;
+      image: string;
+    } | null = null;
+
+    if (ytChannelId) {
+      meta = await fetchChannelMetadata(ytChannelId);
+    } else if (handle) {
+      meta = await fetchChannelByHandle(handle);
+    }
+
+    if (!meta) {
+      return { success: false, error: t.newSong.channelNotFound };
+    }
+
+    if (existingYtChannelIds.includes(meta.ytChannelId)) {
+      return { success: false, error: t.newSong.alreadyAdded };
+    }
+
+    const supabase = await createClient();
+    const { data: reg } = await supabase
+      .from('channels')
+      .select('id, name, handle, image')
+      .eq('yt_channel_id', meta.ytChannelId)
+      .maybeSingle();
+
+    return {
+      success: true,
+      data: {
+        ytChannelId: meta.ytChannelId,
+        name: reg?.name || meta.name,
+        handle: reg?.handle || meta.handle,
+        avatarUrl: reg?.image || meta.image,
+        description: meta.description,
+        isRegistered: !!reg,
+        channelRecordId: reg?.id,
+        isOriginalUploader: false,
+      },
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : t.common.errorOccurred;
+    return { success: false, error: message };
+  }
+}
+

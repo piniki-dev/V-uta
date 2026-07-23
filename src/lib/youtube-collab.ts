@@ -83,7 +83,6 @@ export function parseCollaboratorsFromInnerTubeResponse(rawJsonText: string): Co
 
     // 1. レスポンス内を検索し、listItemViewModel から browseEndpoint を含むものを探し出す
     // ytInitialData / InnerTube /next の構造を再帰的または特定のセクションから抽出
-    const jsonStr = JSON.stringify(data);
 
     // コラボレーターのモーダルダイアログ (avatarStackViewModel -> dialogViewModel -> listViewModel -> listItems)
     // リクエストデータから "browseId": "UC..." と "content": "チャンネル名" を併せ持つアイテムを走査
@@ -141,7 +140,7 @@ function extractFromObject(obj: unknown, results: CollaboratorChannelInfo[], see
 
       // アバター画像の柔軟な抽出
       let avatarUrl: string | undefined;
-      const leadingSources = vm?.leadingImage?.sources || (vm as any)?.leadingImage?.thumbnailViewModel?.image?.sources;
+      const leadingSources = vm?.leadingImage?.sources || (vm as Record<string, unknown> & { leadingImage?: { thumbnailViewModel?: { image?: { sources?: Array<{ url: string }> } } } })?.leadingImage?.thumbnailViewModel?.image?.sources;
       if (Array.isArray(leadingSources) && leadingSources.length > 0) {
         avatarUrl = leadingSources[leadingSources.length - 1]?.url || leadingSources[0]?.url;
       }
