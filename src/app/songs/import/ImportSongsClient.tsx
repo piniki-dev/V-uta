@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction, searchVtubers, checkDuplicateVtuber } from '../new/actions';
+import { fetchVideoPreview, registerVideo, searchSongAction, registerFullArchive, getProductions, registerVtuberAndChannel, fetchSpreadsheetCsvAction, searchVtubers, checkDuplicateVtuber, fetchChannelMetadataAction, type CollaboratorChannelPreview } from '../new/actions';
 import type { ITunesSearchResult, VtuberWithChannels } from '../new/actions';
 import type { YouTubeVideoMetadata, Video, Song, Production, MasterSong, YouTubeChannelData } from '@/types';
 import { formatTime, parseTime, formatTimeFull, calculateAutoEndTimeSec } from '@/lib/utils';
@@ -9,7 +9,7 @@ import {
   Search, X, Music, Info, Save, Trash2, AlertCircle, 
   UserPlus, Building2, FileUp, Table, ChevronRight,
   CheckCircle2, PlayCircle, Loader2, ExternalLink, RotateCcw,
-  Youtube, Check, AlertTriangle
+  Youtube, Check, AlertTriangle, Users
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseCsv, processImportedData, type BatchArchive } from '@/utils/batch-parser';
@@ -101,9 +101,14 @@ export default function ImportSongsClient() {
   const [metadata, setMetadata] = useState<YouTubeVideoMetadata | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [video, setVideo] = useState<Video | null>(null);
+  const [collaborators, setCollaborators] = useState<CollaboratorChannelPreview[]>([]);
   const [allSongs, setAllSongs] = useState<EditableSong[]>([]);
   const [isAutoNext, setIsAutoNext] = useState(true);
   const [coverVideos, setCoverVideos] = useState<Record<string, boolean>>({});
+
+  const hasUnregisteredCollabs = useMemo(() => {
+    return collaborators.some(c => !c.isOriginalUploader && !c.isRegistered);
+  }, [collaborators]);
 
   // 変更時に自動下書き保存
   useEffect(() => {
@@ -481,6 +486,7 @@ export default function ImportSongsClient() {
         }
         
         setMetadata(result.data.metadata);
+        setCollaborators(result.data.collaboratorChannels || []);
         setProgress(prev => ({
           ...prev,
           [item.url]: { 
@@ -884,6 +890,16 @@ export default function ImportSongsClient() {
       return;
     }
 
+    // 未登録のコラボチャンネルが存在する場合は保存をブロック
+    const unregisteredCollabs = collaborators.filter(c => !c.isOriginalUploader && !c.isRegistered);
+    if (unregisteredCollabs.length > 0) {
+      const msg = T('newSong.unregisteredCollabsError', { count: unregisteredCollabs.length });
+      setError(msg);
+      setSaveErrorMsg(msg);
+      setSaveStatus('error');
+      return;
+    }
+
     // エラーがなかった場合はエラーをクリアし、保存中ステータスにする
     setAllSongs(prev => prev.map(s => ({ ...s, validationError: undefined })));
     setSaveStatus('saving');
@@ -904,6 +920,10 @@ export default function ImportSongsClient() {
         searchLocale: item.searchLocale || (locale as 'ja' | 'en'),
       }));
 
+    const collabIds = collaborators
+      .filter(c => c.isRegistered && c.channelRecordId)
+      .map(c => c.channelRecordId!);
+
     setIsLoading(true);
     try {
       const result = await registerFullArchive({
@@ -912,6 +932,7 @@ export default function ImportSongsClient() {
           isStream: isCurrentCover ? false : metadata.isStream,
         },
         songs: songsToRegister,
+        collaboratorChannelIds: collabIds,
       });
 
       if (!result.success) {
@@ -974,6 +995,46 @@ export default function ImportSongsClient() {
     performSave();
   };
 
+  const handleOpenVtuberModalForCollab = useCallback((collab: CollaboratorChannelPreview) => {
+    getProductions().then((res) => {
+      if (res.success && res.data) setProductions(res.data);
+    });
+
+    setChannelDataForReg({
+      ytChannelId: collab.ytChannelId,
+      name: collab.name,
+      handle: collab.handle || '',
+      description: collab.description || '',
+      image: collab.avatarUrl || '',
+    });
+
+    if (!collab.avatarUrl) {
+      fetchChannelMetadataAction(collab.ytChannelId).then((res) => {
+        if (res.success && res.data?.image) {
+          setChannelDataForReg((prev) => (prev ? { ...prev, image: res.data.image || '' } : prev));
+        }
+      });
+    }
+
+    setVtuberForm({
+      name: collab.name,
+      gender: '不明',
+      link: '',
+      productionId: '',
+      newProductionName: '',
+    });
+
+    setVtuberRegMode('new');
+    setSelectedExistingVtuber(null);
+    setIsPrimaryChannel(true);
+
+    checkDuplicateVtuber(collab.name).then((res) => {
+      if (res.success) setDuplicateWarning(res.data);
+    });
+
+    setIsVtuberModalOpen(true);
+  }, []);
+
   const handleRegisterVtuber = async () => {
     if (!channelDataForReg) return;
     const isLinkMode = vtuberRegMode === 'link';
@@ -998,6 +1059,15 @@ export default function ImportSongsClient() {
       });
       if (result.success) {
         setIsVtuberModalOpen(false);
+
+        if (channelDataForReg?.ytChannelId) {
+          setCollaborators(prev => prev.map(c => 
+            c.ytChannelId === channelDataForReg.ytChannelId 
+              ? { ...c, isRegistered: true, channelRecordId: result.data.channelId }
+              : c
+          ));
+        }
+
         if (metadata) {
           const videoResult = await registerVideo(metadata);
           if (videoResult.success) setVideo(videoResult.data);
@@ -1568,64 +1638,136 @@ export default function ImportSongsClient() {
                 <>
                   {/* Active Item Metadata */}
                   {metadata && (
-                <div className="card bg-[var(--bg-secondary)] overflow-hidden">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="md:w-64 aspect-video relative">
-                      <Image src={metadata.thumbnailUrl} alt="" fill className="object-cover" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                        <a href={`https://youtube.com/watch?v=${metadata.videoId}`} target="_blank" className="text-white p-2 bg-black/60 rounded-full">
-                          <ExternalLink size={20} />
-                        </a>
+                    <div className="card bg-[var(--bg-secondary)] overflow-hidden">
+                      {/* Top Section: Thumbnail | Title & Description */}
+                      <div className="flex flex-col md:flex-row">
+                        <div className="md:w-64 aspect-video relative shrink-0">
+                          <Image src={metadata.thumbnailUrl} alt="" fill className="object-cover" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <a href={`https://youtube.com/watch?v=${metadata.videoId}`} target="_blank" rel="noopener noreferrer" className="text-white p-2 bg-black/60 rounded-full">
+                              <ExternalLink size={20} />
+                            </a>
+                          </div>
+                        </div>
+                        <div className="p-6 flex-1 min-w-0">
+                          <div className="flex justify-between items-start gap-4 mb-2">
+                            <h2 className="text-xl font-bold truncate text-[var(--accent)]">{metadata.title}</h2>
+                            <span className="text-xs font-mono bg-[var(--bg-tertiary)] px-2 py-1 rounded border border-[var(--border)] shrink-0">
+                              {formatTime(metadata.duration)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[var(--text-secondary)] line-clamp-3">{metadata.description}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-6 flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-4 mb-2">
-                        <h2 className="text-xl font-bold truncate text-[var(--accent)]">{metadata.title}</h2>
-                        <span className="text-xs font-mono bg-[var(--bg-tertiary)] px-2 py-1 rounded border border-[var(--border)]">
-                          {formatTime(metadata.duration)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-4">{metadata.description}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-6">
-                        {/* 歌ってみた動画トグル */}
-                        <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
-                          <label className="flex items-center gap-3 cursor-pointer select-none">
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={batchArchives[currentBatchIndex] ? (coverVideos[batchArchives[currentBatchIndex].url] || false) : false}
-                                onChange={(e) => {
-                                  handleToggleCoverVideo(e.target.checked);
-                                }}
-                                className="sr-only peer"
-                              />
-                              <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+
+                      {/* Middle Section: 検出されたコラボレーター・参加チャンネル */}
+                      {collaborators.length > 0 && (
+                        <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-secondary)]/50">
+                          <div className="flex items-center gap-2 mb-3 text-xs font-bold text-[var(--text-secondary)]">
+                            <Users size={14} className="text-[var(--accent)]" />
+                            <span>{T('newSong.detectedCollaborators')} ({collaborators.length})</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {collaborators.map((collab) => (
+                              <div 
+                                key={collab.ytChannelId} 
+                                className="flex items-center justify-between p-2.5 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border)] text-xs"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {collab.avatarUrl ? (
+                                    <Image 
+                                      src={collab.avatarUrl} 
+                                      alt={collab.name} 
+                                      width={28} 
+                                      height={28} 
+                                      className="rounded-full flex-shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
+                                      {collab.name.substring(0, 1)}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-bold truncate text-[var(--text-primary)]">{collab.name}</p>
+                                    {collab.handle && <p className="text-[10px] text-[var(--text-tertiary)] truncate">{collab.handle}</p>}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                  {collab.isOriginalUploader ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--accent-alpha-10)] text-[var(--accent)] border border-[var(--accent-alpha-20)]">
+                                      {T('newSong.originalUploader')}
+                                    </span>
+                                  ) : collab.isRegistered ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                      <Check size={10} /> {T('newSong.registered')}
+                                    </span>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+                                        <AlertTriangle size={10} /> {T('newSong.unregistered')}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenVtuberModalForCollab(collab)}
+                                        className="btn btn--primary text-[10px] py-1 px-2 h-auto rounded-lg flex items-center gap-1"
+                                      >
+                                        <UserPlus size={10} /> {T('newSong.register')}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bottom Section: 操作エリア (歌ってみたとして登録 | 保存後に次の動画へ自動遷移 | すべての変更を保存) */}
+                      <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)]/30 flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                          {/* 歌ってみた動画トグル */}
+                          <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
+                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                              <div className="relative">
+                                <input
+                                  type="checkbox"
+                                  checked={batchArchives[currentBatchIndex] ? (coverVideos[batchArchives[currentBatchIndex].url] || false) : false}
+                                  onChange={(e) => {
+                                    handleToggleCoverVideo(e.target.checked);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-10 h-5 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                              </div>
+                              <span className="text-[13px] font-bold text-[var(--text-primary)]">{T('newSong.isCover')}</span>
+                            </label>
+                            <div className="group relative">
+                              <Info size={14} className="text-[var(--text-tertiary)] animate-pulse" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-[11px] text-[#999] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl leading-relaxed">
+                                {T('newSong.coverTooltip')}
+                              </div>
                             </div>
-                            <span className="text-[13px] font-bold text-[var(--text-primary)]">{T('newSong.isCover')}</span>
-                          </label>
-                          <div className="group relative">
-                            <Info size={14} className="text-[var(--text-tertiary)] animate-pulse" />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-[11px] text-[#999] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-2xl leading-relaxed">
-                              {T('newSong.coverTooltip')}
-                            </div>
+                          </div>
+
+                          {/* 保存後に次の動画へ自動遷移 */}
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="checkbox" 
+                              id="auto-next" 
+                              checked={isAutoNext} 
+                              onChange={(e) => setIsAutoNext(e.target.checked)}
+                              className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] bg-[var(--bg-tertiary)]"
+                            />
+                            <label htmlFor="auto-next" className="text-sm font-medium text-[var(--text-secondary)] select-none cursor-pointer">
+                              {T('newSong.autoNextEnabled')}
+                            </label>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
-                            id="auto-next" 
-                            checked={isAutoNext} 
-                            onChange={(e) => setIsAutoNext(e.target.checked)}
-                            className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] bg-[var(--bg-tertiary)]"
-                          />
-                          <label htmlFor="auto-next" className="text-sm font-medium text-[var(--text-secondary)]">
-                            {T('newSong.autoNextEnabled')}
-                          </label>
-                        </div>
+                        {/* すべての変更を保存 */}
                         <button 
-                          className="btn btn--primary btn--sm ml-auto flex items-center gap-2"
+                          className="btn btn--primary btn--sm flex items-center gap-2 ml-auto"
                           onClick={handleSaveBatch}
                           disabled={isLoading || allSongs.filter(s => !s.isDeleted).length === 0}
                         >
@@ -1634,6 +1776,14 @@ export default function ImportSongsClient() {
                         </button>
                       </div>
                     </div>
+                  )}
+
+              {hasUnregisteredCollabs && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 flex items-start gap-3.5 animate-in fade-in duration-300">
+                  <AlertTriangle size={24} className="flex-shrink-0 text-amber-400 mt-0.5" />
+                  <div className="text-xs leading-relaxed">
+                    <p className="font-bold text-amber-200 text-sm mb-1">{T('newSong.unregisteredCollabsWarning')}</p>
+                    <p className="text-[var(--text-secondary)]">{T('newSong.unregisteredCollabsGuide')}</p>
                   </div>
                 </div>
               )}
