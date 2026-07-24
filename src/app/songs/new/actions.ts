@@ -1335,15 +1335,35 @@ export async function revalidateChannelByVideo(videoDbId: number): Promise<void>
   console.log('revalidateChannelByVideo called for videoDbId:', videoDbId);
   try {
     const supabase = await createClient();
+
+    // 1. video_channels からチャンネルIDを抽出
     const { data: vChannels } = await supabase
       .from('video_channels')
       .select('channel_id')
       .eq('video_id', videoDbId);
 
-    if (vChannels) {
-      for (const vc of vChannels) {
-        await revalidateChannel(vc.channel_id);
-      }
+    const videoChanIds = (vChannels || []).map((vc) => vc.channel_id).filter(Boolean);
+
+    // 2. この動画に紐づく songs の song_channels からチャンネルIDを抽出
+    const { data: songsData } = await supabase
+      .from('songs')
+      .select('id')
+      .eq('video_id', videoDbId);
+
+    const songIds = (songsData || []).map((s) => s.id);
+    let songChanIds: number[] = [];
+    if (songIds.length > 0) {
+      const { data: sChannels } = await supabase
+        .from('song_channels')
+        .select('channel_id')
+        .in('song_id', songIds);
+      songChanIds = (sChannels || []).map((sc) => sc.channel_id).filter(Boolean);
+    }
+
+    // 重複を排除して関連するすべてのチャンネルを再検証
+    const targetChannelIds = Array.from(new Set([...videoChanIds, ...songChanIds]));
+    for (const channelId of targetChannelIds) {
+      await revalidateChannel(channelId);
     }
 
     const { data: video } = await supabase
