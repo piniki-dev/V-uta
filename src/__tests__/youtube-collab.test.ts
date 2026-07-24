@@ -208,5 +208,12 @@ describe('YouTube Collaborator Parser', () => {
     const collaborators = parseCollaboratorsFromInnerTubeResponse(JSON.stringify(mockJsonWithSecondary));
     expect(collaborators).toHaveLength(0);
   });
+
+  it('should return empty collaborators for solo cover video DHlEexTPjy4', async () => {
+    const { fetchCollaboratorChannels } = await import('@/lib/youtube-collab');
+    const collaborators = await fetchCollaboratorChannels('DHlEexTPjy4');
+    expect(collaborators).toEqual([]);
+  });
 });
+
 
