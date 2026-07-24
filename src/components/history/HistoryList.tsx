@@ -27,6 +27,28 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
 
   const toPlayerSong = useCallback((item: HistoryItem): PlayerSong => {
     const { song } = item;
+    if (!song) {
+      return {
+        id: 0,
+        title: '',
+        artist: null,
+        title_en: null,
+        artist_en: null,
+        artworkUrl: null,
+        videoId: '',
+        startSec: 0,
+        endSec: 0,
+        channelName: null,
+        channelThumbnailUrl: null,
+        thumbnailUrl: null,
+        videoTitle: null,
+        playedAt: item.played_at,
+      };
+    }
+
+    const origVc = song.video?.video_channels?.find((vc) => vc.is_original) || song.video?.video_channels?.[0];
+    const channel = origVc?.channel;
+
     return {
       id: song.id,
       title: song.master_song?.title || '',
@@ -34,13 +56,13 @@ export default function HistoryList({ initialHistory }: HistoryListProps) {
       title_en: song.master_song?.title_en || null,
       artist_en: song.master_song?.artist_en || null,
       artworkUrl: song.master_song?.artwork_url || null,
-      videoId: song.video.video_id,
+      videoId: song.video?.video_id || '',
       startSec: song.start_sec,
       endSec: song.end_sec,
-      channelName: song.video.channel?.name || null,
-      channelThumbnailUrl: song.video.channel?.image || null,
-      thumbnailUrl: song.video.thumbnail_url || null,
-      videoTitle: song.video.title,
+      channelName: channel?.name || null,
+      channelThumbnailUrl: channel?.image || null,
+      thumbnailUrl: song.video?.thumbnail_url || null,
+      videoTitle: song.video?.title || null,
       playedAt: item.played_at
     };
   }, []);

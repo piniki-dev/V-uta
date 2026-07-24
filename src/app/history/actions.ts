@@ -17,27 +17,30 @@ export type HistoryItem = {
   play_duration: number | null;
   source_type: string | null;
   source_id: string | null;
-  song: { // 以前は songs
+  song: {
     id: number;
     start_sec: number;
     end_sec: number;
-    master_song: { // 以前は master_songs
+    master_song: {
       title: string;
       artist: string;
       title_en?: string | null;
       artist_en?: string | null;
       artwork_url: string | null;
     } | null;
-    video: { // 以前は videos
+    video: {
       video_id: string;
       title: string;
       thumbnail_url: string | null;
-      channel: { // 以前は channels
-        name: string;
-        image: string | null;
-      } | null;
-    };
-  };
+      video_channels?: {
+        is_original: boolean;
+        channel: {
+          name: string;
+          image: string | null;
+        } | null;
+      }[];
+    } | null;
+  } | null;
 };
 
 export interface RankingResult {
@@ -158,7 +161,7 @@ export async function getPlayHistory(limit = 50, offset = 0) {
     return { success: false, error: t.common.loginRequired };
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('play_history')
     .select(`
       id,
@@ -173,15 +176,20 @@ export async function getPlayHistory(limit = 50, offset = 0) {
         master_song:master_songs (
           title,
           artist,
+          title_en,
+          artist_en,
           artwork_url
         ),
         video:videos (
           video_id,
           title,
           thumbnail_url,
-          channel:channels (
-            name,
-            image
+          video_channels (
+            is_original,
+            channel:channels (
+              name,
+              image
+            )
           )
         )
       )
@@ -189,6 +197,11 @@ export async function getPlayHistory(limit = 50, offset = 0) {
     .eq('user_id', user.id)
     .order('played_at', { ascending: false })
     .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching play history:', error);
+    return { success: false, error: error.message };
+  }
 
   return { success: true, data: data as unknown as HistoryItem[] };
 }
