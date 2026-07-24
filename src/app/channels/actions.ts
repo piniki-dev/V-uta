@@ -37,43 +37,28 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
   );
 
-  // 1. 有効な曲(songs)が存在する song_id と video_id を取得
-  const { data: songsData } = await supabase
-    .from('songs')
-    .select('id, video_id')
-    .not('is_active', 'eq', false);
-
-  if (!songsData || songsData.length === 0) {
-    return { success: true, data: [] };
-  }
-
-  const validSongIds = songsData.map((s) => s.id);
-  const validVideoDbIds = Array.from(new Set(songsData.map((s) => s.video_id)));
-
-  // 2. 有効な動画の video_channels からチャンネルIDを抽出
-  const { data: videoChanData } = await supabase
-    .from('video_channels')
-    .select('channel_id')
-    .in('video_id', validVideoDbIds);
-
-  const videoChanIds = (videoChanData || []).map((vc) => vc.channel_id).filter(Boolean);
-
-  // 3. 有効な曲の song_channels から歌唱メンバーチャンネルIDを抽出
-  const { data: songChanData } = await supabase
+  // 1. 有効な曲が存在する song_channels 経由のチャンネルIDを抽出
+  const { data: activeSongChannels } = await supabase
     .from('song_channels')
-    .select('channel_id')
-    .in('song_id', validSongIds);
+    .select('channel_id, song:songs!inner(id)')
+    .not('song.is_active', 'eq', false);
 
-  const songChanIds = (songChanData || []).map((sc) => sc.channel_id).filter(Boolean);
+  // 2. 有効な曲が存在する video_channels 経由のチャンネルIDを抽出
+  const { data: activeVideoChannels } = await supabase
+    .from('video_channels')
+    .select('channel_id, video:videos!inner(songs!inner(id))')
+    .not('video.songs.is_active', 'eq', false);
 
-  // 4. 有効な曲または動画が存在するチャンネルIDのユニークリスト
-  const activeChannelIds = Array.from(new Set([...videoChanIds, ...songChanIds]));
+  const songChanIds = (activeSongChannels || []).map((sc) => sc.channel_id).filter(Boolean);
+  const videoChanIds = (activeVideoChannels || []).map((vc) => vc.channel_id).filter(Boolean);
+
+  const activeChannelIds = Array.from(new Set([...songChanIds, ...videoChanIds]));
 
   if (activeChannelIds.length === 0) {
     return { success: true, data: [] };
   }
 
-  // 5. メインチャンネルを取得
+  // 3. メインチャンネルを取得
   const { data, error } = await supabase
     .from('channels')
     .select('*')
