@@ -29,7 +29,7 @@ export async function getChannels(): Promise<ActionResult<Channel[]>> {
 
 /**
  * メインチャンネルの一覧を取得する（ビルド・SSG用、クッキーなし）
- * 投稿動画またはコラボ動画に有効な曲が存在するチャンネルのみを取得する
+ * 有効な曲（songs）が存在する動画・歌枠に紐づくチャンネルのみを取得する
  */
 export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
   const supabase = createSupabaseClient(
@@ -37,31 +37,43 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
   );
 
-  // 1. 有効な曲(songs)が存在する動画 ID を取得
+  // 1. 有効な曲(songs)が存在する song_id と video_id を取得
   const { data: songsData } = await supabase
     .from('songs')
-    .select('video_id')
+    .select('id, video_id')
     .not('is_active', 'eq', false);
 
   if (!songsData || songsData.length === 0) {
     return { success: true, data: [] };
   }
 
+  const validSongIds = songsData.map((s) => s.id);
   const validVideoDbIds = Array.from(new Set(songsData.map((s) => s.video_id)));
 
-  // 2. 有効な動画の video_channels から全チャンネルを抽出
+  // 2. 有効な動画の video_channels からチャンネルIDを抽出
   const { data: videoChanData } = await supabase
     .from('video_channels')
     .select('channel_id')
     .in('video_id', validVideoDbIds);
 
-  const activeChannelIds = Array.from(new Set((videoChanData || []).map((vc) => vc.channel_id).filter(Boolean)));
+  const videoChanIds = (videoChanData || []).map((vc) => vc.channel_id).filter(Boolean);
+
+  // 3. 有効な曲の song_channels から歌唱メンバーチャンネルIDを抽出
+  const { data: songChanData } = await supabase
+    .from('song_channels')
+    .select('channel_id')
+    .in('song_id', validSongIds);
+
+  const songChanIds = (songChanData || []).map((sc) => sc.channel_id).filter(Boolean);
+
+  // 4. 有効な曲または動画が存在するチャンネルIDのユニークリスト
+  const activeChannelIds = Array.from(new Set([...videoChanIds, ...songChanIds]));
 
   if (activeChannelIds.length === 0) {
     return { success: true, data: [] };
   }
 
-  // 3. メインチャンネルを取得
+  // 5. メインチャンネルを取得
   const { data, error } = await supabase
     .from('channels')
     .select('*')
@@ -86,34 +98,9 @@ export async function getAllChannelsForStatic(): Promise<ActionResult<Channel[]>
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
   );
 
-  // 1. 有効な曲(songs)が存在する動画 ID を取得
-  const { data: songsData } = await supabase
-    .from('songs')
-    .select('video_id')
-    .not('is_active', 'eq', false);
-
-  if (!songsData || songsData.length === 0) {
-    return { success: true, data: [] };
-  }
-
-  const validVideoDbIds = Array.from(new Set(songsData.map((s) => s.video_id)));
-
-  // 2. 有効な動画の video_channels から全チャンネルを抽出
-  const { data: videoChanData } = await supabase
-    .from('video_channels')
-    .select('channel_id')
-    .in('video_id', validVideoDbIds);
-
-  const activeChannelIds = Array.from(new Set((videoChanData || []).map((vc) => vc.channel_id).filter(Boolean)));
-
-  if (activeChannelIds.length === 0) {
-    return { success: true, data: [] };
-  }
-
   const { data, error } = await supabase
     .from('channels')
     .select('*')
-    .in('id', activeChannelIds)
     .order('name', { ascending: true });
 
   if (error) {
