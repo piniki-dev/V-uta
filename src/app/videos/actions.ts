@@ -22,7 +22,7 @@ export const getHomeVideosCached = unstable_cache(
 
     const { data: videoData, error } = await supabase
       .from('videos')
-      .select('*, channel:channels(*), songs!inner(id)')
+      .select('*, video_channels(is_original, channel:channels(*)), songs!inner(id)')
       .gte('created_at', sevenDaysAgoISO)
       .order('created_at', { ascending: false })
       .limit(300);
@@ -32,8 +32,15 @@ export const getHomeVideosCached = unstable_cache(
       return [];
     }
 
-    const videos = ((videoData as unknown as Video[]) || [])
-      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+    const videos = ((videoData as unknown as (Video & { video_channels?: { is_original: boolean; channel: unknown }[] })[]) || [])
+      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+      .map((v) => {
+        const origVc = v.video_channels?.find((vc) => vc.is_original);
+        return {
+          ...v,
+          channel: origVc?.channel || null,
+        } as unknown as Video;
+      });
 
     return videos;
   },

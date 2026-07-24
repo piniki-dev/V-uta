@@ -18,7 +18,7 @@ const getCachedVideoDetails = (videoId: string) =>
     
       const { data: video } = await supabase
         .from('videos')
-        .select('*, channel:channels(*)')
+        .select('*')
         .eq('video_id', videoId)
         .single();
 
@@ -33,6 +33,7 @@ const getCachedVideoDetails = (videoId: string) =>
         .eq('video_id', video.id);
 
       let collaboratorChannels: (Channel & { isOriginal: boolean })[] = [];
+      let originalChannel: Channel | null = null;
 
       if (videoChanRecords && videoChanRecords.length > 0) {
         const channelIds = videoChanRecords.map(r => r.channel_id);
@@ -49,6 +50,11 @@ const getCachedVideoDetails = (videoId: string) =>
             ...(c as Channel),
             isOriginal: originalMap.get(c.id) ?? false
           }));
+
+          const origChan = chanData.find(c => originalMap.get(c.id) === true);
+          if (origChan) {
+            originalChannel = origChan as Channel;
+          }
         }
       }
 
@@ -84,7 +90,14 @@ const getCachedVideoDetails = (videoId: string) =>
         }));
       }
 
-      return { video, songs, collaboratorChannels };
+      return {
+        video: {
+          ...video,
+          channel: originalChannel,
+        },
+        songs,
+        collaboratorChannels,
+      };
     },
     ['video-details', videoId],
     {

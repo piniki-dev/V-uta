@@ -70,13 +70,13 @@ export default async function Image({
   );
 
   // 動画情報の取得（チャンネルアイコン用の情報 image も channels から取得）
-  const { data: video, error: videoError } = await supabase
+  const { data: videoRecord, error: videoError } = await supabase
     .from('videos')
-    .select('*, channel:channels(*)')
+    .select('*, video_channels(is_original, channel:channels(*))')
     .eq('video_id', videoId)
     .single();
 
-  if (videoError || !video) {
+  if (videoError || !videoRecord) {
     return new ImageResponse(
       <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#070709', color: 'white' }}>
         Video Not Found
@@ -84,6 +84,13 @@ export default async function Image({
       size
     );
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const origVc = (videoRecord.video_channels as any[])?.find((vc: any) => vc.is_original);
+  const video = {
+    ...videoRecord,
+    channel: origVc?.channel || null,
+  };
 
   // 登録曲リストを取得（動画IDに紐づくすべての有効な曲）
   let songInfo = null;

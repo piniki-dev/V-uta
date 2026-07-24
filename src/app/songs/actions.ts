@@ -164,7 +164,7 @@ export async function getRelatedSongs(
           // 2. マッチしたすべての master_songs をカバーするアクティブな歌を1回のクエリで一括取得
           const { data: coverSongs } = await supabase
             .from('songs')
-            .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
+            .select('*, master_song:master_songs(*), video:videos(*, video_channels(channel_id, is_original))')
             .in('master_song_id', uniqueMatchedMasterIds)
             .eq('is_active', true)
             .not('id', 'in', `(${currentExcludes.join(',')})`);
@@ -244,7 +244,7 @@ export async function getRelatedSongs(
     if (randomIds.length > 0) {
       const { data: channelSongs } = await supabase
         .from('songs')
-        .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
+        .select('*, master_song:master_songs(*), video:videos(*, video_channels(channel_id, is_original))')
         .in('id', randomIds);
 
       if (channelSongs && channelSongs.length > 0) {
@@ -278,11 +278,11 @@ export async function getRelatedSongs(
         if (popularSongIds.length > 0) {
           let query = supabase
             .from('songs')
-            .select('*, master_song:master_songs(*), video:videos!inner(*, channel:channels(*))')
+            .select('*, master_song:master_songs(*), video:videos!inner(*, video_channels!inner(channel_id))')
             .in('id', popularSongIds);
 
           if (!allowOthers && channelRecordId) {
-            query = query.eq('video.channel_record_id', channelRecordId);
+            query = query.eq('video.video_channels.channel_id', channelRecordId);
           }
 
           const { data: popularSongs } = await query;
@@ -308,7 +308,7 @@ export async function getRelatedSongs(
 
     let query = supabase
       .from('songs')
-      .select('*, master_song:master_songs(*), video:videos!inner(*, channel:channels(*))')
+      .select('*, master_song:master_songs(*), video:videos!inner(*, video_channels!inner(channel_id))')
       .eq('is_active', true);
 
     if (currentExcludes.length > 0) {
@@ -316,7 +316,7 @@ export async function getRelatedSongs(
     }
 
     if (!allowOthers && channelRecordId) {
-      query = query.eq('video.channel_record_id', channelRecordId);
+      query = query.eq('video.video_channels.channel_id', channelRecordId);
     }
 
     // ランダム性を出すために多め（最大100件）に取得してシャッフル

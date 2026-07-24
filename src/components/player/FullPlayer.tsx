@@ -6,7 +6,7 @@ import { useLocale } from '@/components/LocaleProvider';
 import { useSidebar } from '@/components/SidebarContext';
 import { useToast } from '../ToastProvider';
 import { motion, AnimatePresence, Reorder, useDragControls, useMotionValue, animate, useTransform } from 'framer-motion';
-import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2, Loader2, Settings } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, Shield, Trash2, Volume2, Loader2, Settings, Music } from 'lucide-react';
 import type { PlayerSong, PlayerState } from '@/types';
 import type { PanInfo } from 'framer-motion';
 
@@ -645,13 +645,19 @@ export default function FullPlayer() {
                     )}
                   </div>
 
-                  <Image 
-                    src={song.artworkUrl || song.thumbnailUrl || ''} 
-                    alt="" 
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-lg object-cover bg-white/5 border border-white/10" 
-                  />
+                  {song.artworkUrl || song.thumbnailUrl ? (
+                    <Image 
+                      src={song.artworkUrl || song.thumbnailUrl!} 
+                      alt="" 
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-lg object-cover bg-white/5 border border-white/10" 
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Music size={16} className="text-white/40" />
+                    </div>
+                  )}
                   
                   <div className="flex-1 text-left min-w-0">
                     <div className={`font-bold text-sm truncate leading-tight ${
@@ -1005,13 +1011,19 @@ function MobileQueueItem({ song, index, state, play, removeSong, setIsQueueOpen,
           onClick={handlePlayClick}
           className="flex-1 flex items-center gap-4 text-left min-w-0 pointer-events-auto"
         >
-          <Image 
-            src={song.artworkUrl || ''} 
-            alt="" 
-            width={40}
-            height={40}
-            className="w-10 h-10 rounded-lg object-cover bg-[var(--border)] pointer-events-none" 
-          />
+          {song.artworkUrl || song.thumbnailUrl ? (
+            <Image 
+              src={song.artworkUrl || song.thumbnailUrl!} 
+              alt="" 
+              width={40}
+              height={40}
+              className="w-10 h-10 rounded-lg object-cover bg-[var(--border)] pointer-events-none" 
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0 pointer-events-none">
+              <Music size={16} className="text-[var(--text-tertiary)]" />
+            </div>
+          )}
           <div className="flex-1 min-w-0 pointer-events-none">
             <div className={`font-bold text-sm truncate ${index === state.currentIndex ? 'text-[var(--accent)] font-black' : 'text-[var(--text-secondary)]'}`}>
               {t(song.title, song.title_en || song.title)}
