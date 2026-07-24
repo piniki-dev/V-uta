@@ -49,22 +49,13 @@ export async function getChannelsForStatic(): Promise<ActionResult<Channel[]>> {
 
   const validVideoDbIds = Array.from(new Set(songsData.map((s) => s.video_id)));
 
-  // 2. 有効な動画の channel_record_id (投稿元) と video_channels (コラボ) を合算
-  const { data: videosData } = await supabase
-    .from('videos')
-    .select('id, channel_record_id')
-    .in('id', validVideoDbIds);
-
-  const ownChannelIds = (videosData || []).map((v) => v.channel_record_id).filter(Boolean);
-
+  // 2. 有効な動画の video_channels から全チャンネルを抽出
   const { data: videoChanData } = await supabase
     .from('video_channels')
     .select('channel_id')
     .in('video_id', validVideoDbIds);
 
-  const collabChannelIds = (videoChanData || []).map((vc) => vc.channel_id).filter(Boolean);
-
-  const activeChannelIds = Array.from(new Set([...ownChannelIds, ...collabChannelIds]));
+  const activeChannelIds = Array.from(new Set((videoChanData || []).map((vc) => vc.channel_id).filter(Boolean)));
 
   if (activeChannelIds.length === 0) {
     return { success: true, data: [] };
@@ -107,22 +98,13 @@ export async function getAllChannelsForStatic(): Promise<ActionResult<Channel[]>
 
   const validVideoDbIds = Array.from(new Set(songsData.map((s) => s.video_id)));
 
-  // 2. 有効な動画の channel_record_id (投稿元) と video_channels (コラボ) を合算
-  const { data: videosData } = await supabase
-    .from('videos')
-    .select('id, channel_record_id')
-    .in('id', validVideoDbIds);
-
-  const ownChannelIds = (videosData || []).map((v) => v.channel_record_id).filter(Boolean);
-
+  // 2. 有効な動画の video_channels から全チャンネルを抽出
   const { data: videoChanData } = await supabase
     .from('video_channels')
     .select('channel_id')
     .in('video_id', validVideoDbIds);
 
-  const collabChannelIds = (videoChanData || []).map((vc) => vc.channel_id).filter(Boolean);
-
-  const activeChannelIds = Array.from(new Set([...ownChannelIds, ...collabChannelIds]));
+  const activeChannelIds = Array.from(new Set((videoChanData || []).map((vc) => vc.channel_id).filter(Boolean)));
 
   if (activeChannelIds.length === 0) {
     return { success: true, data: [] };

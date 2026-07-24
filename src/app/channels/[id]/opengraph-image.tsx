@@ -109,14 +109,14 @@ export default async function Image({ params }: Props) {
       channelName = activeChannel.name;
       channelImage = activeChannel.image || '';
 
-      // このチャンネルに紐付くVideoのIDを取得
-      const { data: videoRows } = await supabase
-        .from('videos')
-        .select('id')
-        .eq('channel_record_id', activeChannel.id);
+      // このチャンネルに紐付くVideoのIDを video_channels から取得
+      const { data: videoChanRows } = await supabase
+        .from('video_channels')
+        .select('video_id')
+        .eq('channel_id', activeChannel.id);
 
-      if (videoRows && videoRows.length > 0) {
-        const videoIds = videoRows.map((v: { id: number }) => v.id);
+      if (videoChanRows && videoChanRows.length > 0) {
+        const videoIds = videoChanRows.map((v: { video_id: number }) => v.video_id);
 
         // 曲が登録されている songs を video_id ごとに取得
         const { data: songRows } = await supabase

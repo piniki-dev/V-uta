@@ -98,7 +98,7 @@ export async function getRelatedSongs(
   // 1. 基点となる曲の情報を取得
   const { data: baseSong, error: baseErr } = await supabase
     .from('songs')
-    .select('*, master_song:master_songs(*), video:videos(*, channel:channels(*))')
+    .select('*, master_song:master_songs(*), video:videos(*, video_channels(channel_id, is_original), channel:channels(*))')
     .eq('id', songId)
     .single();
 
@@ -108,8 +108,8 @@ export async function getRelatedSongs(
   }
 
   const masterSong = baseSong.master_song;
-  const video = baseSong.video as unknown as (Video & { channel: Channel | null });
-  const channelRecordId = video?.channel_record_id;
+  const video = baseSong.video as unknown as (Video & { video_channels?: { channel_id: number; is_original: boolean }[]; channel: Channel | null });
+  const channelRecordId = video?.video_channels?.find((vc) => vc.is_original)?.channel_id ?? video?.channel_record_id;
 
   // 除外対象のIDリストをユニークにする（自身 + 指定された除外ID）
   let currentExcludes = Array.from(new Set([songId, ...excludeIds]));
@@ -191,7 +191,10 @@ export async function getRelatedSongs(
 
               // 優先度：検索ベース曲のチャンネルID（channelRecordId）と一致するものを探す
               const sameArtistSong = songsInGroup.find(
-                s => s.video?.channel_record_id === channelRecordId
+                (s) => {
+                  const v = s.video as unknown as (Video & { video_channels?: { channel_id: number }[] });
+                  return v?.video_channels?.some((vc) => vc.channel_id === channelRecordId) || v?.channel_record_id === channelRecordId;
+                }
               );
 
               if (sameArtistSong) {

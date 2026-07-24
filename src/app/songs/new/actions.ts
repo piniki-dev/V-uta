@@ -859,15 +859,16 @@ export async function registerSong(input: {
     await supabase.from('song_channels').insert(scInserts);
   } else {
     // 親動画の投稿元チャンネルをデフォルト登録
-    const { data: videoRecord } = await supabase
-      .from('videos')
-      .select('channel_record_id')
-      .eq('id', input.videoDbId)
-      .single();
-    if (videoRecord?.channel_record_id) {
+    const { data: vcRecord } = await supabase
+      .from('video_channels')
+      .select('channel_id')
+      .eq('video_id', input.videoDbId)
+      .eq('is_original', true)
+      .maybeSingle();
+    if (vcRecord?.channel_id) {
       await supabase.from('song_channels').insert({
         song_id: data.id,
-        channel_id: videoRecord.channel_record_id,
+        channel_id: vcRecord.channel_id,
       });
     }
   }
@@ -1334,31 +1335,35 @@ export async function revalidateChannelByVideo(videoDbId: number): Promise<void>
   console.log('revalidateChannelByVideo called for videoDbId:', videoDbId);
   try {
     const supabase = await createClient();
+    const { data: vChannels } = await supabase
+      .from('video_channels')
+      .select('channel_id')
+      .eq('video_id', videoDbId);
+
+    if (vChannels) {
+      for (const vc of vChannels) {
+        await revalidateChannel(vc.channel_id);
+      }
+    }
+
     const { data: video } = await supabase
       .from('videos')
-      .select('channel_record_id, video_id')
+      .select('video_id')
       .eq('id', videoDbId)
       .single();
 
-    if (video) {
-      if (video.channel_record_id) {
-        await revalidateChannel(video.channel_record_id);
-      }
+    if (video && video.video_id) {
+      const videoPath = `/videos/${video.video_id}`;
+      console.log(`[ISR] Revalidating video path: ${videoPath}`);
+      revalidatePath(videoPath);
 
-      // 動画詳細ページも再検証 (例: /videos/TxfudS-9J0E)
-      if (video.video_id) {
-        const videoPath = `/videos/${video.video_id}`;
-        console.log(`[ISR] Revalidating video path: ${videoPath}`);
-        revalidatePath(videoPath);
-
-        const videoOgPath = `/videos/${video.video_id}/og`;
-        console.log(`[ISR] Revalidating video OG path: ${videoOgPath}`);
+      const videoOgPath = `/videos/${video.video_id}/og`;
+      console.log(`[ISR] Revalidating video OG path: ${videoOgPath}`);
         revalidatePath(videoOgPath);
 
         console.log('[ISR] Revalidating unstable_cache tag: video-details');
         revalidateTag('video-details', 'max');
       }
-    }
   } catch (e) {
     console.error('Failed to revalidate channel by video:', e);
   }
@@ -1441,38 +1446,32 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
   relatedChannels.forEach((c) => channelMap.set(c.id, c));
   const channelIds = relatedChannels.map((c) => c.id);
 
-  // 1. 本人が投稿した動画のIDを取得
-  const { data: ownVideos } = await supabase
-    .from('videos')
-    .select('id')
-    .in('channel_record_id', channelIds);
-
-  const ownVideoIds = (ownVideos || []).map(v => v.id);
-
-  // 2. video_channels からコラボ動画IDを取得
+  // 1. video_channels から関連する全動画IDとオリジナル情報を取得
   const { data: videoChanRecords } = await supabase
     .from('video_channels')
     .select('video_id, channel_id, is_original')
     .in('channel_id', channelIds);
 
   const collabVideoMap = new Map<number, boolean>();
-  const collabVideoIds: number[] = [];
+  const originalChannelMap = new Map<number, number>();
+  const allTargetVideoIds: number[] = [];
 
   if (videoChanRecords && videoChanRecords.length > 0) {
-    videoChanRecords.forEach(r => {
-      collabVideoIds.push(r.video_id);
-      if (!r.is_original) {
+    videoChanRecords.forEach((r) => {
+      allTargetVideoIds.push(r.video_id);
+      if (r.is_original) {
+        originalChannelMap.set(r.video_id, r.channel_id);
+      } else {
         collabVideoMap.set(r.video_id, true);
       }
     });
   }
 
-  // 3. 投稿動画IDとコラボ動画IDを合算
-  const allTargetVideoIds = Array.from(new Set([...ownVideoIds, ...collabVideoIds]));
+  const uniqueVideoIds = Array.from(new Set(allTargetVideoIds));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let videos: any[] = [];
-  if (allTargetVideoIds.length > 0) {
+  if (uniqueVideoIds.length > 0) {
     const { data: vidData, error: vidErr } = await supabase
       .from('videos')
       .select(`
@@ -1483,10 +1482,13 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
         published_at,
         duration,
         is_stream,
-        channel_record_id,
-        channel:channels (
-          id,
-          name
+        video_channels (
+          channel_id,
+          is_original,
+          channel:channels (
+            id,
+            name
+          )
         ),
         songs (
           id,
@@ -1505,7 +1507,7 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
           )
         )
       `)
-      .in('id', allTargetVideoIds)
+      .in('id', uniqueVideoIds)
       .order('published_at', { ascending: false });
 
     if (vidErr) {
@@ -1555,22 +1557,25 @@ async function fetchVideosForChannel(channel: Channel, supabase: SupabaseClient)
         singers: songSingersMap.get(song.id) || [],
       }));
 
-    const sourceChan = channelMap.get(video.channel_record_id);
-    const isMainChannel = video.channel_record_id === channel.id;
+    const origChanId = originalChannelMap.get(video.id) ?? video.channel_record_id;
+    const sourceChan = origChanId ? channelMap.get(origChanId) : undefined;
+    const isMainChannel = origChanId === channel.id;
     const isCollab = collabVideoMap.has(video.id) || (!isMainChannel && !sourceChan);
 
-    if (!isMainChannel && video.channel_record_id && sourceChan) {
+    if (!isMainChannel && origChanId && sourceChan) {
       subChannelCountMap.set(
-        video.channel_record_id,
-        (subChannelCountMap.get(video.channel_record_id) || 0) + 1
+        origChanId,
+        (subChannelCountMap.get(origChanId) || 0) + 1
       );
     }
 
     // 動画の投稿元チャンネル名（コラボ動画の表示用）
-    const originalChannelName = (video.channel as unknown as { name: string } | null)?.name || sourceChan?.name;
+    const origVc = (video.video_channels as { channel_id: number; is_original: boolean; channel?: { name: string } }[])?.find((vc) => vc.is_original);
+    const originalChannelName = origVc?.channel?.name || sourceChan?.name;
 
     return {
       ...video,
+      channel_record_id: origChanId,
       songs: activeSongs,
       isCollab,
       originalChannelName: isCollab ? originalChannelName : undefined,

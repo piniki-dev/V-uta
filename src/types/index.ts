@@ -46,7 +46,7 @@ export interface Video {
   thumbnail_url: string | null;
   published_at: string | null;
   // 新規追加
-  channel_record_id: number | null;
+  channel_record_id?: number | null;
   description: string | null;
   thumbnail: string | null;
   duration: number; // 秒数

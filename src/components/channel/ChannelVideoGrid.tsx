@@ -15,6 +15,7 @@ interface VideoWithSongs extends Video {
   sourceChannelName?: string;
   isCollab?: boolean;
   originalChannelName?: string;
+  original_channel_id?: number;
 }
 
 interface ChannelVideoGridProps {
@@ -94,12 +95,12 @@ export default function ChannelVideoGrid({ channel, videos, subChannels }: Chann
     { 
       id: channel.id, 
       name: channel.name, 
-      count: registeredVideos.filter(v => v.channel_record_id === channel.id).length 
+      count: registeredVideos.filter(v => (v.channel_record_id ?? v.original_channel_id) === channel.id).length 
     },
     ...(subChannels || []).map(sc => ({
       id: sc.id,
       name: sc.name,
-      count: registeredVideos.filter(v => v.channel_record_id === sc.id).length
+      count: registeredVideos.filter(v => (v.channel_record_id ?? v.original_channel_id) === sc.id).length
     }))
   ];
 
