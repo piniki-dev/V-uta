@@ -7,15 +7,9 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import DynamicPlayer from '@/components/player/DynamicPlayer';
 import Footer from '@/components/Footer';
 
-export default function AppShell({
-  children,
-  isMaintenance = false,
-}: {
-  children: React.ReactNode;
-  isMaintenance?: boolean;
-}) {
+export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isMaintenancePage = isMaintenance || pathname === '/maintenance';
+  const isMaintenancePage = pathname === '/maintenance';
 
   // メンテナンスページの場合はヘッダー・サイドバー・フッター・プレイヤーを非表示にして全画面表示
   if (isMaintenancePage) {

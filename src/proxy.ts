@@ -28,18 +28,7 @@ export async function proxy(request: NextRequest) {
   // 3. メンテナンスモード中の制御
   if (isMaintenance && !hasBypassCookie) {
     if (pathname !== '/maintenance') {
-      const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('x-is-maintenance', 'true')
-
-      const response = NextResponse.rewrite(new URL('/maintenance', request.url), {
-        status: 503,
-        statusText: 'Service Unavailable',
-        request: {
-          headers: requestHeaders,
-        },
-      })
-      response.headers.set('Retry-After', '3600')
-      return response
+      return NextResponse.redirect(new URL('/maintenance', request.url), { status: 307 })
     }
     return NextResponse.next()
   }

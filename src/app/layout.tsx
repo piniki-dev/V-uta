@@ -6,7 +6,6 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 import AppShell from "@/components/AppShell";
-import { headers } from "next/headers";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -90,14 +89,11 @@ export const viewport = {
   themeColor: '#0f0f0f',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headerList = await headers();
-  const isMaintenance = headerList.get("x-is-maintenance") === "true";
-
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={`${outfit.variable} ${plusJakarta.variable} ${notoSansJP.variable}`}>
@@ -108,7 +104,7 @@ export default async function RootLayout({
                 <ToastProvider>
                   <SidebarProvider>
                     <ScrollToTop />
-                    <AppShell isMaintenance={isMaintenance}>
+                    <AppShell>
                       {children}
                     </AppShell>
                   </SidebarProvider>
