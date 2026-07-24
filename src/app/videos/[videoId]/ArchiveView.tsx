@@ -39,7 +39,7 @@ export default function ArchiveView({ video, songs, songId, collaboratorChannels
             </Link>
           </div>
         ) : (
-          <ArchiveSongList video={video} songs={songs} />
+          <ArchiveSongList video={video} songs={songs} collaboratorChannels={collaboratorChannels} />
         )}
       </div>
     </div>

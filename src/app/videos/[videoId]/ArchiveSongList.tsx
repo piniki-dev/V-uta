@@ -1,16 +1,20 @@
 'use client';
 
-import type { Video, Song, PlayerSong } from '@/types';
+import type { Video, Song, PlayerSong, Channel } from '@/types';
 import SongList from '@/components/song/SongList';
 import { useLocale } from '@/components/LocaleProvider';
 
 interface Props {
   video: Video;
   songs: Song[];
+  collaboratorChannels?: (Channel & { isOriginal?: boolean })[];
 }
 
-export default function ArchiveSongList({ video, songs }: Props) {
+export default function ArchiveSongList({ video, songs, collaboratorChannels }: Props) {
   const { T } = useLocale();
+
+  const isCollab = (collaboratorChannels?.length || 0) > 1 || 
+    (collaboratorChannels?.some((c) => c.isOriginal === false) ?? false);
 
   const toPlayerSong = (song: Song): PlayerSong => ({
     id: song.id,
@@ -41,6 +45,7 @@ export default function ArchiveSongList({ video, songs }: Props) {
       sourceType="video"
       sourceId={video.video_id}
       showTimeInfo={true}
+      isCollab={isCollab}
     />
   );
 }

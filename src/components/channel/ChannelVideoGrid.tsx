@@ -367,6 +367,7 @@ export default function ChannelVideoGrid({ channel, videos, subChannels }: Chann
                                 sourceType="channel"
                                 sourceId={channel.id.toString()}
                                 showTimeInfo={true}
+                                isCollab={video.isCollab}
                               />
                             ) : (
                                 <div className="py-16 flex flex-col items-center justify-center text-center">

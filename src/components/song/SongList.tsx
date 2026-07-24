@@ -20,6 +20,7 @@ interface SongListProps<T> {
   renderActions?: (item: T, song: PlayerSong) => React.ReactNode;
   onItemClick?: (item: T, song: PlayerSong) => void;
   showPlayedAt?: boolean;
+  isCollab?: boolean;
 }
 
 export default function SongList<T extends { id: number | string }>({
@@ -34,7 +35,8 @@ export default function SongList<T extends { id: number | string }>({
   className = '',
   renderActions,
   onItemClick,
-  showPlayedAt = false
+  showPlayedAt = false,
+  isCollab = false
 }: SongListProps<T>) {
   const { T } = useLocale();
 
@@ -80,6 +82,7 @@ export default function SongList<T extends { id: number | string }>({
                   className="bg-[var(--bg-secondary)]" 
                   renderActions={renderActions?.(item, song)}
                   rowId={item.id}
+                  isCollab={isCollab}
                 />
               </Reorder.Item>
             );
@@ -123,6 +126,7 @@ export default function SongList<T extends { id: number | string }>({
               showPlayedAt={showPlayedAt}
               renderActions={renderActions?.(item, song)}
               rowId={item.id}
+              isCollab={isCollab}
               onClick={onItemClick ? () => onItemClick(item, song) : undefined}
             />
           );

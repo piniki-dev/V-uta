@@ -24,6 +24,7 @@ export interface SongRowProps {
   className?: string;
   renderActions?: React.ReactNode;
   rowId?: string | number;
+  isCollab?: boolean;
   // Events
   onClick?: () => void;
 }
@@ -41,6 +42,7 @@ export default function SongRow({
   className = '',
   renderActions,
   rowId,
+  isCollab = false,
   onClick
 }: SongRowProps) {
   const { playWithSource, state } = usePlayer();
@@ -157,8 +159,8 @@ export default function SongRow({
           <div className="text-sm text-[var(--text-secondary)] truncate">
             {t(song.artist || '-', song.artist_en || song.artist || '-')}
           </div>
-          {/* 歌唱メンバー（コラボチャンネル）バッジ一覧 */}
-          {song.singers && song.singers.length > 0 && (
+          {/* 歌唱メンバー（コラボ動画/コラボ曲の場合のみ表示） */}
+          {isCollab && song.singers && song.singers.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               {song.singers.map((singer) => (
                 <div
