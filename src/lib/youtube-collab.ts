@@ -94,12 +94,17 @@ export function parseCollaboratorsFromInnerTubeResponse(rawJsonText: string): Co
   return results;
 }
 
-function extractFromObject(obj: unknown, results: CollaboratorChannelInfo[], seenIds: Set<string>): void {
+function extractFromObject(obj: unknown, results: CollaboratorChannelInfo[], seenIds: Set<string>, keyName = ''): void {
   if (!obj || typeof obj !== 'object') return;
+
+  // 関連動画リスト (secondaryResults) は対象動画のコラボ者ではないため探索から除外
+  if (keyName === 'secondaryResults') {
+    return;
+  }
 
   if (Array.isArray(obj)) {
     for (const item of obj) {
-      extractFromObject(item, results, seenIds);
+      extractFromObject(item, results, seenIds, keyName);
     }
     return;
   }
@@ -164,8 +169,8 @@ function extractFromObject(obj: unknown, results: CollaboratorChannelInfo[], see
   // 子プロパティを再帰検索
   for (const key of Object.keys(record)) {
     // 高速化のため巨大なトークン配列などはスキップ可能だが、JSONツリーを安全に探索
-    if (key !== 'trackingParams' && key !== 'clickTrackingParams') {
-      extractFromObject(record[key], results, seenIds);
+    if (key !== 'trackingParams' && key !== 'clickTrackingParams' && key !== 'secondaryResults') {
+      extractFromObject(record[key], results, seenIds, key);
     }
   }
 }

@@ -129,4 +129,84 @@ describe('YouTube Collaborator Parser', () => {
       avatarUrl: undefined,
     });
   });
+
+  it('should ignore collaborator channels embedded in secondaryResults (related videos)', () => {
+    const mockJsonWithSecondary = {
+      contents: {
+        twoColumnWatchNextResults: {
+          results: {
+            results: {
+              contents: []
+            }
+          },
+          secondaryResults: {
+            secondaryResults: {
+              results: [
+                {
+                  lockupViewModel: {
+                    metadata: {
+                      lockupMetadataViewModel: {
+                        image: {
+                          avatarStackViewModel: {
+                            rendererContext: {
+                              commandContext: {
+                                onTap: {
+                                  innertubeCommand: {
+                                    showDialogCommand: {
+                                      panelLoadingStrategy: {
+                                        inlineContent: {
+                                          dialogViewModel: {
+                                            customContent: {
+                                              listViewModel: {
+                                                listItems: [
+                                                  {
+                                                    listItemViewModel: {
+                                                      title: {
+                                                        content: "Harusaruhi / 春猿火",
+                                                        commandRuns: [
+                                                          {
+                                                            onTap: {
+                                                              innertubeCommand: {
+                                                                browseEndpoint: {
+                                                                  browseId: "UC41VhLcq2YpC22p99T_A3aA",
+                                                                  canonicalBaseUrl: "/@harusaruhi"
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      },
+                                                      subtitle: {
+                                                        content: "・@harusaruhi"
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    };
+
+    const collaborators = parseCollaboratorsFromInnerTubeResponse(JSON.stringify(mockJsonWithSecondary));
+    expect(collaborators).toHaveLength(0);
+  });
 });
+
