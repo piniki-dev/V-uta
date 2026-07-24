@@ -101,7 +101,7 @@ export async function getPlaylistDetail(slug: string): Promise<ActionResult<Play
         song:songs (
           *,
           master_song:master_songs (*),
-          video:videos (*, channel:channels (*))
+          video:videos (*, video_channels(is_original, channel:channels(*)))
         )
       )
     `)
@@ -146,7 +146,7 @@ export async function getFavoritePlaylistDetail(): Promise<ActionResult<Playlist
         song:songs (
           *,
           master_song:master_songs (*),
-          video:videos (*, channel:channels (*))
+          video:videos (*, video_channels(is_original, channel:channels(*)))
         )
       )
     `)

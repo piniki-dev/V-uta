@@ -9,6 +9,9 @@ interface SearchSongsProps {
 
 export default function SearchSongs({ songs }: SearchSongsProps) {
   const toPlayerSong = (item: SearchSongItem): PlayerSong => {
+    const origVc = item.video?.video_channels?.find((vc) => vc.is_original) || item.video?.video_channels?.[0];
+    const channel = origVc?.channel || item.video?.channel;
+
     return {
       id: item.id,
       title: item.master_song?.title || '',
@@ -19,8 +22,8 @@ export default function SearchSongs({ songs }: SearchSongsProps) {
       videoId: item.video?.video_id || '',
       startSec: item.start_sec,
       endSec: item.end_sec,
-      channelName: item.video?.channel?.name || null,
-      channelThumbnailUrl: item.video?.channel?.image || null,
+      channelName: channel?.name || null,
+      channelThumbnailUrl: channel?.image || null,
       thumbnailUrl: item.video?.thumbnail_url || null,
       videoTitle: item.video?.title || ''
     };

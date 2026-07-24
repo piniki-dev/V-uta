@@ -41,6 +41,9 @@ export default function PlaylistDetailContent({ playlist }: Props) {
 
   const toPlayerSong = (item: PlaylistItem): PlayerSong => {
     const song = item.song;
+    const origVc = song?.video?.video_channels?.find((vc) => vc.is_original) || song?.video?.video_channels?.[0];
+    const channel = origVc?.channel || song?.video?.channel;
+
     return {
       id: song?.id || 0,
       title: song?.master_song?.title || 'Unknown',
@@ -51,8 +54,8 @@ export default function PlaylistDetailContent({ playlist }: Props) {
       videoId: song?.video?.video_id || '',
       startSec: song?.start_sec || 0,
       endSec: song?.end_sec || 0,
-      channelName: song?.video?.channel?.name || null,
-      channelThumbnailUrl: song?.video?.channel?.image || null,
+      channelName: channel?.name || null,
+      channelThumbnailUrl: channel?.image || null,
       thumbnailUrl: song?.video?.thumbnail_url || null,
       videoTitle: song?.video?.title || null
     };

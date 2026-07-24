@@ -98,7 +98,7 @@ export async function getRelatedSongs(
   // 1. 基点となる曲の情報を取得
   const { data: baseSong, error: baseErr } = await supabase
     .from('songs')
-    .select('*, master_song:master_songs(*), video:videos(*, video_channels(channel_id, is_original), channel:channels(*))')
+    .select('*, master_song:master_songs(*), video:videos(*, video_channels(channel_id, is_original, channel:channels(*)))')
     .eq('id', songId)
     .single();
 

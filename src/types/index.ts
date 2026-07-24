@@ -57,6 +57,11 @@ export interface Video {
   updated_at: string;
   updated_by: string | null;
   channel?: Channel; // 以前は channels
+  video_channels?: {
+    is_original?: boolean;
+    channel_id?: number;
+    channel?: Channel | null;
+  }[];
 }
 
 export interface MasterSong {
@@ -221,5 +226,12 @@ export interface SearchSongItem {
       name: string;
       image: string | null;
     };
+    video_channels?: {
+      is_original: boolean;
+      channel?: {
+        name: string;
+        image: string | null;
+      } | null;
+    }[];
   };
 }
