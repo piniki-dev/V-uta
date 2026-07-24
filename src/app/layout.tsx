@@ -1,15 +1,12 @@
 import { Outfit, Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
 import { PlayerProvider } from "@/components/player/PlayerContext";
 import { SidebarProvider } from "@/components/SidebarContext";
-import Sidebar from "@/components/Sidebar";
-import LayoutWrapper from "@/components/LayoutWrapper";
-import DynamicPlayer from "@/components/player/DynamicPlayer";
 import ScrollToTop from "@/components/ScrollToTop";
 import { ToastProvider } from "@/components/ToastProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
-import Footer from "@/components/Footer";
+import AppShell from "@/components/AppShell";
+import { headers } from "next/headers";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -37,6 +34,8 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 import { translations } from "@/lib/translations";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { LocaleProvider } from "@/components/LocaleProvider";
 
 export function generateMetadata() {
   const t = translations['ja'];
@@ -91,14 +90,13 @@ export const viewport = {
   themeColor: '#0f0f0f',
 };
 
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { LocaleProvider } from "@/components/LocaleProvider";
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerList = await headers();
+  const isMaintenance = headerList.get("x-is-maintenance") === "true";
 
   return (
     <html lang="ja" suppressHydrationWarning>
@@ -110,19 +108,9 @@ export default function RootLayout({
                 <ToastProvider>
                   <SidebarProvider>
                     <ScrollToTop />
-                    <Header />
-                    <div className="app-layout mesh-bg">
-                      <Sidebar />
-                      <LayoutWrapper>
-                        <main className="main-content">
-                          <div className="flex-1">
-                            {children}
-                          </div>
-                          <Footer />
-                        </main>
-                      </LayoutWrapper>
-                    </div>
-                    <DynamicPlayer />
+                    <AppShell isMaintenance={isMaintenance}>
+                      {children}
+                    </AppShell>
                   </SidebarProvider>
                 </ToastProvider>
               </PlayerProvider>
